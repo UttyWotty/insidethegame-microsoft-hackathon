@@ -235,6 +235,8 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   the ball and a trail of recent actions, live name tags for the players in the action, and a broadcast camera
   that tilts the pitch like a TV angle (or a flat tactical view). Teams change ends at half-time, and a broadcast
   score bug shows the added-time clock.
+- **Landing and effects:** a landing screen with a one-click demo match; shot traces with an xG bubble and result,
+  and a GOAL banner in the scoring club's colours.
 - **Persona overlays:** each persona's cue is rendered in its own layout over the pitch: analyst stat panel,
   casual lower third, superfan hype banner in club colours, player tag anchored to the ball, and newcomer
   explainer card. Every overlay shows provenance (AI, corrected, or template, with latency).

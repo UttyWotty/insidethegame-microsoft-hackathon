@@ -20,6 +20,8 @@ export type MessageName = "match" | "event" | "snapshot" | "cue" | "commentary" 
 export interface TrailPoint extends Point { side: "home" | "away"; type: string; id: string }
 export interface MomentumPoint { second: number; period: number; momentum: number }
 export interface ReceivedCue { cue: OverlayCue; receivedAt: number }
+export interface ShotTrace { id: string; from: Point; to: Point; xg: number | null; result: string; side: "home" | "away"; at: number }
+export interface GoalFlash { id: string; scorer: string; side: "home" | "away"; score: string; at: number }
 export interface TickerItem { id: string; minute: string; text: string; tone: "commentary" | "goal" | "info" | "play" }
 export interface PlayLine { line_id: string; minute: string; text: string; kind: string }
 
@@ -36,6 +38,8 @@ export interface MatchState {
   ticker: TickerItem[];
   recaps: Recap[];
   ended: boolean;
+  lastShot: ShotTrace | null;
+  goalFlash: GoalFlash | null;
 }
 
 export type StreamAction =
@@ -45,7 +49,7 @@ export type StreamAction =
 
 export const initialMatchState: MatchState = {
   session: null, snapshot: null, lastEvent: null, ball: null, players: {}, trail: [], rhythm: null, momentum: [], cues: [],
-  ticker: [], recaps: [], ended: false,
+  ticker: [], recaps: [], ended: false, lastShot: null, goalFlash: null,
 };
 
 function playerName(state: MatchState, playerId: string | null): string {
@@ -68,7 +72,26 @@ function eventTicker(state: MatchState, event: MatchEvent): TickerItem | null {
   return { id: event.event_id, minute, text: `Shot by ${name} (${result})`, tone: "info" };
 }
 
-function applyEvent(state: MatchState, update: EventUpdate): MatchState {
+const GOAL_MOUTH = { x: 105, y: 34 };
+
+function shotTrace(state: MatchState, update: EventUpdate, at: number): ShotTrace | null {
+  const event = update.event;
+  if (event.event_type !== "shot" || !event.start) return state.lastShot;
+  const isHome = event.team_id === state.session?.match.home.team_id;
+  return {
+    id: event.event_id, from: toScreen(event.start, isHome, event.period), to: toScreen(event.end ?? GOAL_MOUTH, isHome, event.period),
+    xg: update.xg, result: event.shot_result ?? "", side: isHome ? "home" : "away", at,
+  };
+}
+
+function goalFlash(state: MatchState, event: MatchEvent, at: number): GoalFlash | null {
+  if (event.event_type !== "goal") return state.goalFlash;
+  const isHome = event.team_id === state.session?.match.home.team_id;
+  return { id: event.event_id, scorer: playerName(state, event.player_id), side: isHome ? "home" : "away",
+           score: `${event.score.home}-${event.score.away}`, at };
+}
+
+function applyEvent(state: MatchState, update: EventUpdate, at: number): MatchState {
   const event = update.event;
   const homeId = state.session?.match.home.team_id ?? "";
   const ball = ballAfter(event, homeId) ?? state.ball;
@@ -86,7 +109,8 @@ function applyEvent(state: MatchState, update: EventUpdate): MatchState {
   const players = update.positions
     ? Object.fromEntries(update.positions.map(([id, x, y]) => [id, toScreen({ x, y }, true, event.period)]))
     : state.players;
-  return { ...state, lastEvent: event, ball, players, trail, rhythm: update.rhythm, momentum, ticker };
+  return { ...state, lastEvent: event, ball, players, trail, rhythm: update.rhythm, momentum, ticker,
+           lastShot: shotTrace(state, update, at), goalFlash: goalFlash(state, event, at) };
 }
 
 function addTicker(state: MatchState, item: TickerItem): TickerItem[] {
@@ -113,7 +137,7 @@ export function matchReducer(state: MatchState, action: StreamAction): MatchStat
   switch (action.name) {
     case "match": return { ...state, session: action.data as SessionInfo };
     case "snapshot": return { ...state, snapshot: action.data as Snapshot };
-    case "event": return applyEvent(state, action.data as EventUpdate);
+    case "event": return applyEvent(state, action.data as EventUpdate, action.receivedAt);
     case "cue": return applyCue(state, action.data as OverlayCue, action.receivedAt);
     case "commentary": {
       const line = action.data as PlayLine;

@@ -202,3 +202,19 @@ button { cursor: pointer; }
 .cue-table td { vertical-align: top; padding: var(--space-2); border-bottom: 1px solid var(--color-muted); }
 .cue-table td:first-child { text-transform: capitalize; white-space: nowrap; }
 @media (max-width: 900px) { .producer-grid { grid-template-columns: 1fr; } }
+
+.shot-trace { animation: overlay-in var(--duration-medium) var(--ease-out); }
+.shot-label { font: 700 1.8px var(--font-display); fill: #ffffff; paint-order: stroke; stroke: #0b1220; stroke-width: 0.45px; text-transform: uppercase; }
+.goal-banner { position: absolute; left: 0; right: 0; top: 40%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: var(--space-1); padding: var(--space-4) 0; background: linear-gradient(90deg, transparent, var(--team-color) 15%, var(--team-color) 85%, transparent); color: #04121c; animation: goal-in 600ms var(--ease-out); pointer-events: none; }
+.goal-word { font-family: var(--font-display); font-size: clamp(3rem, 9vw, 6rem); font-weight: 700; line-height: 0.9; letter-spacing: 0.08em; }
+.goal-detail { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; text-transform: uppercase; }
+@keyframes goal-in { from { opacity: 0; transform: translateY(-50%) scaleX(0.4); } to { opacity: 1; transform: translateY(-50%) scaleX(1); } }
+.landing { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-4); padding: var(--space-6); background: radial-gradient(ellipse at top right, rgba(34, 197, 94, 0.18), transparent 55%), var(--color-card); }
+.landing .landing-title { margin: 0; font-size: clamp(2rem, 4vw, 3.25rem); line-height: 1.05; }
+.landing-lead { margin: 0; max-width: 60ch; font-size: var(--text-lg); color: var(--color-fg-muted); }
+.pillars { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-3); width: 100%; }
+.pillar { padding: var(--space-4); border-radius: var(--radius-md); background: var(--color-surface); border: 1px solid var(--color-border); border-top: 3px solid var(--color-accent); }
+.pillar h3 { margin: 0 0 var(--space-2); font-size: var(--text-lg); }
+.pillar p { margin: 0; font-size: var(--text-sm); color: var(--color-fg-muted); }
+.landing-cta { padding: 0 var(--space-6); }
+@media (prefers-reduced-motion: reduce) { .goal-banner, .shot-trace { animation: none; } }
