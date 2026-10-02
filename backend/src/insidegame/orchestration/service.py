@@ -17,8 +17,9 @@ from insidegame.agents.factory import AgentSuite
 from insidegame.agents.personas import ViewerProfile
 from insidegame.agents.recap_context import RecapStage, build_recap_context
 from insidegame.agents.runner import AgentOutcome, OutputSource, RunPolicy
-from insidegame.agents.schemas import MatchRecap
-from insidegame.agents.steps import write_recap
+from insidegame.agents.recap_context import RecapContext
+from insidegame.agents.schemas import MatchRecap, RecapTake
+from insidegame.agents.steps import personalize_recap, write_recap
 from insidegame.agents.templates import commentary_template, explanation_template, persona_card_template
 from insidegame.analytics.analyzer import AnalysisUpdate, MatchAnalyzer
 from insidegame.core.constants import PERIODS
@@ -142,3 +143,7 @@ class MatchIntelligenceService:
     async def recap(self, stage: RecapStage) -> AgentOutcome[MatchRecap]:
         """Write a recap of the match so far."""
         return await write_recap(self.suite, build_recap_context(self.analyzer, stage), self.analyzer, self.policy)
+
+    async def recap_take(self, context: RecapContext, recap: MatchRecap, viewer: ViewerContext) -> AgentOutcome[RecapTake]:
+        """Write one viewer segment's persona take on a recap."""
+        return await personalize_recap(self.suite, context, recap, viewer, self.policy)

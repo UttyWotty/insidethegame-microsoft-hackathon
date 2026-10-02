@@ -52,7 +52,7 @@ def test_invented_numbers_fall_back_to_the_grounded_summary(
     viewer = ViewerContext(ViewerProfile("v", PersonaKey.CASUAL))
     outcome = asyncio.run(answer_question(create_agent_suite(client), QUESTION, context, viewer, analyzer, POLICY))
     assert outcome.source is OutputSource.FALLBACK
-    assert context.scoreline in outcome.value.answer and "987" in outcome.problems[0]
+    assert context.top_players[0]["name"] in outcome.value.answer and "987" in outcome.problems[0]
 
 
 def test_ask_endpoint_answers_offline_and_validates_input() -> None:

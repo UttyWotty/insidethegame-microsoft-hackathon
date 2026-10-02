@@ -13,7 +13,10 @@ from enum import StrEnum
 
 from insidegame.agents.context import MomentContext
 from insidegame.agents.personas import ViewerProfile, is_relevant
-from insidegame.agents.recap_context import RecapStage, build_recap_context
+from insidegame.agents.context import ViewerContext
+from insidegame.agents.recap_context import RecapContext, RecapStage, build_recap_context
+from insidegame.agents.recap_takes import template_take
+from insidegame.agents.schemas import MatchRecap, RecapTake
 from insidegame.agents.runner import OutputSource
 from insidegame.agents.templates import recap_template
 from insidegame.core.exceptions import SessionLimitError
@@ -70,6 +73,10 @@ class Subscriber:
     queue: asyncio.Queue[LiveMessage] = field(default_factory=lambda: asyncio.Queue(QUEUE_MAX))
 
 
+def _take_fields(viewer: ViewerContext, take: RecapTake, source: OutputSource) -> dict[str, object]:
+    return {"persona": viewer.viewer.persona.value, "take": take.model_dump(mode="json"), "take_source": source.value}
+
+
 class MatchSession:
     """Owns one replayed match, its pipeline, and its subscribers."""
 
@@ -81,6 +88,7 @@ class MatchSession:
         self.subscribers: set[Subscriber] = set()
         self.cue_history: dict[str, deque[dict[str, object]]] = {}
         self.recaps: list[dict[str, object]] = []
+        self.recap_sources: list[tuple[RecapContext, MatchRecap]] = []
         self.tasks: set[asyncio.Task[None]] = set()
         self.recent_moments: deque[MomentContext] = deque(maxlen=MOMENT_HISTORY)
 
@@ -107,8 +115,10 @@ class MatchSession:
         self._send(subscriber, LiveMessage(MessageType.SNAPSHOT, self.snapshot()))
         for cue in self.cue_history.get(profile.viewer_id, ()):
             self._send(subscriber, LiveMessage(MessageType.CUE, cue | {"replay": True}))
-        for recap in self.recaps:
-            self._send(subscriber, LiveMessage(MessageType.RECAP, recap))
+        viewer = self.service.viewers[profile.viewer_id]
+        for base, (context, recap) in zip(self.recaps, self.recap_sources, strict=True):
+            take = template_take(context, viewer)
+            self._send(subscriber, LiveMessage(MessageType.RECAP, base | _take_fields(viewer, take, OutputSource.FALLBACK)))
         if self.status is SessionStatus.FINISHED:
             self._spawn(self._end_after(subscriber, backfill))
         return subscriber
@@ -165,18 +175,31 @@ class MatchSession:
             self.publish(LiveMessage(MessageType.CUE, data, segment_id=cue.viewer_id))
 
     async def _recap(self, stage: RecapStage) -> None:
-        """Write and publish a recap; any unexpected failure falls back to the grounded template recap."""
+        """Write the shared recap, then publish it to each viewer segment with that segment's persona take."""
+        context = build_recap_context(self.service.analyzer, stage)
         try:
             outcome = await self.service.recap(stage)
             recap, source, latency = outcome.value, outcome.source, outcome.latency_ms
         except Exception:  # noqa: BLE001 - resilience boundary for background work
             logger.exception("Recap failed for %s; publishing template recap", self.session_id)
-            recap = recap_template(build_recap_context(self.service.analyzer, stage))
-            source, latency = OutputSource.FALLBACK, 0
-        data = {"stage": stage.value, "recap": recap.model_dump(mode="json"), "source": source.value,
+            recap, source, latency = recap_template(context), OutputSource.FALLBACK, 0
+        base = {"stage": stage.value, "recap": recap.model_dump(mode="json"), "source": source.value,
                 "latency_ms": latency}
-        self.recaps.append(data)
-        self.publish(LiveMessage(MessageType.RECAP, data))
+        self.recaps.append(base)
+        self.recap_sources.append((context, recap))
+        viewers = tuple(self.service.viewers.values())
+        takes = await asyncio.gather(*(self._take(context, recap, v) for v in viewers))
+        for viewer, (take, take_source) in zip(viewers, takes, strict=True):
+            self.publish(LiveMessage(MessageType.RECAP, base | _take_fields(viewer, take, take_source),
+                                     segment_id=viewer.viewer.viewer_id))
+
+    async def _take(self, context: RecapContext, recap: MatchRecap, viewer: ViewerContext) -> tuple[RecapTake, OutputSource]:
+        try:
+            outcome = await self.service.recap_take(context, recap, viewer)
+            return outcome.value, outcome.source
+        except Exception:  # noqa: BLE001 - resilience boundary for background work
+            logger.exception("Recap take failed for %s", viewer.viewer.viewer_id)
+            return template_take(context, viewer), OutputSource.FALLBACK
 
     async def _drain(self) -> None:
         """Wait until no background work remains, including tasks spawned while waiting."""

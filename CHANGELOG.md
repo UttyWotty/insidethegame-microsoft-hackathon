@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- "Ask the analyst" fallback now answers the question: a deterministic engine recognises best-player, who-is-on-top,
+  momentum, named-player, and score questions and answers from live statistics in each persona's voice (the
+  superfan in first person, the player tracker with their player's numbers, the newcomer with a term explained).
+- Half-time and full-time recaps are personalized: each viewer segment receives a persona take (model-written when
+  available, grounded template otherwise) above the shared recap.
+
 ### Fixed
 
 - A failing background task (agent workflow or recap) could stop a match from ever ending; failures now degrade

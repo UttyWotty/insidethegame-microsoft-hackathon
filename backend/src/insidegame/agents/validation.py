@@ -13,6 +13,7 @@ from insidegame.agents.schemas import (
     Explanation,
     MatchRecap,
     PersonaCard,
+    RecapTake,
     TranslatedCard,
 )
 
@@ -82,4 +83,13 @@ def answer_validator(evidence: Callable[[], object]) -> Callable[[CompanionAnswe
         if len(value.answer.split()) > ANSWER_MAX_WORDS * WORD_BUDGET_TOLERANCE:
             return f"the answer must be at most {ANSWER_MAX_WORDS} words"
         return _grounding_problem([value.answer, *(c.value for c in value.stat_callouts)], evidence)
+    return validate
+
+
+def take_validator(evidence: Callable[[], object], max_words: int) -> Callable[[RecapTake], str | None]:
+    """Validator for persona recap takes: grounded and within the persona's word budget."""
+    def validate(value: RecapTake) -> str | None:
+        if len(value.take.split()) > max_words * WORD_BUDGET_TOLERANCE:
+            return f"the take must be at most {max_words} words"
+        return _grounding_problem([value.headline, value.take], evidence)
     return validate

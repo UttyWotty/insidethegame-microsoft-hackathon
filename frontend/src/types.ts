@@ -66,6 +66,7 @@ export interface OverlayCue {
 
 export interface Recap {
   stage: "half_time" | "full_time"; source: OutputSource; latency_ms: number;
+  persona?: PersonaKey; take?: { headline: string; take: string }; take_source?: OutputSource;
   recap: { headline: string; summary: string; turning_points: string[]; standout_player: string; tactical_story: string };
 }
 

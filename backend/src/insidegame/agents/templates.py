@@ -9,11 +9,9 @@ from collections.abc import Callable
 from insidegame.agents.context import MomentContext, ViewerContext
 from insidegame.agents.glossary import concept_for
 from insidegame.agents.personas import PersonaKey
-from insidegame.agents.question_context import QuestionContext
 from insidegame.agents.recap_context import RecapContext, RecapStage, moment_actor
 from insidegame.agents.schemas import (
     Commentary,
-    CompanionAnswer,
     Explanation,
     MatchRecap,
     PersonaCard,
@@ -209,16 +207,3 @@ def recap_template(context: RecapContext) -> MatchRecap:
     return MatchRecap(headline=f"{stage}: {scoreline}", summary=summary,
                       turning_points=[_turning_point(m) for m in context.moments],
                       standout_player=str(context.standout["name"]), tactical_story=story)
-
-
-FALLBACK_FOLLOW_UPS: tuple[str, ...] = ("Who has been the best player so far?", "Which team is on top right now?")
-
-
-def answer_template(context: QuestionContext) -> CompanionAnswer:
-    """Grounded fallback answer stating where the match stands."""
-    home, away = context.teams[context.home_name], context.teams[context.away_name]
-    answer = (f"I can't answer that one reliably right now, but here is where things stand: {context.scoreline} "
-              f"at {context.clock}, with {context.home_name} on {home['possession_pct']}% of the ball.")
-    callouts = [StatCallout(label=f"{context.home_name} xG", value=str(home["xg"])),
-                StatCallout(label=f"{context.away_name} xG", value=str(away["xg"]))]
-    return CompanionAnswer(answer=answer, stat_callouts=callouts, follow_ups=list(FALLBACK_FOLLOW_UPS))

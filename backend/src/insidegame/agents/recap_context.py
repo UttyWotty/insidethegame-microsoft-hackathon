@@ -41,6 +41,7 @@ class RecapContext:
     teams: dict[str, dict[str, object]] = field(default_factory=dict)
     moments: list[dict[str, object]] = field(default_factory=list)
     standout: dict[str, object] = field(default_factory=dict)
+    players: dict[str, dict[str, object]] = field(default_factory=dict)
 
     def to_prompt_dict(self) -> dict[str, object]:
         """Return the context as a JSON-friendly dict for prompts."""
@@ -80,5 +81,8 @@ def build_recap_context(analyzer: MatchAnalyzer, stage: RecapStage) -> RecapCont
     best = max(stats.players.values(), key=impact_score)
     standout = {"name": best.name, "team": team_names[best.team_id], "goals": best.goals,
                 "xg": round(best.xg, XG_DECIMALS), "passes_completed": best.passes_completed}
+    players = {p.name: {"team": team_names[p.team_id], "goals": p.goals, "shots": p.shots,
+                        "xg": round(p.xg, XG_DECIMALS), "passes_completed": p.passes_completed,
+                        "tackles": p.tackles} for p in stats.players.values()}
     return RecapContext(stage, metadata.home.name, metadata.away.name, event.score_home if event else 0,
-                        event.score_away if event else 0, teams, moments, standout)
+                        event.score_away if event else 0, teams, moments, standout, players)

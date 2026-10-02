@@ -87,3 +87,10 @@ class CompanionAnswer(BaseModel):
                                              max_length=MAX_STAT_CALLOUTS)
     follow_ups: list[str] = Field(description="Up to 3 short follow-up questions about this match.",
                                   max_length=MAX_FOLLOW_UPS)
+
+
+class RecapTake(BaseModel):
+    """Personalizer output: one persona's take on a half-time or full-time recap."""
+
+    headline: str = Field(description="At most 10 words, in the persona's voice.")
+    take: str = Field(description="The persona's view of the match so far, within its word budget.")
