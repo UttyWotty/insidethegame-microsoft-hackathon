@@ -3,7 +3,7 @@
  * It tracks the ball and recent trail, sampled momentum, received overlay cues, a commentary ticker, and recaps.
  * Wall-clock time arrives inside actions so the reducer stays deterministic and testable.
  */
-import { ballAfter, minuteLabel } from "../lib/pitch";
+import { ballAfter, minuteLabel, toScreen } from "../lib/pitch";
 import type {
   EventUpdate, MatchEvent, OverlayCue, Point, Recap, Rhythm, SessionInfo, Snapshot,
 } from "../types";
@@ -28,6 +28,7 @@ export interface MatchState {
   snapshot: Snapshot | null;
   lastEvent: MatchEvent | null;
   ball: Point | null;
+  players: Record<string, Point>;
   trail: TrailPoint[];
   rhythm: Rhythm | null;
   momentum: MomentumPoint[];
@@ -43,7 +44,7 @@ export type StreamAction =
   | { type: "switch-viewer" };
 
 export const initialMatchState: MatchState = {
-  session: null, snapshot: null, lastEvent: null, ball: null, trail: [], rhythm: null, momentum: [], cues: [],
+  session: null, snapshot: null, lastEvent: null, ball: null, players: {}, trail: [], rhythm: null, momentum: [], cues: [],
   ticker: [], recaps: [], ended: false,
 };
 
@@ -82,7 +83,10 @@ function applyEvent(state: MatchState, update: EventUpdate): MatchState {
     : state.momentum;
   const item = eventTicker(state, event);
   const ticker = item ? addTicker(state, item) : state.ticker;
-  return { ...state, lastEvent: event, ball, trail, rhythm: update.rhythm, momentum, ticker };
+  const players = update.positions
+    ? Object.fromEntries(update.positions.map(([id, x, y]) => [id, toScreen({ x, y }, true, event.period)]))
+    : state.players;
+  return { ...state, lastEvent: event, ball, players, trail, rhythm: update.rhythm, momentum, ticker };
 }
 
 function addTicker(state: MatchState, item: TickerItem): TickerItem[] {

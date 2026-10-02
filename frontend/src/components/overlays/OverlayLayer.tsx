@@ -4,12 +4,12 @@
  * Only one overlay is shown at a time, selected by priority and display window.
  */
 import type { ReceivedCue } from "../../state/matchState";
-import type { Point } from "../../types";
+import type { BallAnchor } from "../Pitch";
 import { ExplainerCard, HypeBanner, LowerThird, PlayerTag, StatPanel } from "./Overlays";
 
-interface OverlayLayerProps { active: ReceivedCue | null; ball: Point | null; teamColor: string }
+interface OverlayLayerProps { active: ReceivedCue | null; anchor: BallAnchor; teamColor: string }
 
-export function OverlayLayer({ active, ball, teamColor }: OverlayLayerProps) {
+export function OverlayLayer({ active, anchor, teamColor }: OverlayLayerProps) {
   if (!active) return null;
   const { cue } = active;
   return (
@@ -17,7 +17,7 @@ export function OverlayLayer({ active, ball, teamColor }: OverlayLayerProps) {
       {cue.layout === "stat_panel" && <StatPanel cue={cue} />}
       {cue.layout === "lower_third" && <LowerThird cue={cue} />}
       {cue.layout === "hype_banner" && <HypeBanner cue={cue} teamColor={teamColor} />}
-      {cue.layout === "player_tag" && <PlayerTag cue={cue} ball={ball} />}
+      {cue.layout === "player_tag" && <PlayerTag cue={cue} anchor={anchor} />}
       {cue.layout === "explainer_card" && <ExplainerCard cue={cue} />}
     </div>
   );
