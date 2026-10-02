@@ -13,11 +13,14 @@ from enum import StrEnum
 
 from insidegame.agents.context import MomentContext
 from insidegame.agents.personas import ViewerProfile, is_relevant
-from insidegame.agents.recap_context import RecapStage
+from insidegame.agents.recap_context import RecapStage, build_recap_context
+from insidegame.agents.runner import OutputSource
+from insidegame.agents.templates import recap_template
+from insidegame.core.exceptions import SessionLimitError
 from insidegame.domain.match import MatchResult
 from insidegame.live.pacing import replay_delay_s
 from insidegame.orchestration.messages import MomentJob
-from insidegame.orchestration.service import MatchIntelligenceService
+from insidegame.orchestration.service import MatchIntelligenceService, degraded_broadcast
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +28,7 @@ QUEUE_MAX: int = 2000
 CUE_HISTORY: int = 20
 SNAPSHOT_EVERY_EVENTS: int = 25
 BACKFILL_MOMENTS: int = 2
+MAX_SEGMENTS: int = 10
 MOMENT_HISTORY: int = 30
 
 Sleeper = Callable[[float], Awaitable[None]]
@@ -93,13 +97,16 @@ class MatchSession:
 
     def subscribe(self, profile: ViewerProfile) -> Subscriber:
         """Register a client for a segment and prime it with the current state."""
-        backfill = self._backfill(profile) if profile.viewer_id not in self.service.viewers else []
+        is_new_segment = profile.viewer_id not in self.service.viewers
+        if is_new_segment and len(self.service.viewers) >= MAX_SEGMENTS:
+            raise SessionLimitError(f"At most {MAX_SEGMENTS} distinct viewer segments per match")
+        backfill = self._backfill(profile) if is_new_segment else []
         subscriber = Subscriber(profile.viewer_id)
         self.subscribers.add(subscriber)
         self._send(subscriber, LiveMessage(MessageType.MATCH, self.describe()))
         self._send(subscriber, LiveMessage(MessageType.SNAPSHOT, self.snapshot()))
         for cue in self.cue_history.get(profile.viewer_id, ()):
-            self._send(subscriber, LiveMessage(MessageType.CUE, cue))
+            self._send(subscriber, LiveMessage(MessageType.CUE, cue | {"replay": True}))
         for recap in self.recaps:
             self._send(subscriber, LiveMessage(MessageType.RECAP, recap))
         if self.status is SessionStatus.FINISHED:
@@ -109,14 +116,16 @@ class MatchSession:
     async def _end_after(self, subscriber: Subscriber, pending: list[asyncio.Task[None]]) -> None:
         """Close a late subscriber's stream only after its backfilled cues have been delivered."""
         if pending:
-            await asyncio.gather(*pending)
+            await asyncio.gather(*pending, return_exceptions=True)
         self._send(subscriber, LiveMessage(MessageType.END, {"session_id": self.session_id}))
 
     def _backfill(self, profile: ViewerProfile) -> list[asyncio.Task[None]]:
         """Register a new segment and personalize the most recent relevant moments for it, watched or not."""
         viewer = self.service.add_viewer(profile)
-        relevant = [c for c in self.recent_moments if is_relevant(c.moment, profile)]
-        return [self._spawn(self._produce(MomentJob(c, (viewer,)))) for c in relevant[-BACKFILL_MOMENTS:]]
+        delivered = {cue["moment_id"] for cue in self.cue_history.get(profile.viewer_id, ())}
+        recent = [c for c in self.recent_moments if is_relevant(c.moment, profile)][-BACKFILL_MOMENTS:]
+        return [self._spawn(self._produce(MomentJob(c, (viewer,))))
+                for c in recent if c.moment.moment_id not in delivered]
 
     def unsubscribe(self, subscriber: Subscriber) -> None:
         """Remove a client; stop personalizing for its segment when nobody else watches it."""
@@ -144,22 +153,47 @@ class MatchSession:
         return task
 
     async def _produce(self, job: MomentJob) -> None:
-        broadcast = await self.service.produce(job)
+        """Produce and publish cues; any unexpected failure degrades to templates instead of losing the moment."""
+        try:
+            broadcast = await self.service.produce(job)
+        except Exception:  # noqa: BLE001 - resilience boundary for background work
+            logger.exception("Production failed for %s; publishing degraded cues", job.context.moment.moment_id)
+            broadcast = degraded_broadcast(self.result.metadata.match_id, job.context, job)
         for cue in broadcast.cues:
             data = cue.to_dict()
             self.cue_history.setdefault(cue.viewer_id, deque(maxlen=CUE_HISTORY)).append(data)
             self.publish(LiveMessage(MessageType.CUE, data, segment_id=cue.viewer_id))
 
     async def _recap(self, stage: RecapStage) -> None:
-        outcome = await self.service.recap(stage)
-        data = {"stage": stage.value, "recap": outcome.value.model_dump(mode="json"),
-                "source": outcome.source.value, "latency_ms": outcome.latency_ms}
+        """Write and publish a recap; any unexpected failure falls back to the grounded template recap."""
+        try:
+            outcome = await self.service.recap(stage)
+            recap, source, latency = outcome.value, outcome.source, outcome.latency_ms
+        except Exception:  # noqa: BLE001 - resilience boundary for background work
+            logger.exception("Recap failed for %s; publishing template recap", self.session_id)
+            recap = recap_template(build_recap_context(self.service.analyzer, stage))
+            source, latency = OutputSource.FALLBACK, 0
+        data = {"stage": stage.value, "recap": recap.model_dump(mode="json"), "source": source.value,
+                "latency_ms": latency}
         self.recaps.append(data)
         self.publish(LiveMessage(MessageType.RECAP, data))
 
+    async def _drain(self) -> None:
+        """Wait until no background work remains, including tasks spawned while waiting."""
+        while self.tasks:
+            await asyncio.gather(*tuple(self.tasks), return_exceptions=True)
+
     async def run(self) -> None:
-        """Replay the match at session speed, then wait for outstanding agent work."""
+        """Replay the match, drain agent work, and always finish with an end message."""
         self.status = SessionStatus.LIVE
+        try:
+            await self._replay()
+            await self._drain()
+        finally:
+            self.status = SessionStatus.FINISHED
+            self.publish(LiveMessage(MessageType.END, {"session_id": self.session_id}))
+
+    async def _replay(self) -> None:
         previous = None
         for index, event in enumerate(self.result.events):
             await self.sleep(replay_delay_s(previous, event, self.speed))
@@ -173,7 +207,3 @@ class MatchSession:
             if interpretation.recap_stage:
                 self._spawn(self._recap(interpretation.recap_stage))
             previous = event
-        if self.tasks:
-            await asyncio.gather(*tuple(self.tasks))
-        self.status = SessionStatus.FINISHED
-        self.publish(LiveMessage(MessageType.END, {"session_id": self.session_id}))

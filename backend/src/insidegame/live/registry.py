@@ -70,7 +70,8 @@ class SessionRegistry:
             raise RateLimitError(f"Too many questions for this match; retry in {wait:.0f}s")
 
     async def shutdown(self) -> None:
-        """Cancel every running replay."""
-        for task in self.runners.values():
+        """Cancel every running replay and every session's outstanding agent work."""
+        pending = [*self.runners.values(), *(t for s in self.sessions.values() for t in s.tasks)]
+        for task in pending:
             task.cancel()
-        await asyncio.gather(*self.runners.values(), return_exceptions=True)
+        await asyncio.gather(*pending, return_exceptions=True)

@@ -35,7 +35,8 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   if (!match) return <div className="panel empty">Connecting to the live match ({status})...</div>;
   const homeColor = teamColor(match.home.team_id, true);
   const awayColor = teamColor(match.away.team_id, false);
-  const active = activeCue(state.cues, now);
+  const clock = state.lastEvent ? { period: state.lastEvent.period, second: state.lastEvent.match_second } : null;
+  const active = activeCue(state.cues, now, clock);
   const cueTeamIsAway = active && viewer.team === match.away.team_id;
 
   return (

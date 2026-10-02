@@ -15,7 +15,7 @@ from insidegame.agents.steps import answer_question
 from insidegame.api.models import AskRequest, CreateMatchRequest
 from insidegame.api.sse import stream
 from insidegame.live.registry import SessionRegistry
-from insidegame.live.segments import build_segment_profile
+from insidegame.live.segments import fixture_segment_profile
 
 SSE_MEDIA_TYPE: str = "text/event-stream"
 SSE_HEADERS: dict[str, str] = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
@@ -58,7 +58,8 @@ async def stream_match(
 ) -> StreamingResponse:
     """Server-sent events: match, event, snapshot, cue, recap, and end messages for one viewer segment."""
     session = _registry(request).get(session_id)
-    subscriber = session.subscribe(build_segment_profile(persona, language, team, player))
+    profile = fixture_segment_profile(session.result.metadata, persona, language, team, player)
+    subscriber = session.subscribe(profile)
     return StreamingResponse(stream(session, subscriber), media_type=SSE_MEDIA_TYPE, headers=SSE_HEADERS)
 
 
@@ -67,10 +68,10 @@ async def ask(session_id: str, body: AskRequest, request: Request) -> dict[str, 
     """Answer a viewer's question about the live match in their persona's voice and language."""
     registry = _registry(request)
     session = registry.get(session_id)
-    registry.check_ask_rate(session_id)
     analyzer = session.service.analyzer
-    profile = build_segment_profile(body.persona, body.language, body.team, body.player)
+    profile = fixture_segment_profile(analyzer.metadata, body.persona, body.language, body.team, body.player)
     viewer = build_viewer_context(profile, analyzer.metadata)
+    registry.check_ask_rate(session_id)
     outcome = await answer_question(registry.suite, body.question, build_question_context(analyzer), viewer,
                                     analyzer, registry.policy)
     return {**outcome.value.model_dump(mode="json"), "question": body.question,

@@ -61,6 +61,7 @@ export interface OverlayCue {
   period: number; display_from_s: number; duration_s: number; priority: number; title: string; body: string;
   stat_callouts: { label: string; value: string }[]; commentary: string; theme: string;
   provenance: Record<string, Provenance>;
+  replay?: boolean;
 }
 
 export interface Recap {

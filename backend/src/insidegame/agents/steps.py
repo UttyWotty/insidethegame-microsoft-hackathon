@@ -50,7 +50,7 @@ async def explain(
 ) -> AgentOutcome[Explanation]:
     """Ask the analyst why the moment matters, allowing statistics tool calls."""
     ledger = EvidenceLedger()
-    tools = build_analyst_tools(analyzer, ledger)
+    tools = build_analyst_tools(analyzer, ledger, as_of=context)
     validator = explanation_validator(lambda: [context.to_prompt_dict(), ledger.entries])
     return await run_resilient(suite.analyst, analyst_prompt(context), Explanation, validator,
                                lambda: explanation_template(context), policy, tools)

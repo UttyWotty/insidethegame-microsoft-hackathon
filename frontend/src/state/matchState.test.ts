@@ -4,7 +4,7 @@
  * The reducer is pure, so no DOM or network is needed.
  */
 import { describe, expect, it } from "vitest";
-import { activeCue, initialMatchState, matchReducer, MOMENTUM_SAMPLE_S, TRAIL_LENGTH } from "./matchState";
+import { activeCue, initialMatchState, matchReducer, MOMENTUM_SAMPLE_S, STALE_CUE_MATCH_S, TRAIL_LENGTH } from "./matchState";
 import type { EventUpdate, OverlayCue, SessionInfo } from "../types";
 
 const session = {
@@ -64,5 +64,18 @@ describe("activeCue", () => {
     expect(activeCue(cues, 1500)?.cue.cue_id).toBe("high");
     expect(activeCue(cues, 2500)?.cue.cue_id).toBe("low");
     expect(activeCue(cues, 10_000)).toBeNull();
+  });
+});
+
+describe("activeCue freshness", () => {
+  it("never shows replayed history cues as live overlays", () => {
+    const replayed = { cue: { ...cue("old", 0.9), replay: true }, receivedAt: 1000 };
+    expect(activeCue([replayed], 1500)).toBeNull();
+  });
+  it("skips cues that are stale against the match clock or from another period", () => {
+    const late = { cue: cue("late", 0.9), receivedAt: 1000 };
+    expect(activeCue([late], 1500, { period: 1, second: 600 + 100 })?.cue.cue_id).toBe("late");
+    expect(activeCue([late], 1500, { period: 1, second: 600 + STALE_CUE_MATCH_S + 10 })).toBeNull();
+    expect(activeCue([late], 1500, { period: 2, second: 2800 })).toBeNull();
   });
 });

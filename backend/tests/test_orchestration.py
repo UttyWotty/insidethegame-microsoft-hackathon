@@ -125,3 +125,10 @@ def test_producer_enforces_gap_but_never_blocks_goals() -> None:
 def test_producer_skips_moments_nobody_wants() -> None:
     casual_only = (ViewerContext(ViewerProfile("c", PersonaKey.CASUAL)),)
     assert not ProducerPolicy().select((_moment(MomentKind.CHAOS_SPELL, 50, 0.4),), casual_only)
+
+
+def test_goal_does_not_block_its_own_milestone() -> None:
+    viewers = (ViewerContext(ViewerProfile("a", PersonaKey.ANALYST)),)
+    goal, brace = _moment(MomentKind.GOAL, 600, 0.9), _moment(MomentKind.MILESTONE, 600, 0.7)
+    chosen = ProducerPolicy().select((goal, brace), viewers)
+    assert [m.kind for m, _ in chosen] == [MomentKind.GOAL, MomentKind.MILESTONE]

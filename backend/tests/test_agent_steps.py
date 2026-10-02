@@ -141,3 +141,19 @@ def test_tracked_player_stats_reach_the_personalizer(
     asyncio.run(personalize(create_agent_suite(client), context, explanation_template(context), viewer, POLICY))
     prompt = client.requests[0][1][-1].text
     assert f"{tracked.name}'s point of view" in prompt
+
+
+def test_tools_answer_as_of_the_moment_not_the_live_match(
+    analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
+) -> None:
+    analyzer, contexts = analysed_match
+    early = min(contexts.values(), key=lambda c: (c.moment.period, c.moment.match_second))
+    ledger = EvidenceLedger()
+    tools = {t.name: t for t in build_analyst_tools(analyzer, ledger, as_of=early)}
+    asyncio.run(tools["compare_teams"].invoke(arguments={}))
+    asyncio.run(tools["recent_moments"].invoke(arguments={"count": 8}))
+    assert ledger.entries[0]["payload"] == early.teams
+    cutoff = (early.moment.period, early.moment.match_second)
+    visible = [m for m in analyzer.moments if (m.period, m.match_second) <= cutoff]
+    assert len(visible) < len(analyzer.moments)
+    assert [e["minute"] for e in ledger.entries[1]["payload"]] == [m.minute_label for m in visible[-8:]]

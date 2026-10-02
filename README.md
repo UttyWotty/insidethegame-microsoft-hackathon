@@ -286,6 +286,7 @@ Model configuration (environment variables, all optional):
 | `TELEMETRY_SENSITIVE_DATA` | `false` | Include prompts and responses in traces |
 | `STATIC_DIR` | empty | Built frontend directory served at `/` (set in the container) |
 | `MCP_API_KEY` | empty | Bearer token required by `/mcp`; empty leaves it open |
+| `SHUTDOWN_GRACE_S` | `5` | Seconds open streams may delay shutdown |
 | `ASK_MAX_PER_MINUTE` | `20` | Questions per match per minute for `/ask` and the MCP companion tool (429 beyond) |
 | `MCP_ALLOWED_HOSTS` | `127.0.0.1:*,localhost:*,testserver` | Host headers accepted by `/mcp` (DNS rebinding protection) |
 | `FRONTEND_ORIGINS` | `http://localhost:5199` | Comma-separated CORS origins |

@@ -12,6 +12,7 @@ export const TRAIL_LENGTH = 14;
 export const MOMENTUM_SAMPLE_S = 30;
 export const MAX_CUES = 40;
 export const MAX_TICKER = 40;
+export const STALE_CUE_MATCH_S = 300;
 const TICKER_EVENT_TYPES = new Set(["goal", "save", "shot"]);
 
 export type MessageName = "match" | "event" | "snapshot" | "cue" | "recap" | "end";
@@ -109,8 +110,16 @@ export function matchReducer(state: MatchState, action: StreamAction): MatchStat
   }
 }
 
-/** The overlay to show now: the most important cue still within its display window. */
-export function activeCue(cues: ReceivedCue[], now: number): ReceivedCue | null {
-  const live = cues.filter((c) => now - c.receivedAt < c.cue.duration_s * 1000);
+export interface MatchClock { period: number; second: number }
+
+function isCurrent(cue: OverlayCue, clock: MatchClock | null): boolean {
+  if (cue.replay) return false;
+  if (!clock) return true;
+  return cue.period === clock.period && clock.second - cue.display_from_s <= STALE_CUE_MATCH_S;
+}
+
+/** The overlay to show now: the most important live cue within its display window and near the match clock. */
+export function activeCue(cues: ReceivedCue[], now: number, clock: MatchClock | null = null): ReceivedCue | null {
+  const live = cues.filter((c) => isCurrent(c.cue, clock) && now - c.receivedAt < c.cue.duration_s * 1000);
   return live.sort((a, b) => b.cue.priority - a.cue.priority || b.receivedAt - a.receivedAt)[0] ?? null;
 }
