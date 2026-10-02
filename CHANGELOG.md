@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `techdebt.md` tracking Azure go-live steps, submission tasks, and engineering follow-ups.
 - Foundry Agent Service hosted agent: definition builder restricted to read and question MCP tools, registration
   CLI with an optional test question, `AZURE_AI_PROJECT_ENDPOINT` deployment output, and `foundry` extra.
 - README screenshots of the broadcast view and five-persona multiview.
