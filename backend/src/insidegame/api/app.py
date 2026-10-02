@@ -25,7 +25,7 @@ from insidegame.core.exceptions import (
 from insidegame.live.registry import SessionRegistry
 from insidegame.live.session import Sleeper
 
-FRONTEND_ORIGINS: list[str] = os.getenv("FRONTEND_ORIGINS", "http://localhost:5173").split(",")
+FRONTEND_ORIGINS: list[str] = os.getenv("FRONTEND_ORIGINS", "http://localhost:5199").split(",")
 API_TITLE: str = "Inside the Game API"
 API_VERSION: str = "0.1.0"
 ERROR_STATUS: dict[type[Exception], int] = {

@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Broadcast frontend (React, TypeScript, Vite): live pitch, score bug, five persona overlay layouts with
+  provenance, team stats, momentum chart, commentary ticker, recap dialog, and five-persona multiview.
+- Backfill of recent relevant moments when a viewer segment joins mid-match.
+- Broadcast minute labels with added time (45+3') shared by recaps, prompts, and the UI.
+
 - FastAPI service with lifespan startup, lightweight health, model diagnostics, and metadata endpoints.
 - Live match sessions replaying simulated matches at configurable speed, with background agent work.
 - Personalized server-sent event streams per viewer segment (event, snapshot, cue, recap, end).
@@ -50,6 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Momentum and chaos moments wait five minutes into each period before firing.
+- Fallback commentary no longer repeats the minute.
 - Match service split into fast interpretation and background production with dynamic viewer segments.
 - Superfan fallback tone distinguishes own-club setbacks from successes.
 - Cues for fallback translations are labelled English.

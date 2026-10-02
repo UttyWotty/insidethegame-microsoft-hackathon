@@ -67,7 +67,7 @@ def build_recap_context(analyzer: MatchAnalyzer, stage: RecapStage) -> RecapCont
     metadata, stats, event = analyzer.metadata, analyzer.stats, analyzer.last_event
     team_names = {metadata.home.team_id: metadata.home.name, metadata.away.team_id: metadata.away.name}
     top = sorted(analyzer.moments, key=lambda m: m.importance, reverse=True)[:MAX_RECAP_MOMENTS]
-    moments = [{"minute": m.minute, "kind": m.kind.value, "team": team_names.get(m.team_id or ""),
+    moments = [{"minute": m.minute_label, "kind": m.kind.value, "team": team_names.get(m.team_id or ""),
                 "facts": dict(m.facts)} for m in sorted(top, key=lambda m: (m.period, m.match_second))]
     teams = {
         name: {"possession_pct": round(stats.possession_share(team_id), POSSESSION_DECIMALS),

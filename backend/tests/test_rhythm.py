@@ -54,3 +54,19 @@ def test_old_samples_leave_the_window() -> None:
     tracker.update(_event(10, EventType.SHOT), Side.HOME, 0.5, None)
     reading = tracker.update(_event(1000, EventType.PASS, outcome=Outcome.SUCCESS), Side.AWAY, None, None)
     assert reading.home_threat == 0.0
+
+
+def test_rhythm_moments_wait_for_warmup() -> None:
+    from insidegame.analytics.detectors import RHYTHM_WARMUP_S, MomentDetector
+    from insidegame.analytics.moments import MomentKind
+    from insidegame.simulation.roster import build_fixture
+
+    detector = MomentDetector(build_fixture("brookhaven", "ironvale", 1))
+    tracker = RhythmTracker()
+    early_moments = []
+    detector.detect(_event(0, EventType.PERIOD_START, None), None, None, tracker.update(_event(0, EventType.PERIOD_START, None), None, None, None))
+    for i in range(1, 30):
+        reading = tracker.update(_event(i * 5.0, EventType.POSSESSION_CHANGE), Side.HOME, None, None)
+        early_moments += detector.detect(_event(i * 5.0, EventType.POSSESSION_CHANGE), None, None, reading)
+    assert i * 5.0 < RHYTHM_WARMUP_S
+    assert not [m for m in early_moments if m.kind is MomentKind.CHAOS_SPELL]

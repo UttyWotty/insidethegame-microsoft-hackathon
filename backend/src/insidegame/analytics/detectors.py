@@ -39,6 +39,7 @@ MOMENTUM_IMPORTANCE: float = 0.55
 CHAOS_THRESHOLD: float = 0.85
 CHAOS_IMPORTANCE: float = 0.40
 RHYTHM_COOLDOWN_S: float = 600.0
+RHYTHM_WARMUP_S: float = 300.0
 PASS_MILESTONES: frozenset[int] = frozenset({75})
 PASS_MILESTONE_IMPORTANCE: float = 0.30
 GOAL_MILESTONES: dict[int, tuple[str, float]] = {2: ("brace", 0.70), 3: ("hat_trick", 0.90)}
@@ -84,6 +85,7 @@ class MomentDetector:
     completed_by_player: Counter[str] = field(default_factory=Counter)
     last_rhythm_moment_s: dict[MomentKind, float] = field(default_factory=dict)
     momentum_side: Side | None = None
+    period_start_s: float = 0.0
     count: int = 0
 
     def __post_init__(self) -> None:
@@ -98,6 +100,7 @@ class MomentDetector:
         if kind is EventType.PERIOD_START:
             self.last_rhythm_moment_s.clear()
             self.momentum_side = None
+            self.period_start_s = event.match_second
         moments: list[KeyMoment] = []
         if kind is EventType.PASS and quality is not None:
             moments += self._on_pass(event, quality)
@@ -209,6 +212,8 @@ class MomentDetector:
     def _on_rhythm(self, event: MatchEvent, reading: RhythmReading) -> list[KeyMoment]:
         moments: list[KeyMoment] = []
         now = event.match_second
+        if now - self.period_start_s < RHYTHM_WARMUP_S:
+            return moments
         if reading.home_threat + reading.away_threat >= MIN_THREAT_FOR_SWING:
             leader = (Side.HOME if reading.momentum >= MOMENTUM_SWING_THRESHOLD
                       else Side.AWAY if reading.momentum <= -MOMENTUM_SWING_THRESHOLD else None)
