@@ -186,3 +186,23 @@ def test_segments_per_match_are_capped() -> None:
             session.subscribe(build_segment_profile("analyst", languages[MAX_SEGMENTS]))
 
     asyncio.run(scenario())
+
+
+def test_each_segment_gets_its_own_persona_take_on_recaps() -> None:
+    async def scenario() -> tuple[list[LiveMessage], list[LiveMessage], str]:
+        result = simulate_match(build_fixture("brookhaven", "silverlake", 3))
+        service = MatchIntelligenceService(result.metadata, _offline_suite(), OFFLINE_POLICY, viewers=())
+        session = MatchSession("takes", result, service, SPEED, _instant)
+        fan = session.subscribe(build_segment_profile("superfan", "en", result.metadata.away.team_id))
+        learner = session.subscribe(build_segment_profile("newcomer"))
+        _, fan_messages, learner_messages = await asyncio.gather(
+            session.run(), _consume(fan.queue), _consume(learner.queue))
+        return fan_messages, learner_messages, result.metadata.away.name
+
+    fan, learner, away = asyncio.run(scenario())
+    fan_recaps = [m.data for m in fan if m.type is MessageType.RECAP]
+    learner_recaps = [m.data for m in learner if m.type is MessageType.RECAP]
+    assert [r["persona"] for r in fan_recaps] == ["superfan", "superfan"]
+    assert all("We" in r["take"]["take"] for r in fan_recaps)
+    assert all("Expected goals" in r["take"]["take"] for r in learner_recaps)
+    assert fan_recaps[0]["recap"] == learner_recaps[0]["recap"]

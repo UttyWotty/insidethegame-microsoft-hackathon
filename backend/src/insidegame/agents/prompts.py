@@ -11,7 +11,7 @@ from insidegame.agents.glossary import concept_for
 from insidegame.agents.personas import PersonaKey
 from insidegame.agents.question_context import QuestionContext
 from insidegame.agents.recap_context import RecapContext
-from insidegame.agents.schemas import Explanation, PersonaCard
+from insidegame.agents.schemas import Explanation, MatchRecap, PersonaCard
 
 GROUNDING_RULE: str = (
     "Use only names and numbers that appear in the input JSON or in your tool results. "
@@ -122,3 +122,12 @@ def companion_prompt(question: str, context: QuestionContext, viewer: ViewerCont
     payload = {"question": question, "answer_language": viewer.viewer.language,
                "persona_brief": _persona_brief(viewer), "match": context.to_prompt_dict()}
     return f"Answer the viewer's question.\n{_dump(payload)}"
+
+
+def recap_take_prompt(context: RecapContext, recap: MatchRecap, viewer: ViewerContext) -> str:
+    """Prompt asking the personalizer for one persona's take on a recap."""
+    payload: dict[str, object] = {"persona_brief": _persona_brief(viewer), "recap": recap.model_dump(mode="json"),
+                                  "match": context.to_prompt_dict()}
+    if viewer.tracked_player_name:
+        payload["tracked_player_stats"] = context.players.get(viewer.tracked_player_name, {})
+    return f"Write this persona's take on the {context.stage.value.replace('_', '-')} recap.\n{_dump(payload)}"

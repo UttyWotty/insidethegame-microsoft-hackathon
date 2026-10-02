@@ -4,7 +4,12 @@
  * Provenance shows whether the recap came from the model or the grounded template.
  */
 import { useEffect, useRef } from "react";
-import type { Recap } from "../types";
+import type { PersonaKey, Recap } from "../types";
+
+const PERSONA_NAMES: Record<PersonaKey, string> = {
+  analyst: "The Analyst", casual: "The Casual Fan", superfan: "The Superfan", player_tracker: "The Player Tracker",
+  newcomer: "The Newcomer",
+};
 
 export function RecapModal({ recap, onClose }: { recap: Recap; onClose: () => void }) {
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -19,7 +24,14 @@ export function RecapModal({ recap, onClose }: { recap: Recap; onClose: () => vo
     <div className="modal-backdrop" role="presentation" onClick={onClose}>
       <div className="panel modal stack" role="dialog" aria-modal="true" aria-labelledby="recap-title" onClick={(e) => e.stopPropagation()}>
         <span className="chip">{recap.stage === "half_time" ? "Half-time recap" : "Full-time recap"} - {recap.source === "fallback" ? "Template" : "AI"}</span>
-        <h2 id="recap-title" className="display" style={{ fontSize: "var(--text-xl)" }}>{r.headline}</h2>
+        {recap.take && (
+          <section className="recap-take" aria-label="Your take">
+            <span className="term">Your take - {recap.persona ? PERSONA_NAMES[recap.persona] : ""}</span>
+            <h2 id="recap-title" className="display" style={{ fontSize: "var(--text-xl)", margin: 0 }}>{recap.take.headline}</h2>
+            <p style={{ margin: 0 }}>{recap.take.take}</p>
+          </section>
+        )}
+        <h3 className="display" style={{ margin: 0 }} {...(recap.take ? {} : { id: "recap-title" })}>{r.headline}</h3>
         <p>{r.summary}</p>
         <div><strong>Turning points</strong><ol>{r.turning_points.map((t) => <li key={t}>{t}</li>)}</ol></div>
         <p><strong>Standout player:</strong> {r.standout_player}</p>

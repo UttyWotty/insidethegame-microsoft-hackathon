@@ -1,6 +1,7 @@
 """Builds the live-match evidence a Match Companion answer may draw on.
 
-It summarises the score, clock, team statistics, rhythm, the most influential players, and recent key moments.
+It summarises the score, clock, team statistics, rhythm, the most influential players, and recent key moments;
+every player's statistics are kept for direct lookups but left out of prompts, where tools provide them.
 The same summary feeds the prompt, the grounding check, and the fallback answer.
 """
 
@@ -30,6 +31,7 @@ class QuestionContext:
     rhythm: dict[str, object] = field(default_factory=dict)
     top_players: list[dict[str, object]] = field(default_factory=list)
     recent_moments: list[dict[str, object]] = field(default_factory=list)
+    players: dict[str, dict[str, object]] = field(default_factory=dict)
 
     @property
     def scoreline(self) -> str:
@@ -58,11 +60,14 @@ def build_question_context(analyzer: MatchAnalyzer) -> QuestionContext:
                     "passes_completed": p.passes_completed, "tackles": p.tackles} for p in best]
     recent = [{"minute": m.minute_label, "kind": m.kind.value, "facts": dict(m.facts)}
               for m in analyzer.moments[-RECENT_MOMENTS:]]
+    players = {p.name: {"team": names[p.team_id], "goals": p.goals, "shots": p.shots, "xg": round(p.xg, STAT_DECIMALS),
+                        "passes_completed": p.passes_completed, "tackles": p.tackles,
+                        "carry_distance_m": round(p.carry_distance_m, STAT_DECIMALS)} for p in stats.players.values()}
     reading = analyzer.last_reading.to_dict() if analyzer.last_reading else {}
     return QuestionContext(
         home_name=metadata.home.name, away_name=metadata.away.name,
         score_home=event.score_home if event else 0, score_away=event.score_away if event else 0,
         clock=minute_label(event.match_second, event.period) if event else KICK_OFF_LABEL,
         teams=teams, rhythm={k: reading[k] for k in ("momentum", "chaos", "state") if k in reading},
-        top_players=top_players, recent_moments=recent,
+        top_players=top_players, recent_moments=recent, players=players,
     )

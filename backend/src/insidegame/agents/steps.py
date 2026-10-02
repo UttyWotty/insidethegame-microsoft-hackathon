@@ -4,6 +4,7 @@ Each step builds its prompt, evidence, validator, and fallback, then delegates t
 Orchestration executors call these steps so workflow wiring stays separate from agent behaviour.
 """
 
+from insidegame.agents.answer_engine import rule_based_answer
 from insidegame.agents.context import MomentContext, ViewerContext
 from insidegame.agents.factory import AgentSuite
 from insidegame.agents.prompts import (
@@ -12,10 +13,12 @@ from insidegame.agents.prompts import (
     narrator_prompt,
     personalizer_prompt,
     recap_prompt,
+    recap_take_prompt,
     translator_prompt,
 )
 from insidegame.agents.question_context import QuestionContext
 from insidegame.agents.recap_context import RecapContext
+from insidegame.agents.recap_takes import template_take
 from insidegame.agents.runner import AgentOutcome, RunPolicy, run_resilient
 from insidegame.agents.schemas import (
     Commentary,
@@ -23,10 +26,10 @@ from insidegame.agents.schemas import (
     Explanation,
     MatchRecap,
     PersonaCard,
+    RecapTake,
     TranslatedCard,
 )
 from insidegame.agents.templates import (
-    answer_template,
     commentary_template,
     explanation_template,
     persona_card_template,
@@ -40,6 +43,7 @@ from insidegame.agents.validation import (
     commentary_validator,
     explanation_validator,
     recap_validator,
+    take_validator,
     translation_validator,
 )
 from insidegame.analytics.analyzer import MatchAnalyzer
@@ -102,4 +106,14 @@ async def answer_question(
     tools = build_analyst_tools(analyzer, ledger)
     validator = answer_validator(lambda: [context.to_prompt_dict(), ledger.entries])
     return await run_resilient(suite.companion, companion_prompt(question, context, viewer), CompanionAnswer,
-                               validator, lambda: answer_template(context), policy, tools)
+                               validator, lambda: rule_based_answer(question, context, viewer), policy, tools)
+
+
+async def personalize_recap(
+    suite: AgentSuite, context: RecapContext, recap: MatchRecap, viewer: ViewerContext, policy: RunPolicy
+) -> AgentOutcome[RecapTake]:
+    """Ask the personalizer for one persona's take on a recap, falling back to a grounded template take."""
+    evidence = [context.to_prompt_dict(), context.players, recap.model_dump(mode="json")]
+    validator = take_validator(lambda: evidence, viewer.viewer.profile.max_words)
+    return await run_resilient(suite.personalizer, recap_take_prompt(context, recap, viewer), RecapTake, validator,
+                               lambda: template_take(context, viewer), policy)

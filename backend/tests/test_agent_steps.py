@@ -157,3 +157,24 @@ def test_tools_answer_as_of_the_moment_not_the_live_match(
     visible = [m for m in analyzer.moments if (m.period, m.match_second) <= cutoff]
     assert len(visible) < len(analyzer.moments)
     assert [e["minute"] for e in ledger.entries[1]["payload"]] == [m.minute_label for m in visible[-8:]]
+
+
+def test_recap_take_uses_the_model_when_grounded_and_falls_back_otherwise(
+    analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
+) -> None:
+    from insidegame.agents.recap_context import RecapStage, build_recap_context
+    from insidegame.agents.steps import personalize_recap
+    from insidegame.agents.templates import recap_template
+    analyzer = analysed_match[0]
+    context = build_recap_context(analyzer, RecapStage.HALF_TIME)
+    recap = recap_template(context)
+    viewer = ViewerContext(ViewerProfile("a", PersonaKey.ANALYST))
+    good = json.dumps({"headline": "Tight first half", "take": "Very little between the sides."})
+    bad = json.dumps({"headline": "Rout", "take": "They had 987 shots."})
+    client = ScriptedChatClient({PERSONALIZER_KEY: [good, bad, bad]})
+    suite = create_agent_suite(client)
+    accepted = asyncio.run(personalize_recap(suite, context, recap, viewer, POLICY))
+    rejected = asyncio.run(personalize_recap(suite, context, recap, viewer, POLICY))
+    assert accepted.source is OutputSource.MODEL and accepted.value.headline == "Tight first half"
+    assert rejected.source is OutputSource.FALLBACK and "numbers at half-time" in rejected.value.headline
+    assert "The Analyst" in client.requests[0][1][-1].text
