@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Producer console: pipeline health tiles, a timeline of every detected moment with air status, full broadcast
+  records (analyst reasoning, commentary, every audience's overlay with source and fact-check verdict), and
+  human-in-the-loop hold and release of AI overlays, with an optional producer key.
 - Standards Editor (fact-checker) agent: a roster rule rejects invented players, then the agent checks
   attribution and outcomes of model-written cards and commentary; rejected cards go back to the personalizer with
   the issues for one revision, then a grounded template replaces anything still wrong. Verdicts are recorded in

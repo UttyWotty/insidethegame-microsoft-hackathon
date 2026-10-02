@@ -7,13 +7,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError, type CreateMatch, type Health } from "./api/client";
 import { BroadcastView } from "./components/BroadcastView";
 import { MultiView } from "./components/MultiView";
+import { ProducerConsole } from "./components/producer/ProducerConsole";
 import { SetupPanel } from "./components/SetupPanel";
 import { ViewerControls } from "./components/ViewerControls";
 import { withRetry } from "./lib/retry";
 import { resolveViewer } from "./lib/viewer";
 import type { ClubInfo, PersonaInfo, SessionInfo, ViewerSettings } from "./types";
 
-type View = "broadcast" | "multiview";
+type View = "broadcast" | "multiview" | "producer";
 
 export function App() {
   const [clubs, setClubs] = useState<ClubInfo[]>([]);
@@ -58,9 +59,9 @@ export function App() {
           <span className="muted tagline">Explainable match intelligence</span>
         </div>
         <div className="tabs" role="tablist" aria-label="View">
-          {(["broadcast", "multiview"] as View[]).map((v) => (
+          {(["broadcast", "multiview", "producer"] as View[]).map((v) => (
             <button key={v} role="tab" className="tab" aria-selected={view === v} onClick={() => setView(v)}>
-              {v === "broadcast" ? "Broadcast" : "All personas"}
+              {{ broadcast: "Broadcast", multiview: "All personas", producer: "Producer" }[v]}
             </button>
           ))}
         </div>
@@ -82,8 +83,10 @@ export function App() {
             ? <BroadcastView key={session.session_id} sessionId={session.session_id} viewer={viewer} />
             : <div className="panel empty" style={{ gridColumn: "span 2" }}>Pick two clubs and kick off a synthetic match.</div>}
         </main>
-      ) : (
+      ) : view === "multiview" ? (
         <main><MultiView sessionId={session.session_id} personas={personas} language={viewer.language} match={match} /></main>
+      ) : (
+        <ProducerConsole sessionId={session.session_id} match={match} language={viewer.language} />
       )}
     </>
   );

@@ -177,6 +177,8 @@ tasks and publish when ready, so the event feed never waits for a model.
 | POST | `/api/matches` | Start a replay: `{home, away, seed, speed}` (speed = match seconds per real second) |
 | GET | `/api/matches`, `/api/matches/{id}` | List sessions; session state, snapshot, and recaps |
 | GET | `/api/matches/{id}/stream?persona=&language=&team=&player=` | Personalized SSE feed |
+| GET | `/api/matches/{id}/producer` | Producer console state: timeline, broadcast records, pipeline health |
+| POST | `/api/matches/{id}/producer/hold`, `/producer/release` | Hold AI overlays for approval; release one or all |
 | POST | `/api/matches/{id}/ask` | Ask the Match Companion: `{question, persona, language, team, player}` |
 
 Stream message types: `match`, `event` (raw event with xG, pass quality, rhythm, and moments), `snapshot`
@@ -244,6 +246,10 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   in their persona's voice and language, with supporting stats and suggested follow-ups. Without a model, a
   deterministic engine still answers common questions from live statistics in the persona's voice.
 - **Multiview:** the same live match through all five personas side by side.
+- **Producer console:** the broadcaster's control room. Pipeline health (AI share, fact-check outcomes, latency,
+  live audiences), a timeline of every detected moment (aired, held, released, or not aired), and each moment's
+  full broadcast record: the analyst's reasoning, the commentary, and every audience's overlay with source and
+  fact-check verdict. A producer can hold AI overlays for approval and release them per moment or all at once.
 - Switching persona or language mid-match backfills the most recent relevant moments for the new segment.
 - Accessibility: visible focus, `aria-live` announcements, text equivalents for charts, colour never the
   only signal, and reduced-motion support.
@@ -295,6 +301,7 @@ Model configuration (environment variables, all optional):
 | `STATIC_DIR` | empty | Built frontend directory served at `/` (set in the container) |
 | `MCP_API_KEY` | empty | Bearer token required by `/mcp`; empty leaves it open |
 | `SHUTDOWN_GRACE_S` | `5` | Seconds open streams may delay shutdown |
+| `PRODUCER_KEY` | empty | Required in `X-Producer-Key` for producer routes when set |
 | `ASK_MAX_PER_MINUTE` | `20` | Questions per match per minute for `/ask` and the MCP companion tool (429 beyond) |
 | `MCP_ALLOWED_HOSTS` | `127.0.0.1:*,localhost:*,testserver` | Host headers accepted by `/mcp` (DNS rebinding protection) |
 | `FRONTEND_ORIGINS` | `http://localhost:5199` | Comma-separated CORS origins |

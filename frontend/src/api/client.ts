@@ -3,7 +3,7 @@
  * Every call returns typed data or throws ApiError with the server's error detail.
  * The base path is configurable at build time for deployments behind a different host.
  */
-import type { ClubInfo, CompanionReply, PersonaInfo, SessionInfo, ViewerSettings } from "../types";
+import type { ClubInfo, CompanionReply, PersonaInfo, ProducerSummary, SessionInfo, ViewerSettings } from "../types";
 
 export const API_BASE: string = import.meta.env.VITE_API_BASE ?? "/api";
 
@@ -33,6 +33,15 @@ export const api = {
   personas: () => request<PersonaInfo[]>("/personas"),
   languages: () => request<Record<string, string>>("/languages"),
   createMatch: (body: CreateMatch) => request<SessionInfo>("/matches", { method: "POST", body: JSON.stringify(body) }),
+  producer: (sessionId: string) => request<ProducerSummary>(`/matches/${encodeURIComponent(sessionId)}/producer`),
+  hold: (sessionId: string, on: boolean) =>
+    request<{ hold: boolean }>(`/matches/${encodeURIComponent(sessionId)}/producer/hold`, {
+      method: "POST", body: JSON.stringify({ on }),
+    }),
+  release: (sessionId: string, momentId: string | null) =>
+    request<{ released_cues: number }>(`/matches/${encodeURIComponent(sessionId)}/producer/release`, {
+      method: "POST", body: JSON.stringify({ moment_id: momentId }),
+    }),
   ask: (sessionId: string, question: string, viewer: ViewerSettings) =>
     request<CompanionReply>(`/matches/${encodeURIComponent(sessionId)}/ask`, {
       method: "POST", body: JSON.stringify({ question, ...viewer }),
