@@ -34,7 +34,8 @@ only cite numbers that exist in the match data, and a grounded fallback guarante
 
 - **Microsoft Agent Framework:** six agents with structured outputs and function tools, orchestrated in a workflow
   with shared state, fan-out and fan-in, and OpenTelemetry instrumentation.
-- **Microsoft Foundry:** project and model deployment, accessed keylessly with a managed identity.
+- **Microsoft Foundry:** project and model deployment, accessed keylessly with a managed identity, plus a hosted
+  agent in Foundry Agent Service that uses this project's MCP server to answer questions about live matches.
 - **Model Context Protocol:** the live match intelligence is an MCP server, usable from GitHub Copilot agent mode
   or Foundry agents.
 - **Azure Container Apps, Container Registry, Application Insights, Log Analytics:** one container, provisioned

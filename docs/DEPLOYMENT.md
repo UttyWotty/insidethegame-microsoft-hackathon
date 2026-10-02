@@ -66,6 +66,20 @@ curl https://<app-url>/api/diagnostics   # one real model call through the manag
 Then open the app URL, kick off a match, and switch personas. The MCP endpoint is at `https://<app-url>/mcp/`. Agent traces (each agent run, tool call, and
 workflow step) appear in Application Insights under Transaction search.
 
+## Register the hosted agent in Microsoft Foundry
+
+The Match Companion can also live in Foundry Agent Service, using this deployment's MCP endpoint as its tool, so
+anyone with project access can question live matches from the Foundry portal playground:
+
+```bash
+uv pip install --python .venv/bin/python -e "backend[foundry]"
+eval "$(azd env get-values)"
+.venv/bin/python -m insidegame.foundry.register --ask "Which matches are live, and who is on top?"
+```
+
+The hosted agent may only use read and question tools (it cannot start matches). If `MCP_API_KEY` is set, the
+agent sends it as a bearer token.
+
 ## Run locally against the deployed model
 
 `azd up` grants your own account model access, so after `azd auth login` you can run:

@@ -59,5 +59,6 @@ output AZURE_RESOURCE_GROUP string = resourceGroup.name
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = resources.outputs.registryLoginServer
 output AZURE_OPENAI_ENDPOINT string = resources.outputs.openAiEndpoint
 output AZURE_FOUNDRY_PROJECT string = resources.outputs.foundryProjectName
+output AZURE_AI_PROJECT_ENDPOINT string = resources.outputs.projectEndpoint
 output AZURE_MODEL_DEPLOYMENT string = resources.outputs.modelDeploymentName
 output SERVICE_WEB_URI string = resources.outputs.webUri
