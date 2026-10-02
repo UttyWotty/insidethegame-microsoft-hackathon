@@ -9,6 +9,7 @@ import json
 from insidegame.agents.context import MomentContext, ViewerContext
 from insidegame.agents.glossary import concept_for
 from insidegame.agents.personas import PersonaKey
+from insidegame.agents.recap_context import RecapContext
 from insidegame.agents.schemas import Explanation, PersonaCard
 
 GROUNDING_RULE: str = (
@@ -99,3 +100,8 @@ def translator_prompt(card: PersonaCard, language: str) -> str:
 def correction_prompt(original_prompt: str, problem: str) -> str:
     """Prompt asking an agent to fix a rejected answer."""
     return f"{original_prompt}\nYour previous answer was rejected: {problem}. Fix it and answer again."
+
+
+def recap_prompt(context: RecapContext) -> str:
+    """Prompt asking the editor for a half-time or full-time recap."""
+    return f"Write the {context.stage.value.replace('_', '-')} recap.\n{_dump(context.to_prompt_dict())}"

@@ -9,9 +9,11 @@ from collections.abc import Callable
 from insidegame.agents.context import MomentContext, ViewerContext
 from insidegame.agents.glossary import concept_for
 from insidegame.agents.personas import PersonaKey
+from insidegame.agents.recap_context import RecapContext, RecapStage, moment_actor
 from insidegame.agents.schemas import (
     Commentary,
     Explanation,
+    MatchRecap,
     PersonaCard,
     StatCallout,
     TacticalTheme,
@@ -149,3 +151,25 @@ def persona_card_template(context: MomentContext, explanation: Explanation, view
 def untranslated_card(card: PersonaCard) -> TranslatedCard:
     """Fallback translation that keeps the original English text."""
     return TranslatedCard(title=card.title, body=card.body, stat_labels=[c.label for c in card.stat_callouts])
+
+
+def _turning_point(moment: dict[str, object]) -> str:
+    facts = moment.get("facts")
+    actor = moment_actor(facts) if isinstance(facts, dict) else None
+    label = str(moment["kind"]).replace("_", " ")
+    return f"{moment['minute']}' {label}" + (f": {actor}" if actor else f": {moment.get('team') or 'both sides'}")
+
+
+def recap_template(context: RecapContext) -> MatchRecap:
+    """Build a grounded recap directly from recap evidence."""
+    home, away = context.teams[context.home_name], context.teams[context.away_name]
+    stage = "Half-time" if context.stage is RecapStage.HALF_TIME else "Full-time"
+    scoreline = f"{context.home_name} {context.score_home}-{context.score_away} {context.away_name}"
+    summary = (f"{stage}: {scoreline}. {context.home_name} had {home['possession_pct']}% of the ball and "
+               f"{home['shots']} shots, while {context.away_name} managed {away['shots']}. "
+               f"{context.standout['name']} was the most influential player on the pitch.")
+    story = (f"{context.home_name} generated {home['xg']} xG against {away['xg']} for {context.away_name}, "
+             "which shaped how the match was controlled.")
+    return MatchRecap(headline=f"{stage}: {scoreline}", summary=summary,
+                      turning_points=[_turning_point(m) for m in context.moments],
+                      standout_player=str(context.standout["name"]), tactical_story=story)
