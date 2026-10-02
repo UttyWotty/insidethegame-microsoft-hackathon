@@ -1,30 +1,51 @@
 <!--
 Open follow-ups and technical debt for Inside the Game, tracked in the repository so nothing is forgotten.
 Resolved items are wrapped in HTML comments rather than deleted, preserving history.
-Ordered by priority within each section.
+Ordered by priority within each section; status as of 2026-10-02 (develop at PR #27, release v0.1.0 on main).
 -->
 
 # Tech Debt and Follow-ups
+
+## Blockers before submitting
+
+- Check the employment contract (or get written permission): the project was built on a work laptop, and the rules
+  require the submission to be solely owned by the entrant (rules 4.6 and 4.11). Use a personal machine from now on.
+- Agents have never been seen with real AI output in the UI; every chip shows "Template" in offline mode. Validate on
+  a real model (MLX locally, then Foundry) before recording anything.
 
 ## Azure go-live (needs a personal Azure subscription)
 
 - Create the Azure free account (needs a credit card; do it on a personal machine, not the work laptop).
 - Deploy: `azd auth login && azd up` from the repo root; pick a region with model quota (for example `eastus2` or `swedencentral`). See `docs/DEPLOYMENT.md`.
-- Optionally protect MCP before deploying: `azd env set MCP_API_KEY "$(openssl rand -hex 24)"`.
+- Before deploying, protect write and cost endpoints: `azd env set MCP_API_KEY "$(openssl rand -hex 24)"` and set `PRODUCER_KEY` on the container app.
 - Verify: open `https://<app-url>/api/diagnostics` (one real model call through the managed identity), then use the app.
 - Register the Foundry hosted agent: `uv pip install --python .venv/bin/python -e "backend[foundry]"`, then `eval "$(azd env get-values)"` and `.venv/bin/python -m insidegame.foundry.register --ask "Which matches are live?"`.
 - Set up continuous deployment: `azd pipeline config`.
-- Run the agent evaluation against Foundry and commit the report to `docs/evaluations/`.
+- Run `python -m insidegame.evaluation.run --max-moments 6` against Foundry, fix prompt or quality issues it shows, and commit the report to `docs/evaluations/`.
+
+## Features that raise the chance of winning
+
+- Spoken commentary with Azure AI Speech (text to speech per language) for moment commentary and play-by-play; strongest "multi-language storytelling" and Microsoft-service showcase.
+- Microsoft Fabric: load `datasets.generate` output into a Fabric lakehouse and build a small Power BI report; reference it in the submission.
+- Foundry evaluations (groundedness, relevance) on agent outputs, linked from the producer console or docs.
+- GitHub Copilot: record Copilot agent mode in VS Code querying the live match through the MCP server (`.vscode/mcp.json` example in README); also register the Foundry hosted agent and show it in the portal.
+- Tracking frames in the dataset export (`tracking.jsonl`, sampled) to strengthen the synthetic data story.
 
 ## Submission (deadline 2026-10-27 23:59 PT)
 
-- Record the demo video from `docs/DEMO_SCRIPT.md` (under 2 minutes, no copyrighted music) and upload it publicly.
+- Retake README screenshots (`docs/images/`): they predate the 22-player broadcast pitch, landing screen, fact-check chips, and producer console; capture them with real AI output.
+- Record the demo video from `docs/DEMO_SCRIPT.md` (under 2 minutes, no copyrighted music); update the script to include the broadcast camera, fact-checker, producer console, and Copilot or Foundry agent via MCP.
+- Update `docs/SUBMISSION.md` with the seven agents, tracking, fact-checking, and producer console.
+- Cut release `v0.2.0` through Git Flow once deployed and validated.
 - Make the GitHub repository public before submitting.
 - Paste `docs/SUBMISSION.md` into the hackathon project page with the app URL and video link.
 - Keep the deployment running until judging ends on 2026-11-10, then `azd down --purge`.
 
 ## Engineering
 
-- Agents were last tested on a real model (MLX gemma-3-12b) before the Match Companion, distance tags, and recap changes; re-run the evaluation on a real model.
 - Live sessions are in memory, so the app runs a single replica; move session state to a shared store before scaling out.
 - `/api/matches` (match creation) has no per-client rate limit beyond the 20-session cap.
+- Tracking-derived player speeds are unrealistic (teleporting event actors), so speed indicators use modelled shot and ball speeds only; smoothing or a kinematic model would allow real sprint tags.
+- Local MLX runs are slow (10 to 35 seconds per call with one call at a time); try the Qwen 35B A3B MoE model or a concurrency of 2 if local testing matters.
+- The producer console polls every 2 seconds; move it to the event stream if it needs to scale.
+- The GitHub CLI's active account on this machine switched to UtkuGulbardak; commands for this repo use `GH_TOKEN=$(gh auth token --user UttyWotty)`.
