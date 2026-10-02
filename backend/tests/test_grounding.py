@@ -34,3 +34,11 @@ def test_text_without_numbers_is_grounded() -> None:
 def test_extract_json_text_strips_reasoning_and_fences() -> None:
     raw = '<think>\nhmm\n</think>\n```json\n{"line": "Goal!"}\n```'
     assert extract_json_text(raw) == '{"line": "Goal!"}'
+
+
+def test_decimal_commas_are_read_as_decimals() -> None:
+    from insidegame.agents.grounding import extract_numbers
+    assert extract_numbers("xG de 0,11 y 92,9 km/h") == [0.11, 92.9]
+    assert extract_numbers("1,000 fans") == [1.0, 0.0]
+    assert check_grounding(["Un disparo de 0,11 xG"], EVIDENCE).grounded
+    assert not check_grounding(["Ya suma 1,7 xG"], EVIDENCE).grounded

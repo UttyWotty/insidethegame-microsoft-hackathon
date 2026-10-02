@@ -79,7 +79,7 @@ export function App() {
             <ViewerControls personas={personas} languages={languages} match={match} viewer={viewer} onChange={setRawViewer} />
           </div>
           {session
-            ? <BroadcastView sessionId={session.session_id} viewer={viewer} />
+            ? <BroadcastView key={session.session_id} sessionId={session.session_id} viewer={viewer} />
             : <div className="panel empty" style={{ gridColumn: "span 2" }}>Pick two clubs and kick off a synthetic match.</div>}
         </main>
       ) : (

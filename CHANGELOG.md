@@ -13,6 +13,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A failing background task (agent workflow or recap) could stop a match from ever ending; failures now degrade
+  to grounded templates and the end message is always sent.
+- Viewers joining during the full-time drain could lose their backfilled cues; the session now drains until no
+  work remains.
+- Brace and hat-trick milestones rarely aired because the goal on the same event started the overlay gap; all now air.
+- Replayed history cues (on reconnect or language switch) and stale late cues were shown as live overlays.
+- Starting a second match kept the first match's recap state and questions.
+- Analyst tools could cite statistics and moments from after the moment being explained.
+- Unvalidated club and player ids created unlimited viewer segments; ids are validated, unused preferences
+  dropped, and segments capped at 10 per match.
+- Decimal commas (for example 0,38) broke grounding and translation checks.
+- Reconnecting re-produced cues the segment already had.
+- Shutdown hung while live streams were open; a five-second graceful timeout applies and agent work is cancelled.
+
 ### Added
 
 - `techdebt.md` tracking Azure go-live steps, submission tasks, and engineering follow-ups.

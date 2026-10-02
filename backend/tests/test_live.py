@@ -98,6 +98,7 @@ def test_late_subscriber_receives_history_and_end() -> None:
     types = [m.type for m in late]
     assert MessageType.CUE in types and types.count(MessageType.RECAP) == 2
     assert types[-1] is MessageType.END
+    assert all(m.data.get("replay") is True for m in late if m.type is MessageType.CUE)
 
 
 def test_slow_subscriber_keeps_the_newest_messages() -> None:
@@ -154,3 +155,34 @@ def test_first_viewer_after_an_unwatched_match_still_gets_moments() -> None:
 
     types = [m.type for m in asyncio.run(scenario())]
     assert MessageType.CUE in types and types[-1] is MessageType.END
+
+
+def test_fixture_profiles_validate_ids_and_drop_unused_preferences() -> None:
+    from insidegame.live.segments import fixture_segment_profile
+    metadata = build_fixture("brookhaven", "silverlake", 3)
+    home = metadata.home
+    analyst = fixture_segment_profile(metadata, "analyst", "en", home.team_id, home.players[0].player_id)
+    assert analyst == fixture_segment_profile(metadata, "analyst")
+    assert fixture_segment_profile(metadata, "superfan", "en", home.team_id).favourite_team_id == home.team_id
+    with pytest.raises(PersonaConfigError):
+        fixture_segment_profile(metadata, "superfan", "en", "nowhere")
+    with pytest.raises(PersonaConfigError):
+        fixture_segment_profile(metadata, "player_tracker", "en", None, "ghost-99")
+
+
+def test_segments_per_match_are_capped() -> None:
+    from insidegame.core.exceptions import SessionLimitError
+    from insidegame.live.session import MAX_SEGMENTS
+    result = simulate_match(build_fixture("brookhaven", "silverlake", 3))
+    session = MatchSession("cap", result, MatchIntelligenceService(result.metadata, _offline_suite(), OFFLINE_POLICY, ()),
+                           SPEED, _instant)
+    languages = ["en", "es", "fr", "de", "pt", "it", "ja", "tr", "ar", "hi", "sw"]
+
+    async def scenario() -> None:
+        for language in languages[:MAX_SEGMENTS]:
+            session.subscribe(build_segment_profile("analyst", language))
+        session.subscribe(build_segment_profile("analyst", languages[0]))
+        with pytest.raises(SessionLimitError):
+            session.subscribe(build_segment_profile("analyst", languages[MAX_SEGMENTS]))
+
+    asyncio.run(scenario())

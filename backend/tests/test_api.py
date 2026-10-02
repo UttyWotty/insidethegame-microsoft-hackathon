@@ -42,6 +42,9 @@ def test_errors_map_to_http_status() -> None:
         created = client.post("/api/matches", json={}).json()
         bad = client.get(f"/api/matches/{created['session_id']}/stream", params={"persona": "superfan"})
         assert bad.status_code == 400
+        unknown = client.get(f"/api/matches/{created['session_id']}/stream",
+                             params={"persona": "player_tracker", "player": "ghost-99"})
+        assert unknown.status_code == 400
 
 
 def test_stream_delivers_full_match() -> None:

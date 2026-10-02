@@ -1,7 +1,7 @@
 """Producer policy deciding which key moments go to air and for which viewers.
 
 It keeps the broadcast readable by enforcing a minimum gap between non-goal overlays and a per-event cap.
-Goals always go to air; relevance per viewer is delegated to the persona rules.
+Goals always go to air and do not start the gap, so a brace or hat-trick on the same event still airs.
 """
 
 from dataclasses import dataclass
@@ -37,8 +37,10 @@ class ProducerPolicy:
         chosen: list[tuple[KeyMoment, tuple[ViewerContext, ...]]] = []
         for moment in sorted(moments, key=lambda m: m.importance, reverse=True):
             audience = tuple(v for v in viewers if is_relevant(moment, v.viewer))
-            if not audience or not self._gap_ok(moment) or len(chosen) >= MAX_MOMENTS_PER_EVENT:
+            follows_goal = any(m.kind in PRIORITY_KINDS for m, _ in chosen)
+            if not audience or not (follows_goal or self._gap_ok(moment)) or len(chosen) >= MAX_MOMENTS_PER_EVENT:
                 continue
             chosen.append((moment, audience))
-            self.last_aired = (moment.period, moment.match_second)
+            if moment.kind not in PRIORITY_KINDS:
+                self.last_aired = (moment.period, moment.match_second)
         return chosen

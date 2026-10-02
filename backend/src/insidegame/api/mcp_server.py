@@ -16,7 +16,7 @@ from insidegame.agents.question_context import build_question_context
 from insidegame.agents.steps import answer_question
 from insidegame.live.pacing import DEFAULT_SPEED
 from insidegame.live.registry import SessionRegistry
-from insidegame.live.segments import build_segment_profile
+from insidegame.live.segments import fixture_segment_profile
 from insidegame.simulation.roster import CLUB_PRESETS
 
 SERVER_NAME: str = "inside-the-game"
@@ -87,8 +87,9 @@ def build_mcp_server(registry: RegistryGetter) -> MCPServer:
     ) -> dict[str, object]:
         reg = registry()
         analyzer = reg.get(session_id).service.analyzer
+        profile = fixture_segment_profile(analyzer.metadata, persona, language, team, player)
+        viewer = build_viewer_context(profile, analyzer.metadata)
         reg.check_ask_rate(session_id)
-        viewer = build_viewer_context(build_segment_profile(persona, language, team, player), analyzer.metadata)
         outcome = await answer_question(reg.suite, question, build_question_context(analyzer), viewer, analyzer,
                                         reg.policy)
         return outcome.value.model_dump(mode="json") | {"source": outcome.source.value}

@@ -1,7 +1,7 @@
 """Numeric grounding check that rejects agent text citing numbers absent from the evidence.
 
 Every number in generated text must match a number in the moment context or the agent's tool results.
-Matching tolerates normal rounding and ratio-to-percentage conversion so faithful phrasing is not penalised.
+Matching tolerates rounding, ratio-to-percentage conversion, and decimal commas used by many languages.
 """
 
 import re
@@ -9,6 +9,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 NUMBER_PATTERN: re.Pattern[str] = re.compile(r"\d+(?:\.\d+)?")
+DECIMAL_COMMA: re.Pattern[str] = re.compile(r"(\d),(\d{1,2})(?!\d)")
+ARABIC_DECIMAL_SEPARATOR: str = "\u066b"
 ALWAYS_ALLOWED: frozenset[float] = frozenset({0.0, 1.0, 2.0, 3.0})
 INTEGER_TOLERANCE: float = 0.5
 DECIMAL_TOLERANCE: float = 0.051
@@ -25,8 +27,9 @@ class GroundingReport:
 
 
 def extract_numbers(text: str) -> list[float]:
-    """Return every non-negative number written in text."""
-    return [float(match) for match in NUMBER_PATTERN.findall(text)]
+    """Return every non-negative number written in text, reading decimal commas such as 0,38 as 0.38."""
+    normalised = DECIMAL_COMMA.sub(r"\1.\2", text.replace(ARABIC_DECIMAL_SEPARATOR, "."))
+    return [float(match) for match in NUMBER_PATTERN.findall(normalised)]
 
 
 def collect_evidence_numbers(evidence: object) -> set[float]:
