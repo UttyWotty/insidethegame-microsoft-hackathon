@@ -76,7 +76,7 @@ async def _run_session() -> tuple[MatchSession, list[LiveMessage], list[LiveMess
     _, analyst_messages, casual_messages = await asyncio.gather(
         session.run(), _consume(analyst.queue), _consume(casual.queue))
     late = session.subscribe(build_segment_profile("analyst"))
-    return session, analyst_messages, casual_messages, _drain(late.queue)
+    return session, analyst_messages, casual_messages, await _consume(late.queue)
 
 
 def test_session_streams_every_event_and_routes_cues_by_segment() -> None:
@@ -127,3 +127,30 @@ def test_new_segment_mid_match_is_backfilled_with_recent_moments() -> None:
 
     cues = [m for m in asyncio.run(scenario()) if m.type is MessageType.CUE]
     assert cues and all(m.data["persona"] == "newcomer" for m in cues)
+
+
+def test_subscriber_joining_finished_match_gets_backfill_before_end() -> None:
+    async def scenario() -> list[LiveMessage]:
+        result = simulate_match(build_fixture("brookhaven", "silverlake", 3))
+        service = MatchIntelligenceService(result.metadata, _offline_suite(), OFFLINE_POLICY, viewers=())
+        session = MatchSession("s4", result, service, SPEED, _instant)
+        early = session.subscribe(build_segment_profile("analyst"))
+        await asyncio.gather(session.run(), _consume(early.queue))
+        late = session.subscribe(build_segment_profile("casual", "es"))
+        return await _consume(late.queue)
+
+    types = [m.type for m in asyncio.run(scenario())]
+    assert MessageType.CUE in types and types[-1] is MessageType.END
+
+
+def test_first_viewer_after_an_unwatched_match_still_gets_moments() -> None:
+    async def scenario() -> list[LiveMessage]:
+        result = simulate_match(build_fixture("brookhaven", "silverlake", 3))
+        service = MatchIntelligenceService(result.metadata, _offline_suite(), OFFLINE_POLICY, viewers=())
+        session = MatchSession("s5", result, service, SPEED, _instant)
+        await session.run()
+        late = session.subscribe(build_segment_profile("newcomer", "es"))
+        return await _consume(late.queue)
+
+    types = [m.type for m in asyncio.run(scenario())]
+    assert MessageType.CUE in types and types[-1] is MessageType.END
