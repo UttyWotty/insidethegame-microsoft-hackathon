@@ -68,3 +68,15 @@ def test_superfan_tone_matches_whether_the_moment_helps_their_club(
     rival_fan = ViewerContext(ViewerProfile("r", PersonaKey.SUPERFAN, favourite_team_id=rival.team_id), rival.name)
     assert persona_card_template(miss, explanation, own_fan).body.startswith("So close!")
     assert persona_card_template(miss, explanation, rival_fan).body.startswith("Stay strong.")
+
+
+def test_recap_turning_points_are_important_and_readable(
+    analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
+) -> None:
+    from insidegame.agents.recap_context import MIN_TURNING_POINT_IMPORTANCE, RecapStage, build_recap_context
+    from insidegame.agents.templates import recap_template
+    analyzer = analysed_match[0]
+    context = build_recap_context(analyzer, RecapStage.FULL_TIME)
+    minutes = {m.minute_label for m in analyzer.moments if m.importance >= MIN_TURNING_POINT_IMPORTANCE}
+    assert all(str(m["minute"]) in minutes for m in context.moments)
+    assert not any("_" in point for point in recap_template(context).turning_points)

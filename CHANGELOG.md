@@ -13,6 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- README screenshots of the broadcast view and five-persona multiview.
+- Metadata loading with exponential backoff and a visible retry banner when the service is unreachable.
+
+### Changed
+
+- Mobile layout: wrapping header, full-width view tabs, live pitch first, overlays sized for phones.
+- Recap turning points only include moments with importance of at least 0.45, with readable labels.
+- Carry milestone headline reads "tops 300 m carried with the ball".
+
 ## [0.1.0] - 2026-10-02
 
 ### Added

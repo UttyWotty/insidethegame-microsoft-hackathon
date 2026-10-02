@@ -8,6 +8,10 @@ This README describes the project status, setup, usage, and repository structure
 
 AI-powered match intelligence built on synthetic football event data: ingest live events, interpret them into statistics and patterns, explain why moments matter, render overlay-ready output, and personalize it for analysts and casual fans in multiple languages.
 
+![Broadcast view: live pitch with an analyst overlay, stats, momentum, commentary, and Ask the analyst](docs/images/broadcast.jpg)
+
+![The same match through all five personas](docs/images/multiview.jpg)
+
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for diagrams of the pipeline, the multi-agent workflow,
 and the Azure deployment, and [docs/SUBMISSION.md](docs/SUBMISSION.md) for the project summary.
 
@@ -231,6 +235,9 @@ React + TypeScript (Vite, no UI library) broadcast interface:
 - Switching persona or language mid-match backfills the most recent relevant moments for the new segment.
 - Accessibility: visible focus, `aria-live` announcements, text equivalents for charts, colour never the
   only signal, and reduced-motion support.
+- Responsive: on phones the live pitch comes first and the layout stacks without horizontal scrolling.
+- Resilient start-up: metadata loads with exponential backoff, and a visible retry appears if the service is
+  unreachable.
 
 ```bash
 MODEL_PROVIDER=offline API_PORT=8000 .venv/bin/python -m insidegame.main   # backend
