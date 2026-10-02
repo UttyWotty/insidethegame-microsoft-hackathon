@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Standards Editor (fact-checker) agent: a roster rule rejects invented players, then the agent checks
+  attribution and outcomes of model-written cards and commentary; rejected cards go back to the personalizer with
+  the issues for one revision, then a grounded template replaces anything still wrong. Verdicts are recorded in
+  cue provenance and shown as "Fact-checked" or "Corrected by editor" chips.
 - Synthetic 22-player tracking: formation-aware positions after every event (teams push and spread in possession,
   compact and shift when defending, press higher by style; actors placed on the ball), streamed with each event.
   Distance covered is realistic (about 11 km per outfield player).
@@ -39,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The full-time drain could spin forever on finished tasks awaiting removal; it now waits only on unfinished work.
 - A failing background task (agent workflow or recap) could stop a match from ever ending; failures now degrade
   to grounded templates and the end message is always sent.
 - Viewers joining during the full-time drain could lose their backfilled cues; the session now drains until no

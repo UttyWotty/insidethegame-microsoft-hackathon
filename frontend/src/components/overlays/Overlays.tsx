@@ -5,7 +5,7 @@
  */
 import type { CSSProperties } from "react";
 import type { OverlayCue } from "../../types";
-import { ProvenanceBadge } from "../ProvenanceBadge";
+import { FactCheckBadge, ProvenanceBadge } from "../ProvenanceBadge";
 
 const PERCENT = 100;
 
@@ -24,6 +24,7 @@ function Meta({ cue }: { cue: OverlayCue }) {
   return (
     <div className="overlay-meta">
       <ProvenanceBadge provenance={cue.provenance.card} />
+      <FactCheckBadge check={cue.provenance.fact_check} />
       {cue.language !== "en" && <span className="chip">{cue.language.toUpperCase()}</span>}
     </div>
   );

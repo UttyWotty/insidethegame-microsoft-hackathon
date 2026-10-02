@@ -8,7 +8,7 @@ import { formatClock, minuteLabel } from "../lib/pitch";
 import { PERSONA_ORDER, teamColor } from "../lib/teams";
 import { personaViewer } from "../lib/viewer";
 import type { MatchMetadata, PersonaInfo, PersonaKey } from "../types";
-import { ProvenanceBadge } from "./ProvenanceBadge";
+import { FactCheckBadge, ProvenanceBadge } from "./ProvenanceBadge";
 
 interface ColumnProps { sessionId: string; persona: PersonaKey; info: PersonaInfo | undefined; language: string; match: MatchMetadata }
 
@@ -34,6 +34,7 @@ function PersonaColumn({ sessionId, persona, info, language, match }: ColumnProp
             <p className="num muted">{cue.stat_callouts.map((c) => `${c.label}: ${c.value}`).join(" | ")}</p>
           )}
           <ProvenanceBadge provenance={cue.provenance.card} />
+          <FactCheckBadge check={cue.provenance.fact_check} />
         </article>
       ))}
     </section>

@@ -35,6 +35,7 @@ REPLIES = {
     "Lead Commentator": {"line": "What a moment in this match!"},
     "Personalization Producer": {"title": "Big moment", "body": "This could decide it.", "stat_callouts": []},
     "broadcast translator": {"title": "Gran momento", "body": "Esto puede decidirlo.", "stat_labels": []},
+    "Broadcast Standards Editor": {"approved": True, "issues": []},
 }
 
 
@@ -70,6 +71,8 @@ def test_workflow_produces_one_cue_per_viewer(
     spanish = next(c for c in broadcast.cues if c.viewer_id == "fan-es")
     assert spanish.language == SPANISH and spanish.title == "Gran momento"
     assert spanish.provenance["translation"]["source"] == OutputSource.MODEL.value
+    assert spanish.provenance["fact_check"]["verdict"] == "approved"
+    assert spanish.provenance["commentary_check"]["verdict"] == "approved"
     assert spanish.display_from_s == round(goal_context.moment.match_second + CUE_DELAY_S, TIME_DECIMALS)
     assert spanish.commentary == SPANISH_LINE
     english = next(c for c in broadcast.cues if c.viewer_id == "analyst-1")

@@ -1,7 +1,7 @@
 """Agent Framework executors forming the per-moment multi-agent workflow.
 
-Intake writes the job to shared workflow state, the analyst explains, the narrator and personalizer run in parallel,
-and the assembler joins their results into overlay cues using the shared state written upstream.
+Intake writes the job to shared state, the analyst explains, the narrator and personalizer run in parallel, the
+fact-checker verifies (and sends rejected cards back for revision), and the assembler translates and builds cues.
 """
 
 import asyncio
@@ -16,7 +16,9 @@ from insidegame.agents.schemas import Explanation
 from insidegame.agents.steps import explain, narrate, personalize, translate, translate_line
 from insidegame.analytics.analyzer import MatchAnalyzer
 from insidegame.orchestration.cues import MomentBroadcast, build_cue
+from insidegame.orchestration.fact_checking import FactCheckStage
 from insidegame.orchestration.messages import (
+    CheckedResult,
     ExplainedMoment,
     MomentJob,
     NarrationResult,
@@ -71,28 +73,46 @@ class NarratorExecutor(Executor):
 
 
 class PersonalizerExecutor(Executor):
-    """Runs the Personalization Producer and Translator agents for every viewer concurrently."""
+    """Runs the Personalization Producer for every viewer concurrently."""
 
     def __init__(self, suite: AgentSuite, policy: RunPolicy) -> None:
         super().__init__(id="personalizer")
         self.suite, self.policy = suite, policy
 
-    async def _for_viewer(self, explained: ExplainedMoment, viewer: ViewerContext) -> PersonalizedCard:
-        card = await personalize(self.suite, explained.job.context, explained.explanation.value, viewer, self.policy)
-        if viewer.viewer.language == DEFAULT_LANGUAGE:
-            return PersonalizedCard(viewer, card)
-        translation = await translate(self.suite, card.value, viewer.viewer.language, self.policy)
-        return PersonalizedCard(viewer, card, translation)
-
     @handler
     async def run(self, explained: ExplainedMoment, ctx: WorkflowContext[PersonalizationResult]) -> None:
-        """Personalize, and translate where needed, for each viewer in the audience."""
-        cards = await asyncio.gather(*(self._for_viewer(explained, v) for v in explained.job.viewers))
-        await ctx.send_message(PersonalizationResult(tuple(cards)))
+        """Write one persona card per viewer segment."""
+        cards = await asyncio.gather(*(
+            personalize(self.suite, explained.job.context, explained.explanation.value, viewer, self.policy)
+            for viewer in explained.job.viewers))
+        items = tuple(PersonalizedCard(viewer, card) for viewer, card in zip(explained.job.viewers, cards, strict=True))
+        await ctx.send_message(PersonalizationResult(items))
+
+
+class FactCheckerExecutor(Executor):
+    """Runs the Standards Editor over commentary and every card before anything goes to air."""
+
+    def __init__(self, suite: AgentSuite, squad: set[str], policy: RunPolicy) -> None:
+        super().__init__(id="fact_checker")
+        self.suite, self.squad, self.policy = suite, squad, policy
+
+    @handler
+    async def run(
+        self, results: list[NarrationResult | PersonalizationResult], ctx: WorkflowContext[CheckedResult]
+    ) -> None:
+        """Verify, revise, or replace each draft, then hand the checked set to the assembler."""
+        job: MomentJob = ctx.get_state(JOB_STATE_KEY)
+        explanation: AgentOutcome[Explanation] = ctx.get_state(EXPLANATION_STATE_KEY)
+        narration = next(r for r in results if isinstance(r, NarrationResult))
+        personalization = next(r for r in results if isinstance(r, PersonalizationResult))
+        stage = FactCheckStage(self.suite, job.context, explanation.value, self.squad, self.policy)
+        (commentary, commentary_check), cards = await asyncio.gather(
+            stage.commentary(narration.commentary), asyncio.gather(*(stage.card(c) for c in personalization.cards)))
+        await ctx.send_message(CheckedResult(commentary, commentary_check, tuple(cards)))
 
 
 class AssemblerExecutor(Executor):
-    """Joins narration and personalization into overlay cues, translating commentary for non-English viewers."""
+    """Translates checked output for non-English viewers and builds the overlay cues."""
 
     def __init__(self, match_id: str, suite: AgentSuite, policy: RunPolicy) -> None:
         super().__init__(id="assembler")
@@ -104,19 +124,23 @@ class AssemblerExecutor(Executor):
         return {lang: o.value.line for lang, o in zip(targets, outcomes, strict=True)
                 if o.source is not OutputSource.FALLBACK}
 
+    async def _translate(self, item: PersonalizedCard) -> PersonalizedCard:
+        if item.viewer.viewer.language == DEFAULT_LANGUAGE:
+            return item
+        translation = await translate(self.suite, item.card.value, item.viewer.viewer.language, self.policy)
+        return PersonalizedCard(item.viewer, item.card, translation, item.fact_check)
+
     @handler
-    async def run(
-        self, results: list[NarrationResult | PersonalizationResult], ctx: WorkflowContext[None, MomentBroadcast]
-    ) -> None:
+    async def run(self, checked: CheckedResult, ctx: WorkflowContext[None, MomentBroadcast]) -> None:
         """Build one cue per viewer and yield the moment broadcast."""
         job: MomentJob = ctx.get_state(JOB_STATE_KEY)
         explanation: AgentOutcome[Explanation] = ctx.get_state(EXPLANATION_STATE_KEY)
-        narration = next(r for r in results if isinstance(r, NarrationResult))
-        personalization = next(r for r in results if isinstance(r, PersonalizationResult))
+        languages = {item.viewer.viewer.language for item in checked.cards}
+        translated, cards = await asyncio.gather(
+            self._commentary_by_language(checked.commentary.value.line, languages),
+            asyncio.gather(*(self._translate(item) for item in checked.cards)))
         moment = job.context.moment
-        languages = {item.viewer.viewer.language for item in personalization.cards}
-        translated = await self._commentary_by_language(narration.commentary.value.line, languages)
-        cues = tuple(build_cue(self.match_id, moment, explanation, narration.commentary, item,
-                               translated.get(item.viewer.viewer.language))
-                     for item in personalization.cards)
-        await ctx.yield_output(MomentBroadcast(job.context, explanation, narration.commentary, cues))
+        cues = tuple(build_cue(self.match_id, moment, explanation, checked.commentary, item,
+                               translated.get(item.viewer.viewer.language), checked.commentary_check)
+                     for item in cards)
+        await ctx.yield_output(MomentBroadcast(job.context, explanation, checked.commentary, cues))

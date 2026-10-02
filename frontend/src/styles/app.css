@@ -37,6 +37,7 @@ button { cursor: pointer; }
 }
 .chip--live { background: var(--color-danger); color: #1a0505; }
 .chip--model { background: var(--color-accent); color: var(--color-on-accent); }
+.chip--check { background: #38bdf8; color: #04121c; }
 .chip--fallback { background: var(--color-warning); color: #1f1300; }
 
 .layout { display: grid; grid-template-columns: 300px minmax(0, 1fr) 340px; gap: var(--space-4); padding: var(--space-4); }
