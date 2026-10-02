@@ -2,6 +2,7 @@
 
 Local development targets an Ollama server through its OpenAI-compatible endpoint, and deployment targets a
 Microsoft Foundry OpenAI-compatible endpoint; both use the same Agent Framework client, so only configuration changes.
+The offline provider makes zero model attempts, so every output comes from grounded templates without any server.
 """
 
 import os
@@ -19,6 +20,7 @@ class ModelProvider(StrEnum):
 
     OLLAMA = "ollama"
     FOUNDRY = "foundry"
+    OFFLINE = "offline"
 
 
 MODEL_PROVIDER: str = os.getenv("MODEL_PROVIDER", ModelProvider.OLLAMA.value)
@@ -28,6 +30,7 @@ MODEL_API_KEY: str = os.getenv("MODEL_API_KEY", "ollama")
 MODEL_TIMEOUT_S: float = float(os.getenv("MODEL_TIMEOUT_S", "45"))
 MODEL_MAX_ATTEMPTS: int = int(os.getenv("MODEL_MAX_ATTEMPTS", "2"))
 MODEL_PROMPT_SUFFIX: str = os.getenv("MODEL_PROMPT_SUFFIX", "/no_think")
+OFFLINE_MAX_ATTEMPTS: int = 0
 
 
 @dataclass(frozen=True)
@@ -49,4 +52,5 @@ def build_model_runtime() -> ModelRuntime:
         raise ModelConfigError("MODEL_API_KEY must be set for the foundry provider")
     client = OpenAIChatCompletionClient(model=MODEL_NAME, base_url=MODEL_BASE_URL, api_key=MODEL_API_KEY)
     suffix = MODEL_PROMPT_SUFFIX if provider is ModelProvider.OLLAMA else ""
-    return ModelRuntime(provider, client, RunPolicy(MODEL_TIMEOUT_S, MODEL_MAX_ATTEMPTS, suffix))
+    attempts = OFFLINE_MAX_ATTEMPTS if provider is ModelProvider.OFFLINE else MODEL_MAX_ATTEMPTS
+    return ModelRuntime(provider, client, RunPolicy(MODEL_TIMEOUT_S, attempts, suffix))

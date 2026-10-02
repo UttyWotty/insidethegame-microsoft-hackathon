@@ -31,3 +31,11 @@ class AgentOutputError(InsideGameError):
 
 class ModelConfigError(InsideGameError):
     """Raised when the model client configuration is invalid or incomplete."""
+
+
+class SessionNotFoundError(InsideGameError):
+    """Raised when a live match session id is unknown."""
+
+
+class SessionLimitError(InsideGameError):
+    """Raised when the maximum number of concurrent live sessions is reached."""

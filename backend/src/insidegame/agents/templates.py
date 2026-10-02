@@ -34,7 +34,9 @@ FACT_LABELS: dict[str, str] = {
     "momentum": "Momentum", "turnovers_per_minute": "Turnovers per min",
 }
 SUPERFAN_OWN_PREFIX: str = "Get in! "
+SUPERFAN_SETBACK_PREFIX: str = "So close! "
 SUPERFAN_RIVAL_PREFIX: str = "Stay strong. "
+SETBACK_KINDS: frozenset[MomentKind] = frozenset({MomentKind.BIG_CHANCE_MISSED})
 MAX_CALLOUTS: int = 3
 
 ExplanationParts = tuple[str, str, list[str], TacticalTheme]
@@ -129,6 +131,12 @@ def _callouts(context: MomentContext) -> list[StatCallout]:
             if key in facts][:MAX_CALLOUTS]
 
 
+def _superfan_prefix(context: MomentContext, viewer: ViewerContext) -> str:
+    if context.team_name != viewer.favourite_team_name:
+        return SUPERFAN_RIVAL_PREFIX
+    return SUPERFAN_SETBACK_PREFIX if context.moment.kind in SETBACK_KINDS else SUPERFAN_OWN_PREFIX
+
+
 def persona_card_template(context: MomentContext, explanation: Explanation, viewer: ViewerContext) -> PersonaCard:
     """Build a persona-specific card from the explanation without any model call."""
     persona = viewer.viewer.persona
@@ -136,8 +144,7 @@ def persona_card_template(context: MomentContext, explanation: Explanation, view
     if persona is PersonaKey.CASUAL:
         body, callouts = f"{explanation.headline}. It is {context.score_home}-{context.score_away}.", []
     elif persona is PersonaKey.SUPERFAN:
-        ours = context.team_name == viewer.favourite_team_name
-        body = (SUPERFAN_OWN_PREFIX if ours else SUPERFAN_RIVAL_PREFIX) + explanation.why_it_matters
+        body = _superfan_prefix(context, viewer) + explanation.why_it_matters
     elif persona is PersonaKey.PLAYER_TRACKER and viewer.tracked_player_name:
         stats = context.players.get(viewer.tracked_player_name, {})
         title = f"Tracking {viewer.tracked_player_name}"
