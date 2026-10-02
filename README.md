@@ -8,6 +8,17 @@ This README describes the project status, setup, usage, and repository structure
 
 AI-powered match intelligence built on synthetic football event data: ingest live events, interpret them into statistics and patterns, explain why moments matter, render overlay-ready output, and personalize it for analysts and casual fans in multiple languages.
 
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for diagrams of the pipeline, the multi-agent workflow,
+and the Azure deployment, and [docs/SUBMISSION.md](docs/SUBMISSION.md) for the project summary.
+
+```mermaid
+flowchart LR
+    SIM[Synthetic events] --> AN[Interpret: xG, momentum,<br/>key moments] --> AG[Agents: explain,<br/>narrate, personalize]
+    AG --> CUE[Timed overlay cues] --> UI[Broadcast UI, 5 personas]
+    AN --> QA[Match Companion] --> UI
+    AN --> MCP[MCP server]
+```
+
 ## Status
 
 - Stage 1 (Ingest source): synthetic match engine implemented and calibrated.

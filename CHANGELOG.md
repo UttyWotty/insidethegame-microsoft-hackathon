@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Architecture documentation with Mermaid diagrams, submission text, and a timed two-minute demo script.
+
 - Synthetic dataset generator: matches, enriched events (absolute coordinates, xG, pass difficulty, momentum,
   rhythm, triggered moments), player statistics, and labelled key moments as JSON Lines, with a generated
   dataset card; two-match sample in `data/sample/`.
