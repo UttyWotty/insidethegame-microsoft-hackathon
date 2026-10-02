@@ -8,15 +8,25 @@ from insidegame.agents.context import MomentContext, ViewerContext
 from insidegame.agents.factory import AgentSuite
 from insidegame.agents.prompts import (
     analyst_prompt,
+    companion_prompt,
     narrator_prompt,
     personalizer_prompt,
     recap_prompt,
     translator_prompt,
 )
+from insidegame.agents.question_context import QuestionContext
 from insidegame.agents.recap_context import RecapContext
 from insidegame.agents.runner import AgentOutcome, RunPolicy, run_resilient
-from insidegame.agents.schemas import Commentary, Explanation, MatchRecap, PersonaCard, TranslatedCard
+from insidegame.agents.schemas import (
+    Commentary,
+    CompanionAnswer,
+    Explanation,
+    MatchRecap,
+    PersonaCard,
+    TranslatedCard,
+)
 from insidegame.agents.templates import (
+    answer_template,
     commentary_template,
     explanation_template,
     persona_card_template,
@@ -25,6 +35,7 @@ from insidegame.agents.templates import (
 )
 from insidegame.agents.tools import EvidenceLedger, build_analyst_tools
 from insidegame.agents.validation import (
+    answer_validator,
     card_validator,
     commentary_validator,
     explanation_validator,
@@ -80,3 +91,15 @@ async def write_recap(
     validator = recap_validator(context.to_prompt_dict(), names)
     return await run_resilient(suite.editor, recap_prompt(context), MatchRecap, validator,
                                lambda: recap_template(context), policy)
+
+
+async def answer_question(
+    suite: AgentSuite, question: str, context: QuestionContext, viewer: ViewerContext, analyzer: MatchAnalyzer,
+    policy: RunPolicy,
+) -> AgentOutcome[CompanionAnswer]:
+    """Ask the Match Companion a viewer's question, allowing statistics tool calls."""
+    ledger = EvidenceLedger()
+    tools = build_analyst_tools(analyzer, ledger)
+    validator = answer_validator(lambda: [context.to_prompt_dict(), ledger.entries])
+    return await run_resilient(suite.companion, companion_prompt(question, context, viewer), CompanionAnswer,
+                               validator, lambda: answer_template(context), policy, tools)

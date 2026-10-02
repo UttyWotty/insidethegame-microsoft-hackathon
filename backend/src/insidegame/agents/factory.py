@@ -10,6 +10,7 @@ from agent_framework import Agent, SupportsChatGetResponse
 
 from insidegame.agents.prompts import (
     ANALYST_INSTRUCTIONS,
+    COMPANION_INSTRUCTIONS,
     NARRATOR_INSTRUCTIONS,
     PERSONALIZER_INSTRUCTIONS,
     RECAP_INSTRUCTIONS,
@@ -19,13 +20,14 @@ from insidegame.agents.prompts import (
 
 @dataclass(frozen=True)
 class AgentSuite:
-    """The five specialised agents used by the orchestration layer."""
+    """The six specialised agents: five in the moment and recap pipeline, plus the viewer-facing companion."""
 
     analyst: Agent
     narrator: Agent
     personalizer: Agent
     translator: Agent
     editor: Agent
+    companion: Agent
 
 
 def create_agent_suite(client: SupportsChatGetResponse) -> AgentSuite:
@@ -41,4 +43,6 @@ def create_agent_suite(client: SupportsChatGetResponse) -> AgentSuite:
                          description="Localises persona cards for global markets."),
         editor=Agent(client, RECAP_INSTRUCTIONS, name="match_editor",
                      description="Writes automated half-time and full-time recaps."),
+        companion=Agent(client, COMPANION_INSTRUCTIONS, name="match_companion",
+                        description="Answers viewers' questions about the live match, using statistics tools."),
     )

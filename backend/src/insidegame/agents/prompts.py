@@ -9,6 +9,7 @@ import json
 from insidegame.agents.context import MomentContext, ViewerContext
 from insidegame.agents.glossary import concept_for
 from insidegame.agents.personas import PersonaKey
+from insidegame.agents.question_context import QuestionContext
 from insidegame.agents.recap_context import RecapContext
 from insidegame.agents.schemas import Explanation, PersonaCard
 
@@ -39,6 +40,13 @@ TRANSLATOR_INSTRUCTIONS: str = (
     "You are a broadcast translator. Translate the card into the target language with natural football "
     "phrasing used by commentators in that market. Keep player names, club names, and every number unchanged. "
     "Reply with JSON matching the requested schema only."
+)
+
+COMPANION_INSTRUCTIONS: str = (
+    "You are the Match Companion, answering one viewer's question during a live football broadcast. Answer only "
+    "questions about this match, in the viewer's persona voice and requested language. If a question is unrelated, "
+    "asks for betting advice, or is inappropriate, decline in one friendly sentence and suggest a match question. "
+    f"Use tools for player or team details not in the input. {GROUNDING_RULE}"
 )
 
 RECAP_INSTRUCTIONS: str = (
@@ -107,3 +115,10 @@ def correction_prompt(original_prompt: str, problem: str) -> str:
 def recap_prompt(context: RecapContext) -> str:
     """Prompt asking the editor for a half-time or full-time recap."""
     return f"Write the {context.stage.value.replace('_', '-')} recap.\n{_dump(context.to_prompt_dict())}"
+
+
+def companion_prompt(question: str, context: QuestionContext, viewer: ViewerContext) -> str:
+    """Prompt asking the Match Companion to answer a viewer's question."""
+    payload = {"question": question, "answer_language": viewer.viewer.language,
+               "persona_brief": _persona_brief(viewer), "match": context.to_prompt_dict()}
+    return f"Answer the viewer's question.\n{_dump(payload)}"

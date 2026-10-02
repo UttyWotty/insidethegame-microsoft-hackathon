@@ -9,6 +9,7 @@ import { teamColor } from "../lib/teams";
 import { useNow } from "../lib/useNow";
 import { activeCue } from "../state/matchState";
 import type { Recap, ViewerSettings } from "../types";
+import { AskPanel } from "./AskPanel";
 import { CommentaryTicker } from "./CommentaryTicker";
 import { MomentumChart } from "./MomentumChart";
 import { OverlayLayer } from "./overlays/OverlayLayer";
@@ -58,6 +59,7 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
         <CommentaryTicker items={state.ticker} />
       </div>
       <aside className="rail">
+        <AskPanel sessionId={sessionId} viewer={viewer} />
         <StatsPanel snapshot={state.snapshot} homeColor={homeColor} awayColor={awayColor} />
         <MomentumChart points={state.momentum} rhythm={state.rhythm} homeColor={homeColor} awayColor={awayColor}
           homeName={match.home.short_name} awayName={match.away.short_name} />
