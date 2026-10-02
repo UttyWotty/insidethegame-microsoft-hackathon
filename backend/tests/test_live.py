@@ -112,3 +112,18 @@ def test_slow_subscriber_keeps_the_newest_messages() -> None:
     messages = asyncio.run(scenario())
     assert messages[-1].type is MessageType.END
     assert sum(m.type is MessageType.RECAP for m in messages) == 2
+
+
+def test_new_segment_mid_match_is_backfilled_with_recent_moments() -> None:
+    async def scenario() -> list[LiveMessage]:
+        result = simulate_match(build_fixture("brookhaven", "silverlake", 3))
+        service = MatchIntelligenceService(result.metadata, _offline_suite(), OFFLINE_POLICY, viewers=())
+        session = MatchSession("s3", result, service, SPEED, _instant)
+        early = session.subscribe(build_segment_profile("analyst"))
+        await asyncio.gather(session.run(), _consume(early.queue))
+        late = session.subscribe(build_segment_profile("newcomer", "fr"))
+        await asyncio.gather(*tuple(session.tasks))
+        return _drain(late.queue)
+
+    cues = [m for m in asyncio.run(scenario()) if m.type is MessageType.CUE]
+    assert cues and all(m.data["persona"] == "newcomer" for m in cues)

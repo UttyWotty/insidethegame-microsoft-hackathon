@@ -58,7 +58,7 @@ def analyst_prompt(context: MomentContext) -> str:
 
 def narrator_prompt(context: MomentContext, explanation: Explanation) -> str:
     """Prompt asking the narrator for a commentary line."""
-    payload = {"minute": context.minute, "explanation": explanation.model_dump(mode="json"),
+    payload = {"minute": context.moment.minute_label, "explanation": explanation.model_dump(mode="json"),
                "facts": dict(context.moment.facts)}
     return f"Write the commentary line.\n{_dump(payload)}"
 

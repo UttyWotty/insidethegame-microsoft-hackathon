@@ -7,6 +7,7 @@ Facts are JSON scalars so they can be rendered as overlays or placed directly in
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from insidegame.core.clock import minute_label
 from insidegame.core.constants import SECONDS_PER_MINUTE
 
 IMPORTANCE_DECIMALS: int = 3
@@ -46,6 +47,11 @@ class KeyMoment:
         """Broadcast-style match minute, starting at 1."""
         return int(self.match_second // SECONDS_PER_MINUTE) + 1
 
+    @property
+    def minute_label(self) -> str:
+        """Broadcast minute label including added time, for example 45+3'."""
+        return minute_label(self.match_second, self.period)
+
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-friendly representation."""
         return {
@@ -54,6 +60,7 @@ class KeyMoment:
             "period": self.period,
             "match_second": self.match_second,
             "minute": self.minute,
+            "minute_label": self.minute_label,
             "importance": round(self.importance, IMPORTANCE_DECIMALS),
             "team_id": self.team_id,
             "player_ids": list(self.player_ids),

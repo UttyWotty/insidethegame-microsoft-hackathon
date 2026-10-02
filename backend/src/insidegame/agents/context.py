@@ -42,7 +42,7 @@ class MomentContext:
     def to_prompt_dict(self) -> dict[str, object]:
         """Return the context as a JSON-friendly dict for prompts."""
         return {
-            "minute": self.minute,
+            "minute": self.moment.minute_label,
             "moment": self.moment.kind.value,
             "importance": round(self.moment.importance, IMPORTANCE_DECIMALS),
             "team": self.team_name,

@@ -46,3 +46,11 @@ def test_mirror_is_an_involution() -> None:
     p = Point(12.5, 40.0)
     assert mirror(mirror(p)) == p
     assert math.isclose(mirror(p).x, PITCH_LENGTH_M - 12.5)
+
+
+def test_minute_label_shows_added_time() -> None:
+    from insidegame.core.clock import minute_label
+    assert minute_label(1330, 1) == "23'"
+    assert minute_label(2836, 1) == "45+3'"
+    assert minute_label(2700, 2) == "46'"
+    assert minute_label(5420, 2) == "90+1'"

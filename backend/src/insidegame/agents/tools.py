@@ -46,7 +46,7 @@ def build_analyst_tools(analyzer: MatchAnalyzer, ledger: EvidenceLedger) -> list
 
     def recent_moments(count: Annotated[int, "How many recent key moments to return."] = DEFAULT_RECENT_MOMENTS) -> str:
         bounded = max(1, min(count, MAX_RECENT_MOMENTS))
-        payload = [{"minute": m.minute, "kind": m.kind.value, "facts": m.facts} for m in analyzer.moments[-bounded:]]
+        payload = [{"minute": m.minute_label, "kind": m.kind.value, "facts": m.facts} for m in analyzer.moments[-bounded:]]
         return ledger.record("recent_moments", payload)
 
     return [

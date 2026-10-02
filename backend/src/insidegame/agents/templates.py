@@ -122,7 +122,7 @@ def explanation_template(context: MomentContext) -> Explanation:
 
 def commentary_template(context: MomentContext, explanation: Explanation) -> Commentary:
     """Build a commentary line from the explanation headline."""
-    return Commentary(line=f"{context.minute}' {explanation.headline}.")
+    return Commentary(line=f"{explanation.headline}.")
 
 
 def _callouts(context: MomentContext) -> list[StatCallout]:
@@ -148,7 +148,8 @@ def persona_card_template(context: MomentContext, explanation: Explanation, view
     elif persona is PersonaKey.PLAYER_TRACKER and viewer.tracked_player_name:
         stats = context.players.get(viewer.tracked_player_name, {})
         title = f"Tracking {viewer.tracked_player_name}"
-        callouts = [StatCallout(label=k.replace("_", " "), value=str(v)) for k, v in stats.items()][:MAX_CALLOUTS]
+        callouts = [StatCallout(label=k.replace("_", " ").capitalize(), value=str(v))
+                    for k, v in stats.items()][:MAX_CALLOUTS]
     elif persona is PersonaKey.NEWCOMER:
         term, meaning = concept_for(context.moment.kind)
         body = f"{explanation.headline}. {term}: {meaning}"
@@ -164,7 +165,7 @@ def _turning_point(moment: dict[str, object]) -> str:
     facts = moment.get("facts")
     actor = moment_actor(facts) if isinstance(facts, dict) else None
     label = str(moment["kind"]).replace("_", " ")
-    return f"{moment['minute']}' {label}" + (f": {actor}" if actor else f": {moment.get('team') or 'both sides'}")
+    return f"{moment['minute']} {label}" + (f": {actor}" if actor else f": {moment.get('team') or 'both sides'}")
 
 
 def recap_template(context: RecapContext) -> MatchRecap:

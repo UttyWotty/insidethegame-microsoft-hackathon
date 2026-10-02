@@ -14,7 +14,8 @@ AI-powered match intelligence built on synthetic football event data: ingest liv
 - Stage 2 (Interpret): streaming analytics implemented (xG, pass difficulty, stats, rhythm, key moments).
 - Stages 3-5 (Explain, Render, Personalize): multi-agent workflow, overlay cues, and recaps implemented.
 - Live API: real-time replay with personalized server-sent event streams implemented.
-- Frontend and cloud deployment: in progress.
+- Broadcast frontend: live pitch, five persona overlays, stats, momentum, commentary, recaps, and multiview implemented.
+- Cloud deployment: in progress.
 
 ## Synthetic Match Engine
 
@@ -145,6 +146,29 @@ curl -X POST localhost:8000/matches -H 'content-type: application/json' -d '{"sp
 curl -N "localhost:8000/matches/<session_id>/stream?persona=analyst"
 ```
 
+## Broadcast Frontend
+
+React + TypeScript (Vite, no UI library) broadcast interface:
+
+- **Live pitch:** the synthetic feed rendered as a 2D pitch with the ball and a trail of recent actions
+  (teams change ends at half-time), plus a broadcast score bug with added-time clock.
+- **Persona overlays:** each persona's cue is rendered in its own layout over the pitch: analyst stat panel,
+  casual lower third, superfan hype banner in club colours, player tag anchored to the ball, and newcomer
+  explainer card. Every overlay shows provenance (AI, corrected, or template, with latency).
+- **Live data rail:** team comparison bars, a diverging momentum chart with a plain-language rhythm label,
+  and a commentary ticker mixing agent commentary with key events.
+- **Recaps:** half-time and full-time recaps open in an accessible dialog.
+- **Multiview:** the same live match through all five personas side by side.
+- Switching persona or language mid-match backfills the most recent relevant moments for the new segment.
+- Accessibility: visible focus, `aria-live` announcements, text equivalents for charts, colour never the
+  only signal, and reduced-motion support.
+
+```bash
+MODEL_PROVIDER=offline API_PORT=8000 .venv/bin/python -m insidegame.main   # backend
+cd frontend && npm install && npm run dev                                   # http://localhost:5199
+npm test                                                                    # frontend unit tests
+```
+
 ## Setup
 
 Requirements: Python 3.12+, [uv](https://docs.astral.sh/uv/), and optionally [Ollama](https://ollama.com) for local model testing.
@@ -174,7 +198,7 @@ Model configuration (environment variables, all optional):
 | `MODEL_MAX_ATTEMPTS` | `2` | Attempts before falling back |
 | `MODEL_PROMPT_SUFFIX` | `/no_think` | Appended to prompts for local qwen3 only |
 | `API_HOST` / `API_PORT` | `127.0.0.1` / `8000` | API bind address |
-| `FRONTEND_ORIGINS` | `http://localhost:5173` | Comma-separated CORS origins |
+| `FRONTEND_ORIGINS` | `http://localhost:5199` | Comma-separated CORS origins |
 
 Tests never call a model; agents are tested with a scripted fake chat client.
 
@@ -193,6 +217,11 @@ backend/
     api/          FastAPI app, routers, server-sent events
     adapters/     environment-driven model client configuration
   tests/          unit and integration tests
+frontend/
+  src/api/        HTTP client and server-sent event hook
+  src/state/      pure stream reducer
+  src/lib/        pitch geometry, viewer resolution, team colours
+  src/components/ pitch, overlays, stats, momentum, ticker, recap, multiview
 ```
 
 Dependency direction: `api -> live -> orchestration -> agents -> analytics -> domain -> core`, with `simulation -> domain -> core`. Lower layers never import higher ones.
