@@ -92,8 +92,7 @@ class MatchSession:
 
     def subscribe(self, profile: ViewerProfile) -> Subscriber:
         """Register a client for a segment and prime it with the current state."""
-        if profile.viewer_id not in self.service.viewers:
-            self._backfill(profile)
+        backfill = self._backfill(profile) if profile.viewer_id not in self.service.viewers else []
         subscriber = Subscriber(profile.viewer_id)
         self.subscribers.add(subscriber)
         self._send(subscriber, LiveMessage(MessageType.MATCH, self.describe()))
@@ -103,15 +102,20 @@ class MatchSession:
         for recap in self.recaps:
             self._send(subscriber, LiveMessage(MessageType.RECAP, recap))
         if self.status is SessionStatus.FINISHED:
-            self._send(subscriber, LiveMessage(MessageType.END, {"session_id": self.session_id}))
+            self._spawn(self._end_after(subscriber, backfill))
         return subscriber
 
-    def _backfill(self, profile: ViewerProfile) -> None:
+    async def _end_after(self, subscriber: Subscriber, pending: list[asyncio.Task[None]]) -> None:
+        """Close a late subscriber's stream only after its backfilled cues have been delivered."""
+        if pending:
+            await asyncio.gather(*pending)
+        self._send(subscriber, LiveMessage(MessageType.END, {"session_id": self.session_id}))
+
+    def _backfill(self, profile: ViewerProfile) -> list[asyncio.Task[None]]:
         """Register a new segment and personalize the most recent aired moments for it."""
         viewer = self.service.add_viewer(profile)
         relevant = [job for job in self.aired if is_relevant(job.context.moment, profile)]
-        for job in relevant[-BACKFILL_MOMENTS:]:
-            self._spawn(self._produce(MomentJob(job.context, (viewer,))))
+        return [self._spawn(self._produce(MomentJob(job.context, (viewer,)))) for job in relevant[-BACKFILL_MOMENTS:]]
 
     def unsubscribe(self, subscriber: Subscriber) -> None:
         """Remove a client; stop personalizing for its segment when nobody else watches it."""
@@ -132,10 +136,11 @@ class MatchSession:
             if message.segment_id is None or message.segment_id == subscriber.segment_id:
                 self._send(subscriber, message)
 
-    def _spawn(self, coroutine: Awaitable[None]) -> None:
+    def _spawn(self, coroutine: Awaitable[None]) -> asyncio.Task[None]:
         task = asyncio.ensure_future(coroutine)
         self.tasks.add(task)
         task.add_done_callback(self.tasks.discard)
+        return task
 
     async def _produce(self, job: MomentJob) -> None:
         broadcast = await self.service.produce(job)
