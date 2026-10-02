@@ -112,3 +112,13 @@ describe("tracking frames", () => {
     expect(state.players["h-09"]).toEqual({ x: 25, y: 38 });
   });
 });
+
+describe("action effects", () => {
+  it("records the latest shot trace and goal flash with their arrival time", () => {
+    const shot = { ...update(100, "shot", { start: { x: 90, y: 30 }, end: { x: 105, y: 34 }, shot_result: "saved" }), xg: 0.21 };
+    let state = matchReducer(withSession, { type: "message", name: "event", data: shot, receivedAt: 500 });
+    expect(state.lastShot).toMatchObject({ xg: 0.21, result: "saved", side: "home", at: 500 });
+    state = matchReducer(state, { type: "message", name: "event", data: update(101, "goal"), receivedAt: 700 });
+    expect(state.goalFlash).toMatchObject({ scorer: "Ada Striker", side: "home", score: "1-0", at: 700 });
+  });
+});

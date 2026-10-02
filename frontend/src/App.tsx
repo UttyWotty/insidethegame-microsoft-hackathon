@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError, type CreateMatch, type Health } from "./api/client";
 import { BroadcastView } from "./components/BroadcastView";
+import { Landing } from "./components/Landing";
 import { MultiView } from "./components/MultiView";
 import { ProducerConsole } from "./components/producer/ProducerConsole";
 import { SetupPanel } from "./components/SetupPanel";
@@ -81,7 +82,7 @@ export function App() {
           </div>
           {session
             ? <BroadcastView key={session.session_id} sessionId={session.session_id} viewer={viewer} />
-            : <div className="panel empty" style={{ gridColumn: "span 2" }}>Pick two clubs and kick off a synthetic match.</div>}
+            : <Landing busy={busy} onDemo={start} />}
         </main>
       ) : view === "multiview" ? (
         <main><MultiView sessionId={session.session_id} personas={personas} language={viewer.language} match={match} /></main>

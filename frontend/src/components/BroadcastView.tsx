@@ -12,6 +12,10 @@ import type { MatchEvent, MatchMetadata, Point, Recap, ViewerSettings } from "..
 
 type Camera = "broadcast" | "tactical";
 
+const SHOT_VISIBLE_MS = 4000;
+const HALF_TIME_RECAP_MS = 15000;
+const GOAL_VISIBLE_MS = 4500;
+
 function playerDots(match: MatchMetadata | undefined, positions: Record<string, Point>, last: MatchEvent | null,
                     tracked: string | null): PlayerDot[] {
   if (!match) return [];
@@ -29,6 +33,7 @@ import { AskPanel } from "./AskPanel";
 import { CommentaryTicker } from "./CommentaryTicker";
 import { MomentumChart } from "./MomentumChart";
 import { OverlayLayer } from "./overlays/OverlayLayer";
+import { GoalBanner } from "./overlays/Overlays";
 import { Pitch, type BallAnchor, type PlayerDot } from "./Pitch";
 import { RecapModal } from "./RecapModal";
 import { ScoreBug } from "./ScoreBug";
@@ -53,6 +58,12 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
     }
   }, [state.recaps, seenStages]);
 
+  useEffect(() => {
+    if (openRecap?.stage !== "half_time") return undefined;
+    const id = window.setTimeout(() => setOpenRecap(null), HALF_TIME_RECAP_MS);
+    return () => window.clearTimeout(id);
+  }, [openRecap]);
+
   const match = state.session?.match;
   if (!match) return <div className="panel empty">Connecting to the live match ({status})...</div>;
   const homeColor = teamColor(match.home.team_id, true);
@@ -60,14 +71,18 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   const clock = state.lastEvent ? { period: state.lastEvent.period, second: state.lastEvent.match_second } : null;
   const active = activeCue(state.cues, now, clock);
   const cueTeamIsAway = active && viewer.team === match.away.team_id;
+  const shot = state.lastShot && now - state.lastShot.at < SHOT_VISIBLE_MS ? state.lastShot : null;
+  const goal = state.goalFlash && now - state.goalFlash.at < GOAL_VISIBLE_MS ? state.goalFlash : null;
 
   return (
     <>
       <div className="stage">
         <Pitch ball={state.ball} trail={state.trail} players={dots} homeColor={homeColor} awayColor={awayColor}
-          camera={camera} onBallAnchor={onBallAnchor} label={`Live pitch: ${match.home.name} versus ${match.away.name}`}>
+          camera={camera} shot={shot} onBallAnchor={onBallAnchor} label={`Live pitch: ${match.home.name} versus ${match.away.name}`}>
           <ScoreBug home={match.home} away={match.away} homeColor={homeColor} awayColor={awayColor} lastEvent={state.lastEvent} />
-          <OverlayLayer active={active} anchor={anchor} teamColor={cueTeamIsAway ? awayColor : homeColor} />
+          <OverlayLayer active={goal ? null : active} anchor={anchor} teamColor={cueTeamIsAway ? awayColor : homeColor} />
+          {goal && <GoalBanner key={goal.id} scorer={goal.scorer} score={goal.score}
+            teamColor={goal.side === "home" ? homeColor : awayColor} />}
         </Pitch>
         <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
           {status === "open" && !state.ended && <span className="chip chip--live">LIVE</span>}

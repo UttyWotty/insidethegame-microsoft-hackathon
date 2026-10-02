@@ -5,7 +5,7 @@
  */
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { PITCH_LENGTH, PITCH_WIDTH } from "../lib/pitch";
-import type { TrailPoint } from "../state/matchState";
+import type { ShotTrace, TrailPoint } from "../state/matchState";
 import type { Point } from "../types";
 
 const STRIPES = 10;
@@ -15,6 +15,9 @@ const SHOT_SIZE = 1.3;
 const PLAYER_RADIUS = 1.5;
 const TAG_OFFSET = 2.6;
 const PERCENT = 100;
+const XG_BUBBLE_MIN = 1.2;
+const XG_BUBBLE_SCALE = 6;
+const SHOT_RESULTS: Record<string, string> = { goal: "GOAL", saved: "Saved", off_target: "Wide", blocked: "Blocked" };
 
 export interface PlayerDot {
   id: string; number: number; shortName: string; side: "home" | "away"; position: Point;
@@ -31,6 +34,7 @@ interface PitchProps {
   awayColor: string;
   label: string;
   camera: "broadcast" | "tactical";
+  shot: ShotTrace | null;
   onBallAnchor: (anchor: BallAnchor) => void;
   children?: ReactNode;
 }
@@ -72,7 +76,22 @@ function Player({ dot, color }: { dot: PlayerDot; color: string }) {
   );
 }
 
-export function Pitch({ ball, trail, players, homeColor, awayColor, label, camera, onBallAnchor, children }: PitchProps) {
+function Shot({ shot, color }: { shot: ShotTrace; color: string }) {
+  const radius = XG_BUBBLE_MIN + (shot.xg ?? 0) * XG_BUBBLE_SCALE;
+  return (
+    <g className="shot-trace" key={shot.id}>
+      <line x1={shot.from.x} y1={shot.from.y} x2={shot.to.x} y2={shot.to.y} stroke={color} strokeWidth={0.45}
+        strokeDasharray="1.2 0.8" />
+      <circle cx={shot.from.x} cy={shot.from.y} r={radius} fill={color} fillOpacity={0.25} stroke={color} strokeWidth={0.3} />
+      {shot.xg !== null && (
+        <text className="shot-label" x={shot.from.x} y={shot.from.y - radius - 0.8} textAnchor="middle">xG {shot.xg.toFixed(2)}</text>
+      )}
+      <text className="shot-label" x={shot.to.x} y={shot.to.y - 1.5} textAnchor="middle">{SHOT_RESULTS[shot.result] ?? ""}</text>
+    </g>
+  );
+}
+
+export function Pitch({ ball, trail, players, homeColor, awayColor, label, camera, shot, onBallAnchor, children }: PitchProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const ballRef = useRef<SVGCircleElement>(null);
 
@@ -102,6 +121,7 @@ export function Pitch({ ball, trail, players, homeColor, awayColor, label, camer
                 fill={color} opacity={opacity} transform={`rotate(45 ${p.x} ${p.y})`} />
             : <circle key={p.id} cx={p.x} cy={p.y} r={TRAIL_RADIUS} fill={color} opacity={opacity} />;
         })}
+        {shot && <Shot shot={shot} color={shot.side === "home" ? homeColor : awayColor} />}
         {players.map((dot) => <Player key={dot.id} dot={dot} color={dot.side === "home" ? homeColor : awayColor} />)}
         {ball && (
           <circle ref={ballRef} className="ball" cx={ball.x} cy={ball.y} r={BALL_RADIUS} fill="#ffffff"
