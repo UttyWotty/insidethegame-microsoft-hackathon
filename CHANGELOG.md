@@ -82,6 +82,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - A viewer joining a finished match received the end of the stream before its backfilled cues; the end
   message now follows that viewer's backfill (found by CI timing).
+- The first viewer of a match nobody had watched received no cues, because backfill only drew on moments
+  already aired to someone; the session now keeps recent key moments regardless of audience.
 - Fenced JSON from local models was rejected because the framework's lazy structured value raised before the
   runner's own parser ran; the runner now falls back to its parser.
 - Template punctuation no longer doubles a trailing period from model headlines.

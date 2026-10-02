@@ -11,6 +11,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from insidegame.agents.context import MomentContext
 from insidegame.agents.personas import ViewerProfile, is_relevant
 from insidegame.agents.recap_context import RecapStage
 from insidegame.domain.match import MatchResult
@@ -24,7 +25,7 @@ QUEUE_MAX: int = 2000
 CUE_HISTORY: int = 20
 SNAPSHOT_EVERY_EVENTS: int = 25
 BACKFILL_MOMENTS: int = 2
-AIRED_HISTORY: int = 30
+MOMENT_HISTORY: int = 30
 
 Sleeper = Callable[[float], Awaitable[None]]
 
@@ -77,7 +78,7 @@ class MatchSession:
         self.cue_history: dict[str, deque[dict[str, object]]] = {}
         self.recaps: list[dict[str, object]] = []
         self.tasks: set[asyncio.Task[None]] = set()
-        self.aired: deque[MomentJob] = deque(maxlen=AIRED_HISTORY)
+        self.recent_moments: deque[MomentContext] = deque(maxlen=MOMENT_HISTORY)
 
     def describe(self) -> dict[str, object]:
         """Session summary for listings."""
@@ -112,10 +113,10 @@ class MatchSession:
         self._send(subscriber, LiveMessage(MessageType.END, {"session_id": self.session_id}))
 
     def _backfill(self, profile: ViewerProfile) -> list[asyncio.Task[None]]:
-        """Register a new segment and personalize the most recent aired moments for it."""
+        """Register a new segment and personalize the most recent relevant moments for it, watched or not."""
         viewer = self.service.add_viewer(profile)
-        relevant = [job for job in self.aired if is_relevant(job.context.moment, profile)]
-        return [self._spawn(self._produce(MomentJob(job.context, (viewer,)))) for job in relevant[-BACKFILL_MOMENTS:]]
+        relevant = [c for c in self.recent_moments if is_relevant(c.moment, profile)]
+        return [self._spawn(self._produce(MomentJob(c, (viewer,)))) for c in relevant[-BACKFILL_MOMENTS:]]
 
     def unsubscribe(self, subscriber: Subscriber) -> None:
         """Remove a client; stop personalizing for its segment when nobody else watches it."""
@@ -166,8 +167,8 @@ class MatchSession:
             self.publish(LiveMessage(MessageType.EVENT, interpretation.update.to_dict()))
             if index % SNAPSHOT_EVERY_EVENTS == 0 or interpretation.update.moments:
                 self.publish(LiveMessage(MessageType.SNAPSHOT, self.snapshot()))
+            self.recent_moments.extend(interpretation.contexts)
             for job in interpretation.jobs:
-                self.aired.append(job)
                 self._spawn(self._produce(job))
             if interpretation.recap_stage:
                 self._spawn(self._recap(interpretation.recap_stage))

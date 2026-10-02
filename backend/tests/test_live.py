@@ -141,3 +141,16 @@ def test_subscriber_joining_finished_match_gets_backfill_before_end() -> None:
 
     types = [m.type for m in asyncio.run(scenario())]
     assert MessageType.CUE in types and types[-1] is MessageType.END
+
+
+def test_first_viewer_after_an_unwatched_match_still_gets_moments() -> None:
+    async def scenario() -> list[LiveMessage]:
+        result = simulate_match(build_fixture("brookhaven", "silverlake", 3))
+        service = MatchIntelligenceService(result.metadata, _offline_suite(), OFFLINE_POLICY, viewers=())
+        session = MatchSession("s5", result, service, SPEED, _instant)
+        await session.run()
+        late = session.subscribe(build_segment_profile("newcomer", "es"))
+        return await _consume(late.queue)
+
+    types = [m.type for m in asyncio.run(scenario())]
+    assert MessageType.CUE in types and types[-1] is MessageType.END

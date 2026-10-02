@@ -75,12 +75,14 @@ def degraded_broadcast(match_id: str, context: MomentContext, job: MomentJob) ->
 class Interpretation:
     """Fast, synchronous result of interpreting one event.
 
-    Defaults: recap_stage is None except on period-end events.
+    Defaults: recap_stage is None except on period-end events; contexts is empty when no moment was detected.
+    contexts holds one prompt context per new key moment, whether or not any viewer received it.
     """
 
     update: AnalysisUpdate
     jobs: tuple[MomentJob, ...]
     recap_stage: RecapStage | None = None
+    contexts: tuple[MomentContext, ...] = ()
 
 
 class MatchIntelligenceService:
@@ -115,7 +117,8 @@ class MatchIntelligenceService:
         stage = None
         if event.event_type is EventType.PERIOD_END:
             stage = RecapStage.HALF_TIME if event.period == PERIODS[0] else RecapStage.FULL_TIME
-        return Interpretation(update, jobs, stage)
+        contexts = tuple(build_moment_context(moment, self.analyzer) for moment in update.moments)
+        return Interpretation(update, jobs, stage, contexts)
 
     async def produce(self, job: MomentJob) -> MomentBroadcast:
         """Run the multi-agent workflow for one job, degrading to templates if the workflow fails."""
