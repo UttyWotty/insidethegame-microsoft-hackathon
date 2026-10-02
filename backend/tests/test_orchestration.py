@@ -38,7 +38,12 @@ REPLIES = {
 }
 
 
+SPANISH_LINE = "¡Qué momento en este partido!"
+
+
 def _respond(instructions: str, prompt: str) -> str:
+    if "Translate this commentary line" in prompt:
+        return json.dumps({"line": SPANISH_LINE})
     if "Match Editor" in instructions:
         name = STANDOUT_PATTERN.search(prompt)
         return json.dumps({"headline": "A tight contest", "summary": "Both sides fought hard.", "turning_points": [],
@@ -66,7 +71,9 @@ def test_workflow_produces_one_cue_per_viewer(
     assert spanish.language == SPANISH and spanish.title == "Gran momento"
     assert spanish.provenance["translation"]["source"] == OutputSource.MODEL.value
     assert spanish.display_from_s == round(goal_context.moment.match_second + CUE_DELAY_S, TIME_DECIMALS)
-    assert spanish.commentary == REPLIES["Lead Commentator"]["line"]
+    assert spanish.commentary == SPANISH_LINE
+    english = next(c for c in broadcast.cues if c.viewer_id == "analyst-1")
+    assert english.commentary == REPLIES["Lead Commentator"]["line"]
 
 
 def test_full_match_runs_end_to_end_with_recaps() -> None:

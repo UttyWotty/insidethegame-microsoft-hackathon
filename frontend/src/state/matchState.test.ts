@@ -79,3 +79,24 @@ describe("activeCue freshness", () => {
     expect(activeCue([late], 1500, { period: 2, second: 2800 })).toBeNull();
   });
 });
+
+describe("viewer switches and play-by-play", () => {
+  it("keeps match-wide state but drops persona-specific state on a viewer switch", () => {
+    let state = matchReducer(withSession, { type: "message", name: "event", data: update(30, "goal"), receivedAt: 0 });
+    state = matchReducer(state, { type: "message", name: "cue", data: cue("c1", 0.5), receivedAt: 1 });
+    const switched = matchReducer(state, { type: "switch-viewer" });
+    expect(switched.ticker).toEqual(state.ticker);
+    expect(switched.momentum).toEqual(state.momentum);
+    expect(switched.cues).toEqual([]);
+  });
+
+  it("adds play-by-play lines once and de-duplicates moment commentary across segments", () => {
+    const line = { line_id: "e1-pbp", minute: "2'", text: "Kick-off!", kind: "kick_off" };
+    let state = matchReducer(withSession, { type: "message", name: "commentary", data: line, receivedAt: 0 });
+    state = matchReducer(state, { type: "message", name: "commentary", data: line, receivedAt: 1 });
+    state = matchReducer(state, { type: "message", name: "cue", data: { ...cue("seg-a", 0.5), moment_id: "m9" }, receivedAt: 2 });
+    state = matchReducer(state, { type: "message", name: "cue", data: { ...cue("seg-b", 0.5), moment_id: "m9" }, receivedAt: 3 });
+    expect(state.ticker.filter((t) => t.tone === "play")).toHaveLength(1);
+    expect(state.ticker.filter((t) => t.tone === "commentary")).toHaveLength(1);
+  });
+});

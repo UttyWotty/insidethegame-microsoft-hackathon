@@ -94,3 +94,9 @@ class RecapTake(BaseModel):
 
     headline: str = Field(description="At most 10 words, in the persona's voice.")
     take: str = Field(description="The persona's view of the match so far, within its word budget.")
+
+
+class TranslatedLine(BaseModel):
+    """Translator output for a single commentary line."""
+
+    line: str = Field(description="The commentary line in the target language, names and numbers unchanged.")

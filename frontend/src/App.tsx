@@ -76,7 +76,7 @@ export function App() {
         <main className="layout">
           <div className="stack controls">
             <SetupPanel clubs={clubs} busy={busy} error={error} onStart={start} />
-            <ViewerControls personas={personas} languages={languages} match={match} viewer={viewer} onChange={setRawViewer} />
+            <ViewerControls aiOnline={health?.model_provider !== "offline"} personas={personas} languages={languages} match={match} viewer={viewer} onChange={setRawViewer} />
           </div>
           {session
             ? <BroadcastView key={session.session_id} sessionId={session.session_id} viewer={viewer} />

@@ -15,6 +15,7 @@ from insidegame.agents.schemas import (
     PersonaCard,
     RecapTake,
     TranslatedCard,
+    TranslatedLine,
 )
 
 WORD_BUDGET_TOLERANCE: float = 1.3
@@ -92,4 +93,13 @@ def take_validator(evidence: Callable[[], object], max_words: int) -> Callable[[
         if len(value.take.split()) > max_words * WORD_BUDGET_TOLERANCE:
             return f"the take must be at most {max_words} words"
         return _grounding_problem([value.headline, value.take], evidence)
+    return validate
+
+
+def line_translation_validator(source: str) -> Callable[[TranslatedLine], str | None]:
+    """Validator for translated commentary: identical numbers to the source line."""
+    def validate(value: TranslatedLine) -> str | None:
+        if sorted(extract_numbers(value.line)) != sorted(extract_numbers(source)):
+            return "numbers must be identical to the source line"
+        return None
     return validate

@@ -126,8 +126,13 @@ def companion_prompt(question: str, context: QuestionContext, viewer: ViewerCont
 
 def recap_take_prompt(context: RecapContext, recap: MatchRecap, viewer: ViewerContext) -> str:
     """Prompt asking the personalizer for one persona's take on a recap."""
-    payload: dict[str, object] = {"persona_brief": _persona_brief(viewer), "recap": recap.model_dump(mode="json"),
-                                  "match": context.to_prompt_dict()}
+    payload: dict[str, object] = {"persona_brief": _persona_brief(viewer), "write_in_language": viewer.viewer.language,
+                                  "recap": recap.model_dump(mode="json"), "match": context.to_prompt_dict()}
     if viewer.tracked_player_name:
         payload["tracked_player_stats"] = context.players.get(viewer.tracked_player_name, {})
     return f"Write this persona's take on the {context.stage.value.replace('_', '-')} recap.\n{_dump(payload)}"
+
+
+def line_translation_prompt(line: str, language: str) -> str:
+    """Prompt asking the translator to localise one commentary line."""
+    return f"Translate this commentary line.\n{_dump({'target_language': language, 'line': line})}"

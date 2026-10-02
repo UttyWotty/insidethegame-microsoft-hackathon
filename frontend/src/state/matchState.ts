@@ -15,12 +15,13 @@ export const MAX_TICKER = 40;
 export const STALE_CUE_MATCH_S = 300;
 const TICKER_EVENT_TYPES = new Set(["goal", "save", "shot"]);
 
-export type MessageName = "match" | "event" | "snapshot" | "cue" | "recap" | "end";
+export type MessageName = "match" | "event" | "snapshot" | "cue" | "commentary" | "recap" | "end";
 
 export interface TrailPoint extends Point { side: "home" | "away"; type: string; id: string }
 export interface MomentumPoint { second: number; period: number; momentum: number }
 export interface ReceivedCue { cue: OverlayCue; receivedAt: number }
-export interface TickerItem { id: string; minute: string; text: string; tone: "commentary" | "goal" | "info" }
+export interface TickerItem { id: string; minute: string; text: string; tone: "commentary" | "goal" | "info" | "play" }
+export interface PlayLine { line_id: string; minute: string; text: string; kind: string }
 
 export interface MatchState {
   session: SessionInfo | null;
@@ -38,7 +39,8 @@ export interface MatchState {
 
 export type StreamAction =
   | { type: "message"; name: MessageName; data: unknown; receivedAt: number }
-  | { type: "reset" };
+  | { type: "reset" }
+  | { type: "switch-viewer" };
 
 export const initialMatchState: MatchState = {
   session: null, snapshot: null, lastEvent: null, ball: null, trail: [], rhythm: null, momentum: [], cues: [],
@@ -79,29 +81,40 @@ function applyEvent(state: MatchState, update: EventUpdate): MatchState {
     ? [...state.momentum, { second: event.match_second, period: event.period, momentum: update.rhythm.momentum }]
     : state.momentum;
   const item = eventTicker(state, event);
-  const ticker = item ? [item, ...state.ticker].slice(0, MAX_TICKER) : state.ticker;
+  const ticker = item ? addTicker(state, item) : state.ticker;
   return { ...state, lastEvent: event, ball, trail, rhythm: update.rhythm, momentum, ticker };
+}
+
+function addTicker(state: MatchState, item: TickerItem): TickerItem[] {
+  if (state.ticker.some((t) => t.id === item.id)) return state.ticker;
+  return [item, ...state.ticker].slice(0, MAX_TICKER);
 }
 
 function applyCue(state: MatchState, cue: OverlayCue, receivedAt: number): MatchState {
   if (state.cues.some((c) => c.cue.cue_id === cue.cue_id)) return state;
   const minute = minuteLabel(cue.display_from_s, cue.period);
-  const commentary: TickerItem = { id: cue.cue_id, minute, text: cue.commentary, tone: "commentary" };
-  return {
-    ...state,
-    cues: [{ cue, receivedAt }, ...state.cues].slice(0, MAX_CUES),
-    ticker: [commentary, ...state.ticker].slice(0, MAX_TICKER),
-  };
+  const commentary: TickerItem = { id: `moment-${cue.moment_id}`, minute, text: cue.commentary, tone: "commentary" };
+  return { ...state, cues: [{ cue, receivedAt }, ...state.cues].slice(0, MAX_CUES), ticker: addTicker(state, commentary) };
+}
+
+/** Keep match-wide state when the viewer changes persona or language; drop only persona-specific state. */
+function switchViewer(state: MatchState): MatchState {
+  return { ...state, cues: [], recaps: [], ended: false };
 }
 
 /** Fold one action into the match state. */
 export function matchReducer(state: MatchState, action: StreamAction): MatchState {
   if (action.type === "reset") return initialMatchState;
+  if (action.type === "switch-viewer") return switchViewer(state);
   switch (action.name) {
     case "match": return { ...state, session: action.data as SessionInfo };
     case "snapshot": return { ...state, snapshot: action.data as Snapshot };
     case "event": return applyEvent(state, action.data as EventUpdate);
     case "cue": return applyCue(state, action.data as OverlayCue, action.receivedAt);
+    case "commentary": {
+      const line = action.data as PlayLine;
+      return { ...state, ticker: addTicker(state, { id: line.line_id, minute: line.minute, text: line.text, tone: "play" }) };
+    }
     case "recap": {
       const recap = action.data as Recap;
       return state.recaps.some((r) => r.stage === recap.stage) ? state : { ...state, recaps: [...state.recaps, recap] };

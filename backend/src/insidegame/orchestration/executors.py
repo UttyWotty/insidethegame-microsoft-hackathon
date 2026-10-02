@@ -11,9 +11,9 @@ from agent_framework import Executor, WorkflowContext, handler
 from insidegame.agents.context import ViewerContext
 from insidegame.agents.factory import AgentSuite
 from insidegame.agents.personas import DEFAULT_LANGUAGE
-from insidegame.agents.runner import AgentOutcome, RunPolicy
+from insidegame.agents.runner import AgentOutcome, OutputSource, RunPolicy
 from insidegame.agents.schemas import Explanation
-from insidegame.agents.steps import explain, narrate, personalize, translate
+from insidegame.agents.steps import explain, narrate, personalize, translate, translate_line
 from insidegame.analytics.analyzer import MatchAnalyzer
 from insidegame.orchestration.cues import MomentBroadcast, build_cue
 from insidegame.orchestration.messages import (
@@ -92,11 +92,17 @@ class PersonalizerExecutor(Executor):
 
 
 class AssemblerExecutor(Executor):
-    """Joins narration and personalization into overlay cues."""
+    """Joins narration and personalization into overlay cues, translating commentary for non-English viewers."""
 
-    def __init__(self, match_id: str) -> None:
+    def __init__(self, match_id: str, suite: AgentSuite, policy: RunPolicy) -> None:
         super().__init__(id="assembler")
-        self.match_id = match_id
+        self.match_id, self.suite, self.policy = match_id, suite, policy
+
+    async def _commentary_by_language(self, line: str, languages: set[str]) -> dict[str, str]:
+        targets = sorted(languages - {DEFAULT_LANGUAGE})
+        outcomes = await asyncio.gather(*(translate_line(self.suite, line, lang, self.policy) for lang in targets))
+        return {lang: o.value.line for lang, o in zip(targets, outcomes, strict=True)
+                if o.source is not OutputSource.FALLBACK}
 
     @handler
     async def run(
@@ -108,6 +114,9 @@ class AssemblerExecutor(Executor):
         narration = next(r for r in results if isinstance(r, NarrationResult))
         personalization = next(r for r in results if isinstance(r, PersonalizationResult))
         moment = job.context.moment
-        cues = tuple(build_cue(self.match_id, moment, explanation, narration.commentary, item)
+        languages = {item.viewer.viewer.language for item in personalization.cards}
+        translated = await self._commentary_by_language(narration.commentary.value.line, languages)
+        cues = tuple(build_cue(self.match_id, moment, explanation, narration.commentary, item,
+                               translated.get(item.viewer.viewer.language))
                      for item in personalization.cards)
         await ctx.yield_output(MomentBroadcast(job.context, explanation, narration.commentary, cues))

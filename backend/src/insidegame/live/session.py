@@ -19,6 +19,7 @@ from insidegame.agents.recap_takes import template_take
 from insidegame.agents.schemas import MatchRecap, RecapTake
 from insidegame.agents.runner import OutputSource
 from insidegame.agents.templates import recap_template
+from insidegame.commentary.play_by_play import PlayByPlay
 from insidegame.core.exceptions import SessionLimitError
 from insidegame.domain.match import MatchResult
 from insidegame.live.pacing import replay_delay_s
@@ -32,6 +33,7 @@ CUE_HISTORY: int = 20
 SNAPSHOT_EVERY_EVENTS: int = 25
 BACKFILL_MOMENTS: int = 2
 MAX_SEGMENTS: int = 10
+COMMENTARY_HISTORY: int = 40
 MOMENT_HISTORY: int = 30
 
 Sleeper = Callable[[float], Awaitable[None]]
@@ -44,6 +46,7 @@ class MessageType(StrEnum):
     EVENT = "event"
     SNAPSHOT = "snapshot"
     CUE = "cue"
+    COMMENTARY = "commentary"
     RECAP = "recap"
     END = "end"
 
@@ -91,6 +94,8 @@ class MatchSession:
         self.recap_sources: list[tuple[RecapContext, MatchRecap]] = []
         self.tasks: set[asyncio.Task[None]] = set()
         self.recent_moments: deque[MomentContext] = deque(maxlen=MOMENT_HISTORY)
+        self.play_by_play = PlayByPlay(result.metadata)
+        self.commentary: deque[dict[str, object]] = deque(maxlen=COMMENTARY_HISTORY)
 
     def describe(self) -> dict[str, object]:
         """Session summary for listings."""
@@ -113,6 +118,8 @@ class MatchSession:
         self.subscribers.add(subscriber)
         self._send(subscriber, LiveMessage(MessageType.MATCH, self.describe()))
         self._send(subscriber, LiveMessage(MessageType.SNAPSHOT, self.snapshot()))
+        for line in self.commentary:
+            self._send(subscriber, LiveMessage(MessageType.COMMENTARY, line))
         for cue in self.cue_history.get(profile.viewer_id, ()):
             self._send(subscriber, LiveMessage(MessageType.CUE, cue | {"replay": True}))
         viewer = self.service.viewers[profile.viewer_id]
@@ -222,6 +229,10 @@ class MatchSession:
             await self.sleep(replay_delay_s(previous, event, self.speed))
             interpretation = self.service.interpret(event)
             self.publish(LiveMessage(MessageType.EVENT, interpretation.update.to_dict()))
+            line = self.play_by_play.observe(interpretation.update)
+            if line is not None:
+                self.commentary.append(line.to_dict())
+                self.publish(LiveMessage(MessageType.COMMENTARY, line.to_dict()))
             if index % SNAPSHOT_EVERY_EVENTS == 0 or interpretation.update.moments:
                 self.publish(LiveMessage(MessageType.SNAPSHOT, self.snapshot()))
             self.recent_moments.extend(interpretation.contexts)

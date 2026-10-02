@@ -22,14 +22,15 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   const [state, status] = useMatchStream(sessionId, viewer);
   const now = useNow();
   const [openRecap, setOpenRecap] = useState<Recap | null>(null);
-  const [seenRecaps, setSeenRecaps] = useState(0);
+  const [seenStages, setSeenStages] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
-    if (state.recaps.length > seenRecaps) {
-      setOpenRecap(state.recaps[state.recaps.length - 1]);
-      setSeenRecaps(state.recaps.length);
+    const fresh = state.recaps.find((r) => !seenStages.has(r.stage));
+    if (fresh) {
+      setOpenRecap(fresh);
+      setSeenStages((current) => new Set(current).add(fresh.stage));
     }
-  }, [state.recaps, seenRecaps]);
+  }, [state.recaps, seenStages]);
 
   const match = state.session?.match;
   if (!match) return <div className="panel empty">Connecting to the live match ({status})...</div>;

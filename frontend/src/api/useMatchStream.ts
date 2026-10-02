@@ -1,14 +1,14 @@
 /**
  * React hook subscribing to a session's personalized server-sent event stream.
- * It resets and reconnects whenever the viewer's preferences change, and closes on unmount or match end.
+ * A new session resets everything; a viewer change keeps match-wide state and swaps only persona-specific state.
  * Messages are folded into state by the pure matchReducer.
  */
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { initialMatchState, matchReducer, type MatchState, type MessageName } from "../state/matchState";
 import type { ViewerSettings } from "../types";
 import { streamUrl } from "./client";
 
-const MESSAGE_NAMES: MessageName[] = ["match", "event", "snapshot", "cue", "recap", "end"];
+const MESSAGE_NAMES: MessageName[] = ["match", "event", "snapshot", "cue", "commentary", "recap", "end"];
 
 export type ConnectionStatus = "connecting" | "open" | "ended" | "error";
 
@@ -16,10 +16,12 @@ export function useMatchStream(sessionId: string | null, viewer: ViewerSettings)
   const [state, dispatch] = useReducer(matchReducer, initialMatchState);
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
   const { persona, language, team, player } = viewer;
+  const lastSession = useRef<string | null>(null);
 
   useEffect(() => {
     if (!sessionId) return undefined;
-    dispatch({ type: "reset" });
+    dispatch({ type: lastSession.current === sessionId ? "switch-viewer" : "reset" });
+    lastSession.current = sessionId;
     setStatus("connecting");
     const source = new EventSource(streamUrl(sessionId, { persona, language, team, player }));
     source.onopen = () => setStatus("open");
