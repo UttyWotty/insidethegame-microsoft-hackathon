@@ -18,7 +18,7 @@ from insidegame.agents.runner import OutputSource, RunPolicy
 from insidegame.analytics.analyzer import MatchAnalyzer
 from insidegame.analytics.moments import KeyMoment, MomentKind
 from insidegame.domain.enums import EventType
-from insidegame.orchestration.cues import CUE_DELAY_S
+from insidegame.orchestration.cues import CUE_DELAY_S, TIME_DECIMALS
 from insidegame.orchestration.messages import MomentJob
 from insidegame.orchestration.producer import MIN_GAP_S, ProducerPolicy
 from insidegame.orchestration.service import MatchIntelligenceService
@@ -65,7 +65,7 @@ def test_workflow_produces_one_cue_per_viewer(
     spanish = next(c for c in broadcast.cues if c.viewer_id == "fan-es")
     assert spanish.language == SPANISH and spanish.title == "Gran momento"
     assert spanish.provenance["translation"]["source"] == OutputSource.MODEL.value
-    assert spanish.display_from_s == goal_context.moment.match_second + CUE_DELAY_S
+    assert spanish.display_from_s == round(goal_context.moment.match_second + CUE_DELAY_S, TIME_DECIMALS)
     assert spanish.commentary == REPLIES["Lead Commentator"]["line"]
 
 
@@ -98,15 +98,15 @@ def test_broken_model_still_produces_grounded_fallback_output(goal_context: Mome
 
 def test_service_degrades_when_workflow_fails(goal_context: MomentContext) -> None:
     result = simulate_match(build_fixture("brookhaven", "silverlake", 3))
-    service = MatchIntelligenceService(result.metadata, create_agent_suite(CallbackChatClient(_respond)), POLICY,
-                                       [ViewerProfile("a", PersonaKey.ANALYST)])
 
     class BrokenWorkflow:
         async def run(self, job: MomentJob) -> None:
             raise AgentFrameworkException("executor crashed")
 
-    service.workflow = BrokenWorkflow()  # type: ignore[assignment]
-    broadcast = asyncio.run(service._broadcast(MomentJob(goal_context, service.viewers)))
+    service = MatchIntelligenceService(result.metadata, create_agent_suite(CallbackChatClient(_respond)), POLICY,
+                                       [ViewerProfile("a", PersonaKey.ANALYST)],
+                                       workflow_factory=lambda *args: BrokenWorkflow())  # type: ignore[arg-type,return-value]
+    broadcast = asyncio.run(service.produce(MomentJob(goal_context, tuple(service.viewers.values()))))
     assert broadcast.degraded and broadcast.cues[0].body
 
 

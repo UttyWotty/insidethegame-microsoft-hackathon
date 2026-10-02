@@ -7,7 +7,7 @@ Cues carry provenance so producers can see whether text came from a model, a ret
 from dataclasses import dataclass, field
 
 from insidegame.agents.personas import OverlayStyle
-from insidegame.agents.runner import AgentOutcome
+from insidegame.agents.runner import AgentOutcome, OutputSource
 from insidegame.agents.context import MomentContext
 from insidegame.agents.schemas import Commentary, Explanation
 from insidegame.analytics.moments import KeyMoment
@@ -22,6 +22,7 @@ CUE_DURATION_S: dict[OverlayStyle, float] = {
     OverlayStyle.EXPLAINER_CARD: 12.0,
 }
 DEFAULT_LANGUAGE: str = "en"
+TIME_DECIMALS: int = 2
 
 
 @dataclass(frozen=True)
@@ -54,7 +55,7 @@ class OverlayCue:
 def _text(item: PersonalizedCard) -> tuple[str, str, list[dict[str, str]], str]:
     card = item.card.value
     callouts = [{"label": c.label, "value": c.value} for c in card.stat_callouts]
-    if item.translation is None:
+    if item.translation is None or item.translation.source is OutputSource.FALLBACK:
         return card.title, card.body, callouts, DEFAULT_LANGUAGE
     translated = item.translation.value
     for callout, label in zip(callouts, translated.stat_labels, strict=False):
@@ -79,7 +80,7 @@ def build_cue(
     return OverlayCue(
         cue_id=f"{moment.moment_id}-{item.viewer.viewer.viewer_id}", match_id=match_id, moment_id=moment.moment_id,
         viewer_id=item.viewer.viewer.viewer_id, persona=profile.key.value, language=language,
-        layout=profile.overlay_style.value, period=moment.period, display_from_s=moment.match_second + CUE_DELAY_S,
+        layout=profile.overlay_style.value, period=moment.period, display_from_s=round(moment.match_second + CUE_DELAY_S, TIME_DECIMALS),
         duration_s=CUE_DURATION_S[profile.overlay_style], priority=moment.importance, title=title, body=body,
         stat_callouts=callouts, commentary=commentary.value.line, theme=explanation.value.theme.value,
         provenance=provenance,

@@ -13,7 +13,8 @@ AI-powered match intelligence built on synthetic football event data: ingest liv
 - Stage 1 (Ingest source): synthetic match engine implemented and calibrated.
 - Stage 2 (Interpret): streaming analytics implemented (xG, pass difficulty, stats, rhythm, key moments).
 - Stages 3-5 (Explain, Render, Personalize): multi-agent workflow, overlay cues, and recaps implemented.
-- API, frontend, and cloud deployment: in progress.
+- Live API: real-time replay with personalized server-sent event streams implemented.
+- Frontend and cloud deployment: in progress.
 
 ## Synthetic Match Engine
 
@@ -116,6 +117,34 @@ intake -> analyst -> +-> narrator -------+-> assembler -> overlay cues
 
 `MatchIntelligenceService.handle_event(event)` runs the whole pipeline for one event.
 
+## Live API
+
+A FastAPI service replays simulated matches in real time and streams personalized intelligence over
+server-sent events. Interpretation runs inline at match pace; agent workflows and recaps run as background
+tasks and publish when ready, so the event feed never waits for a model.
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/health` | Lightweight liveness (configuration only) |
+| GET | `/diagnostics` | Checks the model endpoint is reachable |
+| GET | `/clubs`, `/personas`, `/languages` | Metadata for building a viewer profile |
+| POST | `/matches` | Start a replay: `{home, away, seed, speed}` (speed = match seconds per real second) |
+| GET | `/matches`, `/matches/{id}` | List sessions; session state, snapshot, and recaps |
+| GET | `/matches/{id}/stream?persona=&language=&team=&player=` | Personalized SSE feed |
+
+Stream message types: `match`, `event` (raw event with xG, pass quality, rhythm, and moments), `snapshot`
+(score, team and player statistics, rhythm), `cue` (overlay for this viewer segment), `recap`, and `end`.
+
+Viewers with identical preferences share a **segment**, so model cost scales with distinct preferences, not
+connected clients. Late joiners receive the current snapshot, recent cues, and recaps. Slow clients drop the
+oldest queued messages, never the newest.
+
+```bash
+MODEL_PROVIDER=offline .venv/bin/python -m insidegame.main     # templates only, no model server
+curl -X POST localhost:8000/matches -H 'content-type: application/json' -d '{"speed": 30}'
+curl -N "localhost:8000/matches/<session_id>/stream?persona=analyst"
+```
+
 ## Setup
 
 Requirements: Python 3.12+, [uv](https://docs.astral.sh/uv/), and optionally [Ollama](https://ollama.com) for local model testing.
@@ -137,13 +166,15 @@ Model configuration (environment variables, all optional):
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `MODEL_PROVIDER` | `ollama` | `ollama` for local development, `foundry` for Microsoft Foundry |
+| `MODEL_PROVIDER` | `ollama` | `ollama` locally, `foundry` for Microsoft Foundry, `offline` for templates only |
 | `MODEL_NAME` | `qwen3:8b` | Model or deployment name |
 | `MODEL_BASE_URL` | `http://localhost:11434/v1` | OpenAI-compatible endpoint |
 | `MODEL_API_KEY` | `ollama` | API key (required for `foundry`) |
 | `MODEL_TIMEOUT_S` | `45` | Per-attempt timeout |
 | `MODEL_MAX_ATTEMPTS` | `2` | Attempts before falling back |
 | `MODEL_PROMPT_SUFFIX` | `/no_think` | Appended to prompts for local qwen3 only |
+| `API_HOST` / `API_PORT` | `127.0.0.1` / `8000` | API bind address |
+| `FRONTEND_ORIGINS` | `http://localhost:5173` | Comma-separated CORS origins |
 
 Tests never call a model; agents are tested with a scripted fake chat client.
 
@@ -158,11 +189,13 @@ backend/
     analytics/    streaming interpretation: xG, pass quality, stats, rhythm, key moments (stage 2)
     agents/       personas, schemas, prompts, grounding, fallbacks, resilient agent steps (stages 3-5)
     orchestration/ producer policy, workflow executors, overlay cues, match service
+    live/         real-time replay sessions, viewer segments, pub/sub fan-out
+    api/          FastAPI app, routers, server-sent events
     adapters/     environment-driven model client configuration
   tests/          unit and integration tests
 ```
 
-Dependency direction: `adapters -> orchestration -> agents -> analytics -> domain -> core`, with `simulation -> domain -> core`. Lower layers never import higher ones.
+Dependency direction: `api -> live -> orchestration -> agents -> analytics -> domain -> core`, with `simulation -> domain -> core`. Lower layers never import higher ones.
 
 ## Branching
 

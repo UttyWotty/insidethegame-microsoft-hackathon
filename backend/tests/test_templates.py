@@ -54,3 +54,17 @@ def test_persona_cards_differ_for_the_same_moment(
     explanation = explanation_template(context)
     bodies = {persona_card_template(context, explanation, v).body for v in _viewers(analyzer)}
     assert len(bodies) >= len(PERSONAS) - 1
+
+
+def test_superfan_tone_matches_whether_the_moment_helps_their_club(
+    analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
+) -> None:
+    analyzer, contexts = analysed_match
+    miss = contexts[MomentKind.BIG_CHANCE_MISSED]
+    explanation = explanation_template(miss)
+    team = next(t for t in (analyzer.metadata.home, analyzer.metadata.away) if t.name == miss.team_name)
+    rival = next(t for t in (analyzer.metadata.home, analyzer.metadata.away) if t.name != miss.team_name)
+    own_fan = ViewerContext(ViewerProfile("s", PersonaKey.SUPERFAN, favourite_team_id=team.team_id), team.name)
+    rival_fan = ViewerContext(ViewerProfile("r", PersonaKey.SUPERFAN, favourite_team_id=rival.team_id), rival.name)
+    assert persona_card_template(miss, explanation, own_fan).body.startswith("So close!")
+    assert persona_card_template(miss, explanation, rival_fan).body.startswith("Stay strong.")

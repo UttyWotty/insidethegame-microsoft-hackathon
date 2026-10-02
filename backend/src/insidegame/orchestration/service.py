@@ -5,14 +5,14 @@ For each incoming event it interprets (stage 2), lets the producer pick moments,
 """
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import TypeVar
 
-from agent_framework import AgentFrameworkException
+from agent_framework import AgentFrameworkException, Workflow
 from pydantic import BaseModel
 
-from insidegame.agents.context import MomentContext, build_moment_context, build_viewer_context
+from insidegame.agents.context import MomentContext, ViewerContext, build_moment_context, build_viewer_context
 from insidegame.agents.factory import AgentSuite
 from insidegame.agents.personas import ViewerProfile
 from insidegame.agents.recap_context import RecapStage, build_recap_context
@@ -33,6 +33,7 @@ from insidegame.orchestration.workflow import build_moment_workflow
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
+WorkflowFactory = Callable[[AgentSuite, MatchAnalyzer, RunPolicy], Workflow]
 
 DEGRADED_ATTEMPTS: int = 0
 DEGRADED_LATENCY_MS: int = 0
@@ -66,21 +67,58 @@ def degraded_broadcast(match_id: str, context: MomentContext, job: MomentJob) ->
     return MomentBroadcast(context, explanation, commentary, cues, degraded=True)
 
 
+@dataclass(frozen=True)
+class Interpretation:
+    """Fast, synchronous result of interpreting one event.
+
+    Defaults: recap_stage is None except on period-end events.
+    """
+
+    update: AnalysisUpdate
+    jobs: tuple[MomentJob, ...]
+    recap_stage: RecapStage | None = None
+
+
 class MatchIntelligenceService:
-    """Stateful pipeline for one match and one set of viewers."""
+    """Stateful pipeline for one match and a changing set of viewer segments."""
 
     def __init__(self, metadata: MatchMetadata, suite: AgentSuite, policy: RunPolicy,
-                 viewers: Sequence[ViewerProfile]) -> None:
+                 viewers: Sequence[ViewerProfile], workflow_factory: WorkflowFactory | None = None) -> None:
+        """Create the pipeline; workflow_factory defaults to build_moment_workflow."""
         self.analyzer = MatchAnalyzer(metadata)
         self.suite, self.policy = suite, policy
-        self.viewers = tuple(build_viewer_context(v, metadata) for v in viewers)
+        self.workflow_factory = workflow_factory or build_moment_workflow
+        self.viewers: dict[str, ViewerContext] = {}
+        for viewer in viewers:
+            self.add_viewer(viewer)
         self.producer = ProducerPolicy()
-        self.workflow = build_moment_workflow(suite, self.analyzer, policy)
 
-    async def _broadcast(self, job: MomentJob) -> MomentBroadcast:
+    def add_viewer(self, viewer: ViewerProfile) -> ViewerContext:
+        """Register a viewer segment so future moments are personalized for it."""
+        context = build_viewer_context(viewer, self.analyzer.metadata)
+        self.viewers[viewer.viewer_id] = context
+        return context
+
+    def remove_viewer(self, viewer_id: str) -> None:
+        """Stop personalizing for a viewer segment."""
+        self.viewers.pop(viewer_id, None)
+
+    def interpret(self, event: MatchEvent) -> Interpretation:
+        """Interpret an event and decide which moments to send to the agents, without awaiting them."""
+        update = self.analyzer.ingest(event)
+        jobs = tuple(MomentJob(build_moment_context(moment, self.analyzer), audience)
+                     for moment, audience in self.producer.select(update.moments, tuple(self.viewers.values())))
+        stage = None
+        if event.event_type is EventType.PERIOD_END:
+            stage = RecapStage.HALF_TIME if event.period == PERIODS[0] else RecapStage.FULL_TIME
+        return Interpretation(update, jobs, stage)
+
+    async def produce(self, job: MomentJob) -> MomentBroadcast:
+        """Run the multi-agent workflow for one job, degrading to templates if the workflow fails."""
         match_id = self.analyzer.metadata.match_id
+        workflow = self.workflow_factory(self.suite, self.analyzer, self.policy)
         try:
-            outputs = (await self.workflow.run(job)).get_outputs()
+            outputs = (await workflow.run(job)).get_outputs()
         except AgentFrameworkException as exc:
             logger.error("Workflow failed for %s: %s", job.context.moment.moment_id, exc)
             outputs = []
@@ -88,17 +126,11 @@ class MatchIntelligenceService:
         return broadcasts[0] if broadcasts else degraded_broadcast(match_id, job.context, job)
 
     async def handle_event(self, event: MatchEvent) -> EventResult:
-        """Run the full pipeline for one incoming event."""
-        update = self.analyzer.ingest(event)
-        broadcasts = []
-        for moment, audience in self.producer.select(update.moments, self.viewers):
-            job = MomentJob(build_moment_context(moment, self.analyzer), audience)
-            broadcasts.append(await self._broadcast(job))
-        recap = None
-        if event.event_type is EventType.PERIOD_END:
-            stage = RecapStage.HALF_TIME if event.period == PERIODS[0] else RecapStage.FULL_TIME
-            recap = await self.recap(stage)
-        return EventResult(update, tuple(broadcasts), recap)
+        """Run the full pipeline for one event sequentially; convenient for batch runs and tests."""
+        interpretation = self.interpret(event)
+        broadcasts = tuple([await self.produce(job) for job in interpretation.jobs])
+        recap = await self.recap(interpretation.recap_stage) if interpretation.recap_stage else None
+        return EventResult(interpretation.update, broadcasts, recap)
 
     async def recap(self, stage: RecapStage) -> AgentOutcome[MatchRecap]:
         """Write a recap of the match so far."""
