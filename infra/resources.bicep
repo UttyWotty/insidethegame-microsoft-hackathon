@@ -9,9 +9,14 @@ param webImageName string
 param modelName string
 param modelVersion string
 param modelCapacity int
+@secure()
+param mcpApiKey string
 
 var token = toLower(uniqueString(subscription().id, resourceGroup().id, environmentName))
 var placeholderImage = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+var webAppName = 'ca-web-${token}'
+var mcpSecrets = empty(mcpApiKey) ? [] : [{ name: 'mcp-api-key', value: mcpApiKey }]
+var mcpKeyEnv = empty(mcpApiKey) ? [] : [{ name: 'MCP_API_KEY', secretRef: 'mcp-api-key' }]
 var roles = {
   acrPull: '7f951dda-4ed3-4680-a7ca-43fe172d538d'
   openAiUser: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
@@ -152,7 +157,7 @@ resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
 }
 
 resource web 'Microsoft.App/containerApps@2024-03-01' = {
-  name: 'ca-web-${token}'
+  name: webAppName
   location: location
   tags: union(tags, { 'azd-service-name': 'web' })
   identity: {
@@ -174,6 +179,7 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
           identity: identity.id
         }
       ]
+      secrets: mcpSecrets
     }
     template: {
       containers: [
@@ -184,14 +190,15 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json('1.0')
             memory: '2Gi'
           }
-          env: [
+          env: concat([
             { name: 'MODEL_PROVIDER', value: 'foundry' }
             { name: 'MODEL_NAME', value: modelDeployment.name }
             { name: 'AZURE_OPENAI_ENDPOINT', value: 'https://${foundry.properties.customSubDomainName}.openai.azure.com/' }
             { name: 'AZURE_CLIENT_ID', value: identity.properties.clientId }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
             { name: 'MODEL_TIMEOUT_S', value: '20' }
-          ]
+            { name: 'MCP_ALLOWED_HOSTS', value: '${webAppName}.${containerEnv.properties.defaultDomain}' }
+          ], mcpKeyEnv)
           probes: [
             {
               type: 'Liveness'

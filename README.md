@@ -43,6 +43,7 @@ acting team (attacking toward x = 105).
 - Microsoft Agent Framework: agents, tools, structured outputs, workflow orchestration, OpenTelemetry
 - Microsoft Foundry: project and model deployment, keyless managed identity access
 - Azure Container Apps, Azure Container Registry, Log Analytics, Application Insights
+- Model Context Protocol server exposing match intelligence to GitHub Copilot and Foundry agents
 - Azure Developer CLI with Bicep infrastructure as code; GitHub Actions CI and OIDC deployment
 
 ## Match Interpretation (Stage 2)
@@ -149,6 +150,36 @@ curl -X POST localhost:8000/api/matches -H 'content-type: application/json' -d '
 curl -N "localhost:8000/api/matches/<session_id>/stream?persona=analyst"
 ```
 
+## MCP Server
+
+The same service exposes its match intelligence over the **Model Context Protocol** at `/mcp` (streamable HTTP),
+so GitHub Copilot agent mode, Microsoft Foundry agents, or any MCP client can use it as a tool. Tools share the
+live session registry with the UI:
+
+| Tool | Purpose |
+|---|---|
+| `list_clubs` | Fictional clubs and their tactical styles |
+| `start_match` | Simulate a fixture and start its live replay |
+| `list_matches` | Live and finished sessions |
+| `get_match_state` | Score, clock, team stats, rhythm, standout players |
+| `get_key_moments` | Recent key moments with importance and facts |
+| `get_player_stats` | Live statistics for one player |
+| `get_recaps` | Half-time and full-time recaps |
+| `ask_match_companion` | Question the Match Companion agent in any persona and language |
+
+Use it from GitHub Copilot in VS Code (`.vscode/mcp.json`):
+
+```json
+{
+  "servers": {
+    "inside-the-game": { "type": "http", "url": "http://localhost:8000/mcp/" }
+  }
+}
+```
+
+Set `MCP_API_KEY` to require `Authorization: Bearer <key>`; set `MCP_ALLOWED_HOSTS` to the public host name when
+deployed (the Bicep template does this automatically).
+
 ## Broadcast Frontend
 
 React + TypeScript (Vite, no UI library) broadcast interface:
@@ -210,6 +241,8 @@ Model configuration (environment variables, all optional):
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | empty | Enables OpenTelemetry export to Application Insights |
 | `TELEMETRY_SENSITIVE_DATA` | `false` | Include prompts and responses in traces |
 | `STATIC_DIR` | empty | Built frontend directory served at `/` (set in the container) |
+| `MCP_API_KEY` | empty | Bearer token required by `/mcp`; empty leaves it open |
+| `MCP_ALLOWED_HOSTS` | `127.0.0.1:*,localhost:*,testserver` | Host headers accepted by `/mcp` (DNS rebinding protection) |
 | `FRONTEND_ORIGINS` | `http://localhost:5199` | Comma-separated CORS origins |
 
 Tests never call a model; agents are tested with a scripted fake chat client.
@@ -237,7 +270,7 @@ backend/
     agents/       personas, schemas, prompts, grounding, fallbacks, resilient agent steps (stages 3-5)
     orchestration/ producer policy, workflow executors, overlay cues, match service
     live/         real-time replay sessions, viewer segments, pub/sub fan-out
-    api/          FastAPI app, routers, server-sent events
+    api/          FastAPI app, routers, server-sent events, MCP server
     adapters/     model client (MLX, Ollama, Foundry, offline) and telemetry setup
     evaluation/   agent evaluation harness
   tests/          unit and integration tests
