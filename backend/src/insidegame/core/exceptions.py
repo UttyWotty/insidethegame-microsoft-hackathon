@@ -19,3 +19,15 @@ class FixtureError(InsideGameError):
 
 class SimulationError(InsideGameError):
     """Raised when the match simulator reaches an invalid state."""
+
+
+class PersonaConfigError(InsideGameError):
+    """Raised when a viewer profile is missing settings its persona requires."""
+
+
+class AgentOutputError(InsideGameError):
+    """Raised when an agent response cannot be parsed or fails validation."""
+
+
+class ModelConfigError(InsideGameError):
+    """Raised when the model client configuration is invalid or incomplete."""
