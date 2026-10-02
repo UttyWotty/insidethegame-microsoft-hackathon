@@ -21,6 +21,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+foundry = ["azure-ai-projects>=2.7,<3"]
 
 [build-system]
 requires = ["hatchling"]

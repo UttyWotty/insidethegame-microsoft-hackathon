@@ -56,7 +56,8 @@ acting team (attacking toward x = 105).
 ## Planned Stack
 
 - Microsoft Agent Framework: agents, tools, structured outputs, workflow orchestration, OpenTelemetry
-- Microsoft Foundry: project and model deployment, keyless managed identity access
+- Microsoft Foundry: project and model deployment, keyless managed identity access, hosted agent in Foundry
+  Agent Service using the project's MCP server
 - Azure Container Apps, Azure Container Registry, Log Analytics, Application Insights
 - Model Context Protocol server exposing match intelligence to GitHub Copilot and Foundry agents
 - Azure Developer CLI with Bicep infrastructure as code; GitHub Actions CI and OIDC deployment
@@ -214,6 +215,9 @@ Use it from GitHub Copilot in VS Code (`.vscode/mcp.json`):
 }
 ```
 
+The Match Companion can also be registered as a **hosted agent in Microsoft Foundry Agent Service** that uses
+this MCP server as its tool (`python -m insidegame.foundry.register`); see the deployment guide.
+
 Set `MCP_API_KEY` to require `Authorization: Bearer <key>`; set `MCP_ALLOWED_HOSTS` to the public host name when
 deployed (the Bicep template does this automatically).
 
@@ -315,6 +319,7 @@ backend/
     adapters/     model client (MLX, Ollama, Foundry, offline) and telemetry setup
     evaluation/   agent evaluation harness
     datasets/     synthetic dataset tables, dataset card, generator CLI
+    foundry/      hosted agent definition and registration for Foundry Agent Service
   tests/          unit and integration tests
 frontend/
   src/api/        HTTP client and server-sent event hook

@@ -224,5 +224,6 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
 output registryLoginServer string = registry.properties.loginServer
 output openAiEndpoint string = 'https://${foundry.properties.customSubDomainName}.openai.azure.com/'
 output foundryProjectName string = foundryProject.name
+output projectEndpoint string = 'https://${foundry.properties.customSubDomainName}.services.ai.azure.com/api/projects/${foundryProject.name}'
 output modelDeploymentName string = modelDeployment.name
 output webUri string = 'https://${web.properties.configuration.ingress.fqdn}'

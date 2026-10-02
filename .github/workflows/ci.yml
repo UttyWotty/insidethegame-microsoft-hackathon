@@ -21,7 +21,7 @@ jobs:
       - name: Install
         run: |
           uv venv --python 3.12 .venv
-          uv pip install --python .venv/bin/python -e "backend[dev]"
+          uv pip install --python .venv/bin/python -e "backend[dev,foundry]"
       - name: Test
         run: .venv/bin/python -m pytest backend -q
 

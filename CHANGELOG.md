@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Foundry Agent Service hosted agent: definition builder restricted to read and question MCP tools, registration
+  CLI with an optional test question, `AZURE_AI_PROJECT_ENDPOINT` deployment output, and `foundry` extra.
 - README screenshots of the broadcast view and five-persona multiview.
 - Metadata loading with exponential backoff and a visible retry banner when the service is unreachable.
 
