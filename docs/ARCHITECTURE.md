@@ -45,11 +45,12 @@ flowchart LR
     I --> A[Match Analyst<br/>tools: player stats,<br/>team comparison, recent moments]
     A -->|explanation in shared state| N[Lead Commentator]
     A --> Z[Personalization Producer<br/>one card per viewer segment, concurrent]
-    Z -->|language is not English| T[Broadcast Translator]
-    N --> J[Assembler<br/>fan-in, reads shared state]
-    Z --> J
-    T --> J
-    J --> C[Overlay cues with provenance]
+    N --> F[Standards Editor<br/>fan-in: roster rule + fact-check]
+    Z --> F
+    F -. rejected card + issues .-> Z
+    F --> J[Assembler<br/>translation + cues]
+    J -->|language is not English| T[Broadcast Translator]
+    J --> C[Overlay cues with provenance and fact-check verdict]
 ```
 
 | Agent | Role | Output |
@@ -59,6 +60,7 @@ flowchart LR
 | Personalization Producer | Persona card in voice, vocabulary, perspective, budget | `PersonaCard` |
 | Broadcast Translator | Localised card with names and numbers preserved | `TranslatedCard` |
 | Match Editor | Half-time and full-time recaps | `MatchRecap` |
+| Standards Editor | Fact-checks cards and commentary; sends rejected cards back for revision | `FactCheckVerdict` |
 | Match Companion | Answers viewer questions, any persona and language | `CompanionAnswer` |
 
 ### Reliability: every agent call

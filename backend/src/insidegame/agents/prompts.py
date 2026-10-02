@@ -42,6 +42,13 @@ TRANSLATOR_INSTRUCTIONS: str = (
     "Reply with JSON matching the requested schema only."
 )
 
+FACT_CHECKER_INSTRUCTIONS: str = (
+    "You are the Broadcast Standards Editor. Before anything goes to air, check a draft against the facts JSON. "
+    "Reject it if it attributes an action to the wrong player or team, describes an outcome that did not happen "
+    "(for example a goal that was saved or missed), invents events or statistics, or is disrespectful. Style and "
+    "persona voice are not errors. Approve accurate drafts. Reply with JSON matching the requested schema only."
+)
+
 COMPANION_INSTRUCTIONS: str = (
     "You are the Match Companion, answering one viewer's question during a live football broadcast. Answer only "
     "questions about this match, in the viewer's persona voice and requested language. If a question is unrelated, "
@@ -136,3 +143,10 @@ def recap_take_prompt(context: RecapContext, recap: MatchRecap, viewer: ViewerCo
 def line_translation_prompt(line: str, language: str) -> str:
     """Prompt asking the translator to localise one commentary line."""
     return f"Translate this commentary line.\n{_dump({'target_language': language, 'line': line})}"
+
+
+def fact_check_prompt(context: MomentContext, explanation: Explanation, draft_kind: str, draft: str) -> str:
+    """Prompt asking the fact-checker to approve or reject one draft."""
+    payload = {"draft_kind": draft_kind, "draft": draft, "facts": context.to_prompt_dict(),
+               "analyst_explanation": explanation.model_dump(mode="json")}
+    return f"Check this draft before it goes to air.\n{_dump(payload)}"

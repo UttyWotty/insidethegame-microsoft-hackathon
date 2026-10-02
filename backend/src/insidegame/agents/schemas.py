@@ -12,6 +12,7 @@ MAX_EVIDENCE_ITEMS: int = 4
 MAX_STAT_CALLOUTS: int = 3
 MAX_RECAP_MOMENTS: int = 6
 MAX_FOLLOW_UPS: int = 3
+MAX_FACT_ISSUES: int = 3
 
 
 class TacticalTheme(StrEnum):
@@ -100,3 +101,11 @@ class TranslatedLine(BaseModel):
     """Translator output for a single commentary line."""
 
     line: str = Field(description="The commentary line in the target language, names and numbers unchanged.")
+
+
+class FactCheckVerdict(BaseModel):
+    """Fact-checker output: whether a draft is accurate, and what is wrong if not."""
+
+    approved: bool = Field(description="True only if every claim in the draft is supported by the facts.")
+    issues: list[str] = Field(description="Specific factual problems, each naming the wrong claim and the correct fact.",
+                              max_length=MAX_FACT_ISSUES)

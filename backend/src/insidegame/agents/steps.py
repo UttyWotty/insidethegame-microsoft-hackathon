@@ -10,6 +10,8 @@ from insidegame.agents.factory import AgentSuite
 from insidegame.agents.prompts import (
     analyst_prompt,
     companion_prompt,
+    correction_prompt,
+    fact_check_prompt,
     line_translation_prompt,
     narrator_prompt,
     personalizer_prompt,
@@ -20,11 +22,13 @@ from insidegame.agents.prompts import (
 from insidegame.agents.question_context import QuestionContext
 from insidegame.agents.recap_context import RecapContext
 from insidegame.agents.recap_takes import template_take
-from insidegame.agents.runner import AgentOutcome, RunPolicy, run_resilient
+from insidegame.agents.roster_check import unknown_players
+from insidegame.agents.runner import AgentOutcome, OutputSource, RunPolicy, run_resilient
 from insidegame.agents.schemas import (
     Commentary,
     CompanionAnswer,
     Explanation,
+    FactCheckVerdict,
     MatchRecap,
     PersonaCard,
     RecapTake,
@@ -126,3 +130,32 @@ async def translate_line(suite: AgentSuite, line: str, language: str, policy: Ru
     """Translate one commentary line, keeping the original when translation fails or changes numbers."""
     return await run_resilient(suite.translator, line_translation_prompt(line, language), TranslatedLine,
                                line_translation_validator(line), lambda: TranslatedLine(line=line), policy)
+
+
+def _always_valid(value: FactCheckVerdict) -> str | None:
+    return None
+
+
+async def fact_check(
+    suite: AgentSuite, context: MomentContext, explanation: Explanation, draft_kind: str, draft: str,
+    squad_names: set[str], policy: RunPolicy,
+) -> AgentOutcome[FactCheckVerdict]:
+    """Check a draft: a roster rule first, then the model fact-checker; without a model, the rule verdict stands."""
+    invented = unknown_players([draft], squad_names)
+    rule_verdict = FactCheckVerdict(approved=not invented, issues=[f"{n} is not playing in this match" for n in invented])
+    if invented:
+        return AgentOutcome(rule_verdict, OutputSource.FALLBACK, 0, 0, ("roster check failed",))
+    return await run_resilient(suite.fact_checker, fact_check_prompt(context, explanation, draft_kind, draft),
+                               FactCheckVerdict, _always_valid, lambda: rule_verdict, policy)
+
+
+async def revise_card(
+    suite: AgentSuite, context: MomentContext, explanation: Explanation, viewer: ViewerContext, issues: list[str],
+    policy: RunPolicy,
+) -> AgentOutcome[PersonaCard]:
+    """Send a rejected card back to the personalizer with the fact-checker's issues."""
+    prompt = correction_prompt(personalizer_prompt(context, explanation, viewer), "; ".join(issues))
+    validator = card_validator(lambda: [context.to_prompt_dict(), explanation.model_dump(mode="json")],
+                               viewer.viewer.profile.max_words)
+    return await run_resilient(suite.personalizer, prompt, PersonaCard, validator,
+                               lambda: persona_card_template(context, explanation, viewer), policy)

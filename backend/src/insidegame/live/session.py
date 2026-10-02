@@ -209,9 +209,12 @@ class MatchSession:
             return template_take(context, viewer), OutputSource.FALLBACK
 
     async def _drain(self) -> None:
-        """Wait until no background work remains, including tasks spawned while waiting."""
-        while self.tasks:
-            await asyncio.gather(*tuple(self.tasks), return_exceptions=True)
+        """Wait until no unfinished background work remains, including tasks spawned while waiting.
+
+        Only unfinished tasks are awaited: finished tasks may linger in the set until their removal callback runs.
+        """
+        while pending := [task for task in self.tasks if not task.done()]:
+            await asyncio.wait(pending)
 
     async def run(self) -> None:
         """Replay the match, drain agent work, and always finish with an end message."""

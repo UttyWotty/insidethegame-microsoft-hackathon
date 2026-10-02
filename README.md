@@ -102,7 +102,7 @@ or training pipelines.
 
 ## Agents and Personas (Stages 3-5)
 
-Six specialised Microsoft Agent Framework agents, each with a single role:
+Seven specialised Microsoft Agent Framework agents, each with a single role:
 
 | Agent | Role | Output schema |
 |---|---|---|
@@ -111,6 +111,7 @@ Six specialised Microsoft Agent Framework agents, each with a single role:
 | Personalization Producer | Rewrites the explanation for a viewer persona | `PersonaCard` |
 | Broadcast Translator | Localises cards, keeping names and numbers intact | `TranslatedCard` |
 | Match Editor | Writes half-time and full-time recaps | `MatchRecap` |
+| Standards Editor | Fact-checks every model-written card and commentary line before air; rejected cards go back to the personalizer with the issues | `FactCheckVerdict` |
 | Match Companion | Answers viewers' questions about the live match in their persona and language; calls statistics tools; declines off-topic or betting questions | `CompanionAnswer` |
 
 Five personas, each a genuinely different experience:
@@ -140,9 +141,9 @@ Every viewer also chooses a language, and optionally a favourite club and player
 Each broadcast-worthy moment runs through a Microsoft Agent Framework workflow:
 
 ```
-intake -> analyst -> +-> narrator -------+-> assembler -> overlay cues
-                     +-> personalizer ---+
-                         (per viewer, concurrently; translator when language is not English)
+intake -> analyst -> +-> narrator -------+-> fact-checker -> assembler -> overlay cues
+                     +-> personalizer ---+        |              (translator for non-English viewers)
+                         (per viewer)             +-> rejected card -> personalizer revises -> re-check
 ```
 
 - **Shared state:** intake and analyst write the job and explanation to workflow state; the assembler joins the
@@ -152,6 +153,9 @@ intake -> analyst -> +-> narrator -------+-> assembler -> overlay cues
 - **Overlay cues (stage 4, render):** one timed, machine-readable cue per viewer with layout, display start
   (match second), duration, priority, title, body, stat callouts, commentary line, theme, and provenance
   (source, attempts, latency per agent).
+- **Fact-checking:** a roster rule rejects invented players, then the Standards Editor agent checks attribution
+  and outcomes. A rejected card returns to the personalizer with the issues for one revision; if it still fails,
+  a grounded template airs instead. Every cue records the verdict (approved, revised, replaced, or skipped).
 - **Recaps:** the Match Editor writes half-time and full-time recaps at each period end, with a grounded
   standout-player check.
 - **Failure recovery:** each agent falls back individually; if the workflow itself fails, a degraded

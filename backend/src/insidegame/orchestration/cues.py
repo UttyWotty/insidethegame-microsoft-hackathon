@@ -11,7 +11,7 @@ from insidegame.agents.runner import AgentOutcome, OutputSource
 from insidegame.agents.context import MomentContext
 from insidegame.agents.schemas import Commentary, Explanation
 from insidegame.analytics.moments import KeyMoment
-from insidegame.orchestration.messages import PersonalizedCard
+from insidegame.orchestration.messages import SKIPPED_CHECK, FactCheckRecord, PersonalizedCard
 
 CUE_DELAY_S: float = 2.0
 CUE_DURATION_S: dict[OverlayStyle, float] = {
@@ -66,10 +66,11 @@ def _text(item: PersonalizedCard) -> tuple[str, str, list[dict[str, str]], str]:
 def build_cue(
     match_id: str, moment: KeyMoment, explanation: AgentOutcome[Explanation],
     commentary: AgentOutcome[Commentary], item: PersonalizedCard, commentary_text: str | None = None,
+    commentary_check: FactCheckRecord = SKIPPED_CHECK,
 ) -> OverlayCue:
     """Assemble the overlay cue for one viewer; commentary_text overrides the line, for example when translated.
 
-    Defaults: commentary_text is None, meaning the narrator's original line.
+    Defaults: commentary_text is None (the narrator's line) and commentary_check is SKIPPED_CHECK.
     """
     profile = item.viewer.viewer.profile
     title, body, callouts, language = _text(item)
@@ -80,6 +81,8 @@ def build_cue(
         name: {"source": o.source.value, "attempts": o.attempts, "latency_ms": o.latency_ms}
         for name, o in outcomes.items()
     }
+    provenance["fact_check"] = item.fact_check.to_dict()
+    provenance["commentary_check"] = commentary_check.to_dict()
     return OverlayCue(
         cue_id=f"{moment.moment_id}-{item.viewer.viewer.viewer_id}", match_id=match_id, moment_id=moment.moment_id,
         viewer_id=item.viewer.viewer.viewer_id, persona=profile.key.value, language=language,
