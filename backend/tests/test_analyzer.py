@@ -70,3 +70,22 @@ def test_snapshot_is_json_serialisable(analysed: tuple[MatchResult, MatchAnalyze
     snapshot = json.loads(json.dumps(analyzer.snapshot()))
     assert snapshot["score"] == {"home": result.home_goals, "away": result.away_goals}
     assert snapshot["rhythm"]["state"]
+
+
+def test_distance_indicators_fire_at_their_thresholds() -> None:
+    from insidegame.analytics.detectors import CARRY_MILESTONES_M, LONG_PASS_THRESHOLD_M
+    counts = []
+    for seed in range(6):
+        result = simulate_match(build_fixture("kestrel_bay", "ironvale", seed))
+        analyzer = MatchAnalyzer(result.metadata)
+        for event in result.events:
+            analyzer.ingest(event)
+        tags = [m for m in analyzer.moments if m.kind is MomentKind.DISTANCE_THRESHOLD]
+        for tag in tags:
+            if tag.facts["indicator"] == "long_pass":
+                assert float(tag.facts["length_m"]) >= LONG_PASS_THRESHOLD_M  # type: ignore[arg-type]
+            else:
+                assert tag.facts["threshold_m"] in CARRY_MILESTONES_M
+                assert float(tag.facts["carry_distance_m"]) >= float(tag.facts["threshold_m"])  # type: ignore[arg-type]
+        counts.append(len(tags))
+    assert 0 < sum(counts) / len(counts) <= 12

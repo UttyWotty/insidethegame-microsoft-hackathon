@@ -30,6 +30,10 @@ GREAT_SAVE_BASE: float = 0.45
 GREAT_SAVE_XG_WEIGHT: float = 0.60
 SHOT_SPEED_THRESHOLD_KMH: float = 115.0
 SPEED_IMPORTANCE: float = 0.35
+LONG_PASS_THRESHOLD_M: float = 40.0
+LONG_PASS_IMPORTANCE: float = 0.40
+CARRY_MILESTONES_M: tuple[float, ...] = (300.0, 400.0)
+CARRY_MILESTONE_IMPORTANCE: float = 0.35
 DIFFICULT_PASS_THRESHOLD: float = 80.0
 DIFFICULT_PASS_BASE: float = 0.30
 DIFFICULT_PASS_SCALE: float = 100.0
@@ -83,6 +87,7 @@ class MomentDetector:
     last_shot: _ShotContext | None = None
     goals_by_player: Counter[str] = field(default_factory=Counter)
     completed_by_player: Counter[str] = field(default_factory=Counter)
+    carried_by_player: Counter[str] = field(default_factory=Counter)
     last_rhythm_moment_s: dict[MomentKind, float] = field(default_factory=dict)
     momentum_side: Side | None = None
     period_start_s: float = 0.0
@@ -110,6 +115,8 @@ class MomentDetector:
             moments += self._on_goal(event)
         elif kind is EventType.SAVE:
             moments += self._on_save(event)
+        elif kind is EventType.CARRY:
+            moments += self._on_carry(event)
         return moments + self._on_rhythm(event, reading)
 
     def _moment(
@@ -135,6 +142,13 @@ class MomentDetector:
             moments.append(self._moment(MomentKind.MILESTONE, event, event.team_id, PASS_MILESTONE_IMPORTANCE, (event.player_id,),
                                         (event.event_id,), {"milestone": f"{completed}_completed_passes",
                                                             "player": self.names[event.player_id]}))
+        if quality.length_m >= LONG_PASS_THRESHOLD_M:
+            moments.append(self._moment(MomentKind.DISTANCE_THRESHOLD, event, event.team_id, LONG_PASS_IMPORTANCE,
+                                        (event.player_id, event.receiver_id), (event.event_id,), {
+                                            "indicator": "long_pass", "passer": self.names[event.player_id],
+                                            "receiver": self.names[event.receiver_id], "length_m": quality.length_m,
+                                            "ball_speed_kmh": round(event.ball_speed_kmh or 0.0, FACT_DECIMALS),
+                                            "threshold_m": LONG_PASS_THRESHOLD_M}))
         if quality.difficulty >= DIFFICULT_PASS_THRESHOLD:
             importance = DIFFICULT_PASS_BASE + (quality.difficulty - DIFFICULT_PASS_THRESHOLD) / DIFFICULT_PASS_SCALE
             moments.append(self._moment(MomentKind.DIFFICULT_PASS, event, event.team_id, importance,
@@ -194,6 +208,19 @@ class MomentDetector:
                                         (event.event_id,), {"milestone": milestone[0],
                                                             "player": self.names[event.player_id]}))
         return moments
+
+    def _on_carry(self, event: MatchEvent) -> list[KeyMoment]:
+        if event.player_id is None or event.length_m is None:
+            return []
+        before = self.carried_by_player[event.player_id]
+        after = before + event.length_m
+        self.carried_by_player[event.player_id] = after
+        crossed = [m for m in CARRY_MILESTONES_M if before < m <= after]
+        return [self._moment(MomentKind.DISTANCE_THRESHOLD, event, event.team_id, CARRY_MILESTONE_IMPORTANCE,
+                             (event.player_id,), (event.event_id,), {
+                                 "indicator": "carry_distance", "player": self.names[event.player_id],
+                                 "carry_distance_m": round(after, FACT_DECIMALS), "threshold_m": milestone})
+                for milestone in crossed]
 
     def _on_save(self, event: MatchEvent) -> list[KeyMoment]:
         shot = self.last_shot

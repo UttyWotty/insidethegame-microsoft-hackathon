@@ -22,6 +22,7 @@ class MomentKind(StrEnum):
     BIG_CHANCE_MISSED = "big_chance_missed"
     GREAT_SAVE = "great_save"
     SPEED_THRESHOLD = "speed_threshold"
+    DISTANCE_THRESHOLD = "distance_threshold"
     DIFFICULT_PASS = "difficult_pass"
     MOMENTUM_SWING = "momentum_swing"
     CHAOS_SPELL = "chaos_spell"
