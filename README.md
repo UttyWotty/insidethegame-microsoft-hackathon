@@ -11,7 +11,8 @@ AI-powered match intelligence built on synthetic football event data: ingest liv
 ## Status
 
 - Stage 1 (Ingest source): synthetic match engine implemented and calibrated.
-- Stages 2-5 (Interpret, Explain, Render, Personalize): in progress.
+- Stage 2 (Interpret): streaming analytics implemented (xG, pass difficulty, stats, rhythm, key moments).
+- Stages 3-5 (Explain, Render, Personalize): in progress.
 
 ## Synthetic Match Engine
 
@@ -24,11 +25,11 @@ Calibrated averages over 100 simulated matches:
 
 | Metric | Simulated | Typical top-flight range |
 |---|---|---|
-| Shots per match | 25.7 | 22-28 |
-| Goals per match | 2.88 | 2.5-3.0 |
-| Goals per shot | 0.11 | 0.10-0.12 |
+| Shots per match | 24.4 | 22-28 |
+| Goals per match | 2.82 | 2.5-3.0 |
+| Goals per shot | 0.115 | 0.10-0.12 |
 | Pass accuracy | 80% | 75-88% |
-| Passes per match | ~1,090 | 900-1,200 |
+| Tackles per team | ~21 | 15-22 |
 
 Event types: `period_start`, `period_end`, `kick_off`, `pass`, `carry`, `shot`, `goal`, `save`, `pressure`,
 `tackle`, `interception`, `foul`, `possession_change`. Coordinates are metres on a 105 x 68 pitch, relative to the
@@ -39,6 +40,22 @@ acting team (attacking toward x = 105).
 - Microsoft Foundry (models and hosted agents)
 - Microsoft Agent Framework (multi-agent orchestration)
 - Azure cloud-native services for deployment
+
+## Match Interpretation (Stage 2)
+
+`MatchAnalyzer.ingest(event)` interprets each event as it arrives, with no I/O:
+
+- **Expected goals (xG):** independent logistic model on shot distance, goal angle, and pressure.
+- **Pass quality:** explainable 0-100 difficulty rating from length, pressure, progression, final-third target,
+  and switch of play, with every factor returned for explanation.
+- **Running statistics:** per player and per team, including possession share, progressive passes,
+  final-third entries, shot speed, and carry distance.
+- **Game rhythm:** five-minute rolling momentum (-1 away to +1 home), control (pass share), and chaos
+  (turnover rate above a typical-match baseline), labelled as `balanced`, `home_control`, `away_pressure`, `chaos`, etc.
+- **Key moments:** goals (with assist and game-state change such as equaliser or go-ahead), big chances missed,
+  great saves, shot-speed threshold alerts, difficult passes, momentum swings, chaos spells, and milestones
+  (braces, hat-tricks, pass counts). Each moment carries an importance score and structured facts for the
+  explanation agents. About 16 moments are detected per match.
 
 ## Setup
 
@@ -64,11 +81,12 @@ backend/
   src/insidegame/
     core/         constants, pitch geometry, domain exceptions
     domain/       immutable event, team, and match models
-    simulation/   seeded synthetic match engine
+    simulation/   seeded synthetic match engine (stage 1 source)
+    analytics/    streaming interpretation: xG, pass quality, stats, rhythm, key moments (stage 2)
   tests/          unit and integration tests
 ```
 
-Dependency direction: `simulation -> domain -> core`. Lower layers never import higher ones.
+Dependency direction: `simulation -> domain -> core` and `analytics -> domain -> core`. Lower layers never import higher ones.
 
 ## Branching
 

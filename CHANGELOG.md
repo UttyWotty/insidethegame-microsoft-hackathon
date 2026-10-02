@@ -15,9 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Streaming match analyzer (stage 2) combining xG, pass difficulty, running player/team statistics,
+  possession share, rolling momentum/control/chaos, and rule-based key moment detection.
+- Explainable pass difficulty rating with per-factor breakdown.
+- Key moments with importance scores and structured facts: goals, big chances, great saves, speed alerts,
+  difficult passes, momentum swings, chaos spells, and milestones.
 - Synthetic match engine: seeded possession-chain simulator producing full 90-minute event streams
   (passes, carries, shots, goals, saves, pressure, tackles, interceptions, fouls, possession changes).
 - Fictional club presets with distinct tactical styles that adapt to game state and fatigue.
 - Immutable, JSON-serialisable domain models for matches, teams, players, and events.
 - Test suite covering geometry, probability models, roster generation, and statistical realism.
 - Repository scaffolding: README, changelog, license, and ignore rules.
+
+### Changed
+
+- Recalibrated simulator tackle and scoring rates toward realistic top-flight averages.
