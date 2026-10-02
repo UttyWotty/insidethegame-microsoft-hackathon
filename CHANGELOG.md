@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Synthetic 22-player tracking: formation-aware positions after every event (teams push and spread in possession,
+  compact and shift when defending, press higher by style; actors placed on the ball), streamed with each event.
+  Distance covered is realistic (about 11 km per outfield player).
+- Broadcast pitch: all 22 players with shirt numbers and live name tags for the players in the action, a ringed
+  tracked player, and a broadcast camera mode tilting the pitch like a TV angle (with a flat tactical mode).
+
 ### Changed
 
 - Continuous play-by-play commentary from kick-off (kick-offs, final-third attacks, long passes, dribbles, tackles,

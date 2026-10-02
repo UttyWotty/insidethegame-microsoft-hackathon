@@ -30,6 +30,7 @@ from insidegame.orchestration.cues import MomentBroadcast, build_cue
 from insidegame.orchestration.messages import MomentJob, PersonalizedCard
 from insidegame.orchestration.producer import ProducerPolicy
 from insidegame.orchestration.workflow import build_moment_workflow
+from insidegame.tracking.model import Frame, TrackingModel
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,8 @@ def degraded_broadcast(match_id: str, context: MomentContext, job: MomentJob) ->
 class Interpretation:
     """Fast, synchronous result of interpreting one event.
 
-    Defaults: recap_stage is None except on period-end events; contexts is empty when no moment was detected.
+    Defaults: recap_stage is None except on period-end events; contexts is empty when no moment was detected;
+    positions is None only when built without tracking.
     contexts holds one prompt context per new key moment, whether or not any viewer received it.
     """
 
@@ -84,6 +86,7 @@ class Interpretation:
     jobs: tuple[MomentJob, ...]
     recap_stage: RecapStage | None = None
     contexts: tuple[MomentContext, ...] = ()
+    positions: Frame | None = None
 
 
 class MatchIntelligenceService:
@@ -93,6 +96,7 @@ class MatchIntelligenceService:
                  viewers: Sequence[ViewerProfile], workflow_factory: WorkflowFactory | None = None) -> None:
         """Create the pipeline; workflow_factory defaults to build_moment_workflow."""
         self.analyzer = MatchAnalyzer(metadata)
+        self.tracking = TrackingModel(metadata)
         self.suite, self.policy = suite, policy
         self.workflow_factory = workflow_factory or build_moment_workflow
         self.viewers: dict[str, ViewerContext] = {}
@@ -119,7 +123,7 @@ class MatchIntelligenceService:
         if event.event_type is EventType.PERIOD_END:
             stage = RecapStage.HALF_TIME if event.period == PERIODS[0] else RecapStage.FULL_TIME
         contexts = tuple(build_moment_context(moment, self.analyzer) for moment in update.moments)
-        return Interpretation(update, jobs, stage, contexts)
+        return Interpretation(update, jobs, stage, contexts, self.tracking.frame(event))
 
     async def produce(self, job: MomentJob) -> MomentBroadcast:
         """Run the multi-agent workflow for one job, degrading to templates if the workflow fails."""

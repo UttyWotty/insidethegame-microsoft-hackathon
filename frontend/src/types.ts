@@ -38,8 +38,11 @@ export interface KeyMoment {
   team_id: string | null; player_ids: string[]; facts: Record<string, string | number | boolean | null>;
 }
 
+export type TrackingFrame = [string, number, number][];
+
 export interface EventUpdate {
   event: MatchEvent; xg: number | null; pass_quality: { difficulty: number } | null; rhythm: Rhythm; moments: KeyMoment[];
+  positions?: TrackingFrame | null;
 }
 
 export type StatBlock = Record<string, number>;

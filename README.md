@@ -225,8 +225,10 @@ deployed (the Bicep template does this automatically).
 
 React + TypeScript (Vite, no UI library) broadcast interface:
 
-- **Live pitch:** the synthetic feed rendered as a 2D pitch with the ball and a trail of recent actions
-  (teams change ends at half-time), plus a broadcast score bug with added-time clock.
+- **Live pitch:** all 22 players from synthetic tracking (formation-aware, reacting to the ball and phase of play),
+  the ball and a trail of recent actions, live name tags for the players in the action, and a broadcast camera
+  that tilts the pitch like a TV angle (or a flat tactical view). Teams change ends at half-time, and a broadcast
+  score bug shows the added-time clock.
 - **Persona overlays:** each persona's cue is rendered in its own layout over the pitch: analyst stat panel,
   casual lower third, superfan hype banner in club colours, player tag anchored to the ball, and newcomer
   explainer card. Every overlay shows provenance (AI, corrected, or template, with latency).
@@ -315,6 +317,8 @@ backend/
     domain/       immutable event, team, and match models
     simulation/   seeded synthetic match engine (stage 1 source)
     analytics/    streaming interpretation: xG, pass quality, stats, rhythm, key moments (stage 2)
+    tracking/     synthetic 22-player positions from the event stream
+    commentary/   deterministic play-by-play lines
     agents/       personas, schemas, prompts, grounding, fallbacks, resilient agent steps (stages 3-5)
     orchestration/ producer policy, workflow executors, overlay cues, match service
     live/         real-time replay sessions, viewer segments, pub/sub fan-out

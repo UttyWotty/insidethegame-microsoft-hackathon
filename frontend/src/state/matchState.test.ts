@@ -100,3 +100,15 @@ describe("viewer switches and play-by-play", () => {
     expect(state.ticker.filter((t) => t.tone === "commentary")).toHaveLength(1);
   });
 });
+
+describe("tracking frames", () => {
+  it("places players in the screen frame and swaps ends in the second half", () => {
+    const first = { ...update(10), positions: [["h-09", 80, 30]] as [string, number, number][] };
+    let state = matchReducer(withSession, { type: "message", name: "event", data: first, receivedAt: 0 });
+    expect(state.players["h-09"]).toEqual({ x: 80, y: 30 });
+    const second = { ...update(2800), positions: [["h-09", 80, 30]] as [string, number, number][] };
+    second.event = { ...second.event, period: 2 };
+    state = matchReducer(state, { type: "message", name: "event", data: second, receivedAt: 0 });
+    expect(state.players["h-09"]).toEqual({ x: 25, y: 38 });
+  });
+});

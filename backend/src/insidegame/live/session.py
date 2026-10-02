@@ -228,7 +228,8 @@ class MatchSession:
         for index, event in enumerate(self.result.events):
             await self.sleep(replay_delay_s(previous, event, self.speed))
             interpretation = self.service.interpret(event)
-            self.publish(LiveMessage(MessageType.EVENT, interpretation.update.to_dict()))
+            payload = interpretation.update.to_dict() | {"positions": interpretation.positions}
+            self.publish(LiveMessage(MessageType.EVENT, payload))
             line = self.play_by_play.observe(interpretation.update)
             if line is not None:
                 self.commentary.append(line.to_dict())

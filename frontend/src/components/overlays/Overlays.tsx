@@ -4,8 +4,7 @@
  * player tag anchored to the ball, and an explainer card.
  */
 import type { CSSProperties } from "react";
-import { PITCH_LENGTH, PITCH_WIDTH } from "../../lib/pitch";
-import type { OverlayCue, Point } from "../../types";
+import type { OverlayCue } from "../../types";
 import { ProvenanceBadge } from "../ProvenanceBadge";
 
 const PERCENT = 100;
@@ -60,9 +59,8 @@ export function HypeBanner({ cue, teamColor }: { cue: OverlayCue; teamColor: str
   );
 }
 
-export function PlayerTag({ cue, ball }: { cue: OverlayCue; ball: Point | null }) {
-  const anchor = ball ?? { x: PITCH_LENGTH / 2, y: PITCH_WIDTH / 2 };
-  const style = { left: `${(anchor.x / PITCH_LENGTH) * PERCENT}%`, top: `${(anchor.y / PITCH_WIDTH) * PERCENT}%` };
+export function PlayerTag({ cue, anchor }: { cue: OverlayCue; anchor: { left: string; top: string } | null }) {
+  const style = anchor ?? { left: `${PERCENT / 2}%`, top: `${PERCENT / 2}%` };
   return (
     <section className="glass ov-player-tag" aria-label="Player tag" style={style}>
       <h3 className="overlay-title">{cue.title}</h3>
