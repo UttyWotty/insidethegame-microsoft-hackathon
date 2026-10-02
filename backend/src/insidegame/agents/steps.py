@@ -6,13 +6,21 @@ Orchestration executors call these steps so workflow wiring stays separate from 
 
 from insidegame.agents.context import MomentContext, ViewerContext
 from insidegame.agents.factory import AgentSuite
-from insidegame.agents.prompts import analyst_prompt, narrator_prompt, personalizer_prompt, translator_prompt
+from insidegame.agents.prompts import (
+    analyst_prompt,
+    narrator_prompt,
+    personalizer_prompt,
+    recap_prompt,
+    translator_prompt,
+)
+from insidegame.agents.recap_context import RecapContext
 from insidegame.agents.runner import AgentOutcome, RunPolicy, run_resilient
-from insidegame.agents.schemas import Commentary, Explanation, PersonaCard, TranslatedCard
+from insidegame.agents.schemas import Commentary, Explanation, MatchRecap, PersonaCard, TranslatedCard
 from insidegame.agents.templates import (
     commentary_template,
     explanation_template,
     persona_card_template,
+    recap_template,
     untranslated_card,
 )
 from insidegame.agents.tools import EvidenceLedger, build_analyst_tools
@@ -20,6 +28,7 @@ from insidegame.agents.validation import (
     card_validator,
     commentary_validator,
     explanation_validator,
+    recap_validator,
     translation_validator,
 )
 from insidegame.analytics.analyzer import MatchAnalyzer
@@ -61,3 +70,13 @@ async def translate(
     """Ask the translator to localise a card, keeping the English card as the fallback."""
     return await run_resilient(suite.translator, translator_prompt(card, language), TranslatedCard,
                                translation_validator(card), lambda: untranslated_card(card), policy)
+
+
+async def write_recap(
+    suite: AgentSuite, context: RecapContext, analyzer: MatchAnalyzer, policy: RunPolicy
+) -> AgentOutcome[MatchRecap]:
+    """Ask the editor for a recap, restricting the standout player to real squad members."""
+    names = {p.name for p in analyzer.stats.players.values()}
+    validator = recap_validator(context.to_prompt_dict(), names)
+    return await run_resilient(suite.editor, recap_prompt(context), MatchRecap, validator,
+                               lambda: recap_template(context), policy)

@@ -5,7 +5,7 @@ The client records every request so tests can assert on prompts and options.
 """
 
 import asyncio
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from agent_framework import BaseChatClient, ChatResponse, Message
@@ -32,6 +32,26 @@ class ScriptedChatClient(BaseChatClient):
             if self.delay_s:
                 await asyncio.sleep(self.delay_s)
             text = self.scripts[key].pop(0)
+            return ChatResponse(messages=[Message(role="assistant", contents=[text])])
+
+        return respond()
+
+
+class CallbackChatClient(BaseChatClient):
+    """Answers every request through a callback receiving the agent name and prompt text."""
+
+    def __init__(self, respond: Callable[[str, str], str]) -> None:
+        super().__init__()
+        self.respond = respond
+        self.calls: list[str] = []
+
+    def _inner_get_response(self, *, messages: Sequence[Message], stream: bool, options: dict[str, Any],
+                            **kwargs: Any) -> Any:
+        instructions = str(options.get("instructions", ""))
+        self.calls.append(instructions.split(".")[0])
+
+        async def respond() -> ChatResponse:
+            text = self.respond(instructions, messages[-1].text)
             return ChatResponse(messages=[Message(role="assistant", contents=[text])])
 
         return respond()

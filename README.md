@@ -12,8 +12,8 @@ AI-powered match intelligence built on synthetic football event data: ingest liv
 
 - Stage 1 (Ingest source): synthetic match engine implemented and calibrated.
 - Stage 2 (Interpret): streaming analytics implemented (xG, pass difficulty, stats, rhythm, key moments).
-- Stages 3-5 (Explain, Personalize): agent building blocks implemented (personas, agents, grounding, fallbacks).
-- Orchestration workflow, render cues, API, and frontend: in progress.
+- Stages 3-5 (Explain, Render, Personalize): multi-agent workflow, overlay cues, and recaps implemented.
+- API, frontend, and cloud deployment: in progress.
 
 ## Synthetic Match Engine
 
@@ -92,6 +92,30 @@ Every viewer also chooses a language, and optionally a favourite club and player
   so the broadcast never shows an empty overlay. Every output records its source (`model`, `model_retry`, `fallback`),
   attempts, and latency.
 
+## Multi-Agent Workflow
+
+Each broadcast-worthy moment runs through a Microsoft Agent Framework workflow:
+
+```
+intake -> analyst -> +-> narrator -------+-> assembler -> overlay cues
+                     +-> personalizer ---+
+                         (per viewer, concurrently; translator when language is not English)
+```
+
+- **Shared state:** intake and analyst write the job and explanation to workflow state; the assembler joins the
+  parallel branches using that state.
+- **Producer policy:** decides what goes to air. Goals always air; other moments need a relevant viewer and a
+  45-second gap since the last overlay, with at most two moments per event.
+- **Overlay cues (stage 4, render):** one timed, machine-readable cue per viewer with layout, display start
+  (match second), duration, priority, title, body, stat callouts, commentary line, theme, and provenance
+  (source, attempts, latency per agent).
+- **Recaps:** the Match Editor writes half-time and full-time recaps at each period end, with a grounded
+  standout-player check.
+- **Failure recovery:** each agent falls back individually; if the workflow itself fails, a degraded
+  template path still produces cues for every viewer.
+
+`MatchIntelligenceService.handle_event(event)` runs the whole pipeline for one event.
+
 ## Setup
 
 Requirements: Python 3.12+, [uv](https://docs.astral.sh/uv/), and optionally [Ollama](https://ollama.com) for local model testing.
@@ -133,11 +157,12 @@ backend/
     simulation/   seeded synthetic match engine (stage 1 source)
     analytics/    streaming interpretation: xG, pass quality, stats, rhythm, key moments (stage 2)
     agents/       personas, schemas, prompts, grounding, fallbacks, resilient agent steps (stages 3-5)
+    orchestration/ producer policy, workflow executors, overlay cues, match service
     adapters/     environment-driven model client configuration
   tests/          unit and integration tests
 ```
 
-Dependency direction: `adapters -> agents -> analytics -> domain -> core`, with `simulation -> domain -> core`. Lower layers never import higher ones.
+Dependency direction: `adapters -> orchestration -> agents -> analytics -> domain -> core`, with `simulation -> domain -> core`. Lower layers never import higher ones.
 
 ## Branching
 

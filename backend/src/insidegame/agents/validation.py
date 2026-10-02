@@ -7,7 +7,7 @@ Each returns None when the output is acceptable, or a short reason the agent can
 from collections.abc import Callable
 
 from insidegame.agents.grounding import check_grounding, extract_numbers
-from insidegame.agents.schemas import Commentary, Explanation, PersonaCard, TranslatedCard
+from insidegame.agents.schemas import Commentary, Explanation, MatchRecap, PersonaCard, TranslatedCard
 
 WORD_BUDGET_TOLERANCE: float = 1.3
 COMMENTARY_MAX_WORDS: int = 30
@@ -55,4 +55,14 @@ def translation_validator(source: PersonaCard) -> Callable[[TranslatedCard], str
         if sorted(extract_numbers(f"{value.title} {value.body}")) != expected:
             return "numbers must be identical to the source text"
         return None
+    return validate
+
+
+def recap_validator(evidence: dict[str, object], allowed_names: set[str]) -> Callable[[MatchRecap], str | None]:
+    """Validator for recaps: grounded, and the standout player must be a real player."""
+    def validate(value: MatchRecap) -> str | None:
+        if value.standout_player not in allowed_names:
+            return "standout_player must be a player named in the input"
+        texts = [value.headline, value.summary, value.tactical_story, *value.turning_points]
+        return _grounding_problem(texts, lambda: evidence)
     return validate

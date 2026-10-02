@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Multi-agent moment workflow on Microsoft Agent Framework: intake, analyst, parallel narrator and
+  personalizer (with per-viewer translation), and assembler joined through shared workflow state.
+- Timed overlay cues per viewer with layout, timing, priority, stat callouts, and per-agent provenance.
+- Producer policy pacing overlays (goals always air, 45-second gap otherwise, two moments per event cap).
+- Automated half-time and full-time recaps with grounded standout-player validation.
+- Match intelligence service running the full pipeline per event, with a degraded template path when the
+  workflow fails.
+
 - Five Microsoft Agent Framework agents (analyst, commentator, personalization producer, translator, editor)
   with structured Pydantic outputs.
 - Five personas (Analyst, Casual Fan, Superfan, Player Tracker, Newcomer) with distinct voice, vocabulary,
