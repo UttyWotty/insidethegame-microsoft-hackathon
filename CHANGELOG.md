@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-02
+
 ### Added
 
 - Sliding-window rate limit (default 20 questions per match per minute) on `/ask` and the MCP companion tool,
@@ -108,3 +110,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   runner's own parser ran; the runner now falls back to its parser.
 - Template punctuation no longer doubles a trailing period from model headlines.
 - `httpx` pinned below 1.0 to avoid an incompatible pre-release.
+
+[Unreleased]: https://github.com/UttyWotty/inside-the-game/compare/v0.1.0...develop
+[0.1.0]: https://github.com/UttyWotty/inside-the-game/releases/tag/v0.1.0
