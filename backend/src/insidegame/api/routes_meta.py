@@ -4,7 +4,10 @@ Health only reads configuration and in-memory counters, never touching the model
 Diagnostics performs the heavier check of model endpoint reachability.
 """
 
-import httpx
+import asyncio
+import time
+
+from agent_framework import AgentFrameworkException
 from fastapi import APIRouter, Request
 
 from insidegame.adapters.model_client import ModelProvider, ModelRuntime
@@ -13,9 +16,10 @@ from insidegame.api.models import HealthResponse
 from insidegame.live.segments import SUGGESTED_LANGUAGES
 from insidegame.simulation.roster import CLUB_PRESETS, build_fixture
 
-DIAGNOSTICS_TIMEOUT_S: float = 3.0
+DIAGNOSTICS_TIMEOUT_S: float = 30.0
+DIAGNOSTICS_PROMPT: str = "Reply with the single word: ready"
 ROSTER_SEED: int = 0
-HTTP_OK: int = 200
+MS_PER_SECOND: int = 1000
 
 router = APIRouter()
 
@@ -30,18 +34,17 @@ async def health(request: Request) -> HealthResponse:
 
 @router.get("/diagnostics")
 async def diagnostics(request: Request) -> dict[str, object]:
-    """Check that the configured model endpoint is reachable."""
+    """Make one minimal model call to prove the configured provider, credentials, and deployment work."""
     runtime: ModelRuntime = request.app.state.runtime
     if runtime.provider is ModelProvider.OFFLINE:
         return {"model_provider": runtime.provider.value, "model_reachable": None, "detail": "offline mode"}
-    url = f"{str(runtime.client.client.base_url).rstrip('/')}/models"
+    start = time.perf_counter()
     try:
-        async with httpx.AsyncClient(timeout=DIAGNOSTICS_TIMEOUT_S) as http:
-            response = await http.get(url, headers={"Authorization": f"Bearer {runtime.client.client.api_key}"})
-        return {"model_provider": runtime.provider.value, "model_reachable": response.status_code == HTTP_OK,
-                "status_code": response.status_code}
-    except httpx.HTTPError as exc:
-        return {"model_provider": runtime.provider.value, "model_reachable": False, "detail": str(exc)}
+        response = await asyncio.wait_for(runtime.client.get_response(DIAGNOSTICS_PROMPT), DIAGNOSTICS_TIMEOUT_S)
+        return {"model_provider": runtime.provider.value, "model_reachable": True, "reply": response.text[:40],
+                "latency_ms": int((time.perf_counter() - start) * MS_PER_SECOND)}
+    except (TimeoutError, AgentFrameworkException, OSError) as exc:
+        return {"model_provider": runtime.provider.value, "model_reachable": False, "detail": str(exc)[:300]}
 
 
 @router.get("/clubs")

@@ -1,0 +1,14 @@
+# Azure Developer CLI project definition: one containerized web service on Azure Container Apps.
+# `azd up` provisions infra/main.bicep (Foundry, Container Apps, registry, monitoring) and deploys the image.
+# See docs/DEPLOYMENT.md for the full walkthrough.
+name: inside-the-game
+metadata:
+  template: inside-the-game@0.1.0
+services:
+  web:
+    project: .
+    language: py
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      context: .

@@ -1,0 +1,14 @@
+# Keep the build context small and free of local state, secrets, and dependencies.
+.git
+.venv
+**/__pycache__
+**/.pytest_cache
+**/node_modules
+frontend/dist
+.env
+.env.*
+.azure
+docs
+CLAUDE.md
+.claude
+HACKATHON_BRIEF.md
