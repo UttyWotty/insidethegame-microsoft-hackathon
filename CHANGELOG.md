@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- MCP server at `/mcp` (streamable HTTP, MCP SDK 2) with eight tools over the live session registry, including
+  starting matches and questioning the Match Companion; optional bearer-token guard and host allow-list, wired
+  into the Bicep deployment.
+
 - Match Companion agent and "Ask the analyst" panel: grounded answers to viewer questions in the viewer's persona
   and language, with statistics tools, supporting stats, follow-up suggestions, and a grounded fallback.
 - `POST /api/matches/{id}/ask` endpoint with input validation.

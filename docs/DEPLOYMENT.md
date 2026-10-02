@@ -50,6 +50,7 @@ the app URL (`SERVICE_WEB_URI`).
 Optional overrides before `azd up`:
 
 ```bash
+azd env set MCP_API_KEY "$(openssl rand -hex 24)"   # require a bearer token on /mcp
 azd env set AZURE_MODEL_NAME gpt-4.1-mini
 azd env set AZURE_MODEL_VERSION 2025-04-14
 azd env set AZURE_MODEL_CAPACITY 30
@@ -62,7 +63,7 @@ curl https://<app-url>/api/health        # configuration only, instant
 curl https://<app-url>/api/diagnostics   # one real model call through the managed identity
 ```
 
-Then open the app URL, kick off a match, and switch personas. Agent traces (each agent run, tool call, and
+Then open the app URL, kick off a match, and switch personas. The MCP endpoint is at `https://<app-url>/mcp/`. Agent traces (each agent run, tool call, and
 workflow step) appear in Application Insights under Transaction search.
 
 ## Run locally against the deployed model

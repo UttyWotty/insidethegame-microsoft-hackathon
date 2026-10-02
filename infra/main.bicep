@@ -27,6 +27,10 @@ param modelVersion string = '2025-04-14'
 @description('Deployment capacity in thousands of tokens per minute.')
 param modelCapacity int = 30
 
+@secure()
+@description('Optional bearer token required by the /mcp endpoint. Empty leaves MCP open.')
+param mcpApiKey string = ''
+
 var tags = { 'azd-env-name': environmentName }
 
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
@@ -47,6 +51,7 @@ module resources 'resources.bicep' = {
     modelName: modelName
     modelVersion: modelVersion
     modelCapacity: modelCapacity
+    mcpApiKey: mcpApiKey
   }
 }
 
