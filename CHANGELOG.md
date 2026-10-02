@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Five Microsoft Agent Framework agents (analyst, commentator, personalization producer, translator, editor)
+  with structured Pydantic outputs.
+- Five personas (Analyst, Casual Fan, Superfan, Player Tracker, Newcomer) with distinct voice, vocabulary,
+  word budget, statistical focus, relevance rules, and overlay style.
+- Numeric grounding check with an evidence ledger for analyst tool results.
+- Resilient agent runner with timeout, self-correcting retry, and deterministic template fallbacks.
+- Analyst statistics tools and environment-driven model client adapter (Ollama locally, Foundry in deployment).
+
 - Streaming match analyzer (stage 2) combining xG, pass difficulty, running player/team statistics,
   possession share, rolling momentum/control/chaos, and rule-based key moment detection.
 - Explainable pass difficulty rating with per-factor breakdown.

@@ -12,7 +12,8 @@ AI-powered match intelligence built on synthetic football event data: ingest liv
 
 - Stage 1 (Ingest source): synthetic match engine implemented and calibrated.
 - Stage 2 (Interpret): streaming analytics implemented (xG, pass difficulty, stats, rhythm, key moments).
-- Stages 3-5 (Explain, Render, Personalize): in progress.
+- Stages 3-5 (Explain, Personalize): agent building blocks implemented (personas, agents, grounding, fallbacks).
+- Orchestration workflow, render cues, API, and frontend: in progress.
 
 ## Synthetic Match Engine
 
@@ -57,6 +58,40 @@ acting team (attacking toward x = 105).
   (braces, hat-tricks, pass counts). Each moment carries an importance score and structured facts for the
   explanation agents. About 16 moments are detected per match.
 
+## Agents and Personas (Stages 3-5)
+
+Five specialised Microsoft Agent Framework agents, each with a single role:
+
+| Agent | Role | Output schema |
+|---|---|---|
+| Match Analyst | Explains why a moment matters; calls statistics tools (`get_player_stats`, `compare_teams`, `recent_moments`) | `Explanation` |
+| Lead Commentator | Writes one broadcast-ready commentary line | `Commentary` |
+| Personalization Producer | Rewrites the explanation for a viewer persona | `PersonaCard` |
+| Broadcast Translator | Localises cards, keeping names and numbers intact | `TranslatedCard` |
+| Match Editor | Writes half-time and full-time recaps | `MatchRecap` |
+
+Five personas, each a genuinely different experience:
+
+| Persona | Voice | Words | Sees moments from importance | Overlay |
+|---|---|---|---|---|
+| The Analyst | Precise, metric-first, technical vocabulary | 70 | 0.30 | Stat panel |
+| The Casual Fan | Warm, quick, no jargon or decimals | 30 | 0.60 | Lower third |
+| The Superfan | Passionate and partisan for a favourite club | 40 | 0.45 (own club only, plus all goals) | Hype banner |
+| The Player Tracker | Everything framed around one tracked player | 45 | every moment involving the player | Player tag |
+| The Newcomer | Patient teacher, explains one concept per moment | 55 | 0.55 | Explainer card |
+
+Every viewer also chooses a language, and optionally a favourite club and player.
+
+**Trust and resilience**
+
+- **Structured outputs:** every agent returns a Pydantic schema, never free text.
+- **Numeric grounding:** every number an agent writes must appear in the moment's evidence or in its own tool
+  results (recorded in an evidence ledger). Rounding and percentage forms are accepted; invented numbers are not.
+- **Self-correction:** a rejected answer is retried once with the rejection reason.
+- **Fallbacks:** if a model times out or fails twice, a deterministic template produces a valid, grounded output,
+  so the broadcast never shows an empty overlay. Every output records its source (`model`, `model_retry`, `fallback`),
+  attempts, and latency.
+
 ## Setup
 
 Requirements: Python 3.12+, [uv](https://docs.astral.sh/uv/), and optionally [Ollama](https://ollama.com) for local model testing.
@@ -74,6 +109,20 @@ target a local Ollama server during development and Microsoft Foundry in deploym
 ollama pull qwen3:8b
 ```
 
+Model configuration (environment variables, all optional):
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `MODEL_PROVIDER` | `ollama` | `ollama` for local development, `foundry` for Microsoft Foundry |
+| `MODEL_NAME` | `qwen3:8b` | Model or deployment name |
+| `MODEL_BASE_URL` | `http://localhost:11434/v1` | OpenAI-compatible endpoint |
+| `MODEL_API_KEY` | `ollama` | API key (required for `foundry`) |
+| `MODEL_TIMEOUT_S` | `45` | Per-attempt timeout |
+| `MODEL_MAX_ATTEMPTS` | `2` | Attempts before falling back |
+| `MODEL_PROMPT_SUFFIX` | `/no_think` | Appended to prompts for local qwen3 only |
+
+Tests never call a model; agents are tested with a scripted fake chat client.
+
 ## Project Structure
 
 ```
@@ -83,10 +132,12 @@ backend/
     domain/       immutable event, team, and match models
     simulation/   seeded synthetic match engine (stage 1 source)
     analytics/    streaming interpretation: xG, pass quality, stats, rhythm, key moments (stage 2)
+    agents/       personas, schemas, prompts, grounding, fallbacks, resilient agent steps (stages 3-5)
+    adapters/     environment-driven model client configuration
   tests/          unit and integration tests
 ```
 
-Dependency direction: `simulation -> domain -> core` and `analytics -> domain -> core`. Lower layers never import higher ones.
+Dependency direction: `adapters -> agents -> analytics -> domain -> core`, with `simulation -> domain -> core`. Lower layers never import higher ones.
 
 ## Branching
 
