@@ -7,10 +7,18 @@ Each returns None when the output is acceptable, or a short reason the agent can
 from collections.abc import Callable
 
 from insidegame.agents.grounding import check_grounding, extract_numbers
-from insidegame.agents.schemas import Commentary, Explanation, MatchRecap, PersonaCard, TranslatedCard
+from insidegame.agents.schemas import (
+    Commentary,
+    CompanionAnswer,
+    Explanation,
+    MatchRecap,
+    PersonaCard,
+    TranslatedCard,
+)
 
 WORD_BUDGET_TOLERANCE: float = 1.3
 COMMENTARY_MAX_WORDS: int = 30
+ANSWER_MAX_WORDS: int = 80
 
 
 def _grounding_problem(texts: list[str], evidence: Callable[[], object]) -> str | None:
@@ -65,4 +73,13 @@ def recap_validator(evidence: dict[str, object], allowed_names: set[str]) -> Cal
             return "standout_player must be a player named in the input"
         texts = [value.headline, value.summary, value.tactical_story, *value.turning_points]
         return _grounding_problem(texts, lambda: evidence)
+    return validate
+
+
+def answer_validator(evidence: Callable[[], object]) -> Callable[[CompanionAnswer], str | None]:
+    """Validator for companion answers: concise and grounded in the match context or tool results."""
+    def validate(value: CompanionAnswer) -> str | None:
+        if len(value.answer.split()) > ANSWER_MAX_WORDS * WORD_BUDGET_TOLERANCE:
+            return f"the answer must be at most {ANSWER_MAX_WORDS} words"
+        return _grounding_problem([value.answer, *(c.value for c in value.stat_callouts)], evidence)
     return validate

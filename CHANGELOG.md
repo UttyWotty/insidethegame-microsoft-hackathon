@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Match Companion agent and "Ask the analyst" panel: grounded answers to viewer questions in the viewer's persona
+  and language, with statistics tools, supporting stats, follow-up suggestions, and a grounded fallback.
+- `POST /api/matches/{id}/ask` endpoint with input validation.
+
 - Azure deployment: multi-stage Dockerfile serving API and frontend from one non-root container, azd project,
   and Bicep for Microsoft Foundry (account, project, model deployment), Container Apps, Container Registry,
   managed identity with least-privilege roles, Log Analytics, and Application Insights.

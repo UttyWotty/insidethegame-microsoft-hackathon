@@ -75,3 +75,8 @@ export interface PersonaInfo {
 export interface ClubInfo { key: string; name: string; short_name: string; venue: string; style: string; team_id: string }
 
 export interface ViewerSettings { persona: PersonaKey; language: string; team: string | null; player: string | null }
+
+export interface CompanionReply {
+  question: string; answer: string; stat_callouts: { label: string; value: string }[]; follow_ups: string[];
+  language: string; source: OutputSource; latency_ms: number;
+}

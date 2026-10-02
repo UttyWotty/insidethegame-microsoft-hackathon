@@ -6,11 +6,15 @@ Defaults are explicit and documented on each field.
 
 from pydantic import BaseModel, Field
 
+from insidegame.agents.personas import DEFAULT_LANGUAGE
 from insidegame.live.pacing import DEFAULT_SPEED, MAX_SPEED, MIN_SPEED
 
 DEFAULT_SEED: int = 7
 DEFAULT_HOME: str = "kestrel_bay"
 DEFAULT_AWAY: str = "ironvale"
+MAX_QUESTION_CHARS: int = 300
+MIN_QUESTION_CHARS: int = 3
+DEFAULT_PERSONA: str = "casual"
 
 
 class CreateMatchRequest(BaseModel):
@@ -29,3 +33,14 @@ class HealthResponse(BaseModel):
     status: str
     model_provider: str
     sessions: int
+
+
+class AskRequest(BaseModel):
+    """A viewer's question to the Match Companion, with their personalization settings."""
+
+    question: str = Field(min_length=MIN_QUESTION_CHARS, max_length=MAX_QUESTION_CHARS,
+                          description=f"The question, {MIN_QUESTION_CHARS} to {MAX_QUESTION_CHARS} characters.")
+    persona: str = Field(default=DEFAULT_PERSONA, description=f"Persona key; defaults to {DEFAULT_PERSONA}.")
+    language: str = Field(default=DEFAULT_LANGUAGE, description=f"Answer language; defaults to {DEFAULT_LANGUAGE}.")
+    team: str | None = Field(default=None, description="Favourite club team_id; required for superfan.")
+    player: str | None = Field(default=None, description="Tracked player_id; required for player_tracker.")

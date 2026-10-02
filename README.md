@@ -63,7 +63,7 @@ acting team (attacking toward x = 105).
 
 ## Agents and Personas (Stages 3-5)
 
-Five specialised Microsoft Agent Framework agents, each with a single role:
+Six specialised Microsoft Agent Framework agents, each with a single role:
 
 | Agent | Role | Output schema |
 |---|---|---|
@@ -72,6 +72,7 @@ Five specialised Microsoft Agent Framework agents, each with a single role:
 | Personalization Producer | Rewrites the explanation for a viewer persona | `PersonaCard` |
 | Broadcast Translator | Localises cards, keeping names and numbers intact | `TranslatedCard` |
 | Match Editor | Writes half-time and full-time recaps | `MatchRecap` |
+| Match Companion | Answers viewers' questions about the live match in their persona and language; calls statistics tools; declines off-topic or betting questions | `CompanionAnswer` |
 
 Five personas, each a genuinely different experience:
 
@@ -133,6 +134,7 @@ tasks and publish when ready, so the event feed never waits for a model.
 | POST | `/api/matches` | Start a replay: `{home, away, seed, speed}` (speed = match seconds per real second) |
 | GET | `/api/matches`, `/api/matches/{id}` | List sessions; session state, snapshot, and recaps |
 | GET | `/api/matches/{id}/stream?persona=&language=&team=&player=` | Personalized SSE feed |
+| POST | `/api/matches/{id}/ask` | Ask the Match Companion: `{question, persona, language, team, player}` |
 
 Stream message types: `match`, `event` (raw event with xG, pass quality, rhythm, and moments), `snapshot`
 (score, team and player statistics, rhythm), `cue` (overlay for this viewer segment), `recap`, and `end`.
@@ -159,6 +161,8 @@ React + TypeScript (Vite, no UI library) broadcast interface:
 - **Live data rail:** team comparison bars, a diverging momentum chart with a plain-language rhythm label,
   and a commentary ticker mixing agent commentary with key events.
 - **Recaps:** half-time and full-time recaps open in an accessible dialog.
+- **Ask the analyst:** viewers question the Match Companion about the live match and get grounded answers
+  in their persona's voice and language, with supporting stats and suggested follow-ups.
 - **Multiview:** the same live match through all five personas side by side.
 - Switching persona or language mid-match backfills the most recent relevant moments for the new segment.
 - Accessibility: visible focus, `aria-live` announcements, text equivalents for charts, colour never the

@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 MAX_EVIDENCE_ITEMS: int = 4
 MAX_STAT_CALLOUTS: int = 3
 MAX_RECAP_MOMENTS: int = 6
+MAX_FOLLOW_UPS: int = 3
 
 
 class TacticalTheme(StrEnum):
@@ -75,3 +76,14 @@ class MatchRecap(BaseModel):
                                       max_length=MAX_RECAP_MOMENTS)
     standout_player: str = Field(description="Name of the most influential player, taken from the facts.")
     tactical_story: str = Field(description="One or two sentences on how control, chaos, or pressure shaped the result.")
+
+
+class CompanionAnswer(BaseModel):
+    """Match Companion output: a grounded answer to a viewer's question."""
+
+    answer: str = Field(description="Direct answer in the persona's voice and the requested language, at most 80 words. "
+                                    "If the question is not about this match, politely decline and suggest one that is.")
+    stat_callouts: list[StatCallout] = Field(description="Up to 3 stats that support the answer.",
+                                             max_length=MAX_STAT_CALLOUTS)
+    follow_ups: list[str] = Field(description="Up to 3 short follow-up questions about this match.",
+                                  max_length=MAX_FOLLOW_UPS)
