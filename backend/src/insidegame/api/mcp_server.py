@@ -87,6 +87,7 @@ def build_mcp_server(registry: RegistryGetter) -> MCPServer:
     ) -> dict[str, object]:
         reg = registry()
         analyzer = reg.get(session_id).service.analyzer
+        reg.check_ask_rate(session_id)
         viewer = build_viewer_context(build_segment_profile(persona, language, team, player), analyzer.metadata)
         outcome = await answer_question(reg.suite, question, build_question_context(analyzer), viewer, analyzer,
                                         reg.policy)
