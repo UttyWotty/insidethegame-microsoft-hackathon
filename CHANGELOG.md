@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Synthetic dataset generator: matches, enriched events (absolute coordinates, xG, pass difficulty, momentum,
+  rhythm, triggered moments), player statistics, and labelled key moments as JSON Lines, with a generated
+  dataset card; two-match sample in `data/sample/`.
+
 - MCP server at `/mcp` (streamable HTTP, MCP SDK 2) with eight tools over the live session registry, including
   starting matches and questioning the Match Companion; optional bearer-token guard and host allow-list, wired
   into the Bicep deployment.
