@@ -231,7 +231,8 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   casual lower third, superfan hype banner in club colours, player tag anchored to the ball, and newcomer
   explainer card. Every overlay shows provenance (AI, corrected, or template, with latency).
 - **Live data rail:** team comparison bars, a diverging momentum chart with a plain-language rhythm label,
-  and a commentary ticker mixing agent commentary with key events.
+  and a commentary ticker mixing continuous play-by-play from kick-off, agent commentary on key moments
+  (translated for non-English viewers), and key events.
 - **Recaps:** half-time and full-time recaps open in an accessible dialog, led by the viewer's persona take.
 - **Ask the analyst:** viewers question the Match Companion about the live match and get grounded answers
   in their persona's voice and language, with supporting stats and suggested follow-ups. Without a model, a

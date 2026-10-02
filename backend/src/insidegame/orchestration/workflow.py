@@ -23,7 +23,7 @@ WORKFLOW_DESCRIPTION: str = "Explains, narrates, personalizes, and translates on
 
 def build_moment_workflow(suite: AgentSuite, analyzer: MatchAnalyzer, policy: RunPolicy) -> Workflow:
     """Wire the executors into the moment intelligence workflow."""
-    intake, assembler = IntakeExecutor(), AssemblerExecutor(analyzer.metadata.match_id)
+    intake, assembler = IntakeExecutor(), AssemblerExecutor(analyzer.metadata.match_id, suite, policy)
     analyst = AnalystExecutor(suite, analyzer, policy)
     narrator, personalizer = NarratorExecutor(suite, policy), PersonalizerExecutor(suite, policy)
     return (

@@ -65,9 +65,12 @@ def _text(item: PersonalizedCard) -> tuple[str, str, list[dict[str, str]], str]:
 
 def build_cue(
     match_id: str, moment: KeyMoment, explanation: AgentOutcome[Explanation],
-    commentary: AgentOutcome[Commentary], item: PersonalizedCard,
+    commentary: AgentOutcome[Commentary], item: PersonalizedCard, commentary_text: str | None = None,
 ) -> OverlayCue:
-    """Assemble the overlay cue for one viewer from the agents' outcomes."""
+    """Assemble the overlay cue for one viewer; commentary_text overrides the line, for example when translated.
+
+    Defaults: commentary_text is None, meaning the narrator's original line.
+    """
     profile = item.viewer.viewer.profile
     title, body, callouts, language = _text(item)
     outcomes = {"explanation": explanation, "commentary": commentary, "card": item.card}
@@ -82,7 +85,7 @@ def build_cue(
         viewer_id=item.viewer.viewer.viewer_id, persona=profile.key.value, language=language,
         layout=profile.overlay_style.value, period=moment.period, display_from_s=round(moment.match_second + CUE_DELAY_S, TIME_DECIMALS),
         duration_s=CUE_DURATION_S[profile.overlay_style], priority=moment.importance, title=title, body=body,
-        stat_callouts=callouts, commentary=commentary.value.line, theme=explanation.value.theme.value,
+        stat_callouts=callouts, commentary=commentary_text or commentary.value.line, theme=explanation.value.theme.value,
         provenance=provenance,
     )
 

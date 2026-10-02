@@ -10,6 +10,7 @@ from insidegame.agents.factory import AgentSuite
 from insidegame.agents.prompts import (
     analyst_prompt,
     companion_prompt,
+    line_translation_prompt,
     narrator_prompt,
     personalizer_prompt,
     recap_prompt,
@@ -28,6 +29,7 @@ from insidegame.agents.schemas import (
     PersonaCard,
     RecapTake,
     TranslatedCard,
+    TranslatedLine,
 )
 from insidegame.agents.templates import (
     commentary_template,
@@ -42,6 +44,7 @@ from insidegame.agents.validation import (
     card_validator,
     commentary_validator,
     explanation_validator,
+    line_translation_validator,
     recap_validator,
     take_validator,
     translation_validator,
@@ -117,3 +120,9 @@ async def personalize_recap(
     validator = take_validator(lambda: evidence, viewer.viewer.profile.max_words)
     return await run_resilient(suite.personalizer, recap_take_prompt(context, recap, viewer), RecapTake, validator,
                                lambda: template_take(context, viewer), policy)
+
+
+async def translate_line(suite: AgentSuite, line: str, language: str, policy: RunPolicy) -> AgentOutcome[TranslatedLine]:
+    """Translate one commentary line, keeping the original when translation fails or changes numbers."""
+    return await run_resilient(suite.translator, line_translation_prompt(line, language), TranslatedLine,
+                               line_translation_validator(line), lambda: TranslatedLine(line=line), policy)

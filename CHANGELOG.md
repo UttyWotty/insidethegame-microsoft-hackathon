@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Continuous play-by-play commentary from kick-off (kick-offs, final-third attacks, long passes, dribbles, tackles,
+  interceptions, high pressing, long spells, half-time and full-time), paced at about one line per match minute and
+  shared by every viewer.
+- Switching persona or language keeps match-wide state (commentary, momentum, trail, stats) and swaps only
+  persona-specific overlays and recaps; moment commentary is de-duplicated across segments.
+- Moment commentary is translated for non-English viewers, and recap takes are written in the viewer's language
+  when a model is available.
+- The viewer panel explains what persona and language change, and says when translation is unavailable offline.
 - "Ask the analyst" fallback now answers the question: a deterministic engine recognises best-player, who-is-on-top,
   momentum, named-player, and score questions and answers from live statistics in each persona's voice (the
   superfan in first person, the player tracker with their player's numbers, the newcomer with a term explained).
