@@ -15,6 +15,8 @@ CONCEPTS: dict[MomentKind, tuple[str, str]] = {
                             "A great save stops a shot that had a good chance of becoming a goal."),
     MomentKind.SPEED_THRESHOLD: ("Shot speed",
                                  "Faster shots give the goalkeeper less time to react."),
+    MomentKind.DISTANCE_THRESHOLD: ("Distance",
+                                    "Long passes switch play quickly, and players who carry the ball far drive their team forward."),
     MomentKind.DIFFICULT_PASS: ("Pass difficulty",
                                 "Long passes under pressure into the attacking third are the hardest to complete."),
     MomentKind.MOMENTUM_SWING: ("Momentum",

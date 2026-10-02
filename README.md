@@ -90,9 +90,10 @@ or training pipelines.
 - **Game rhythm:** five-minute rolling momentum (-1 away to +1 home), control (pass share), and chaos
   (turnover rate above a typical-match baseline), labelled as `balanced`, `home_control`, `away_pressure`, `chaos`, etc.
 - **Key moments:** goals (with assist and game-state change such as equaliser or go-ahead), big chances missed,
-  great saves, shot-speed threshold alerts, difficult passes, momentum swings, chaos spells, and milestones
-  (braces, hat-tricks, pass counts). Each moment carries an importance score and structured facts for the
-  explanation agents. About 16 moments are detected per match.
+  great saves, speed indicators (shots of 115 km/h or more), distance indicators (completed passes of 40 m or
+  more, players passing 300 m and 400 m carried), difficult passes, momentum swings, chaos spells, and
+  milestones (braces, hat-tricks, pass counts). Each moment carries an importance score and structured facts for the
+  explanation agents. About 19 moments are detected per match.
 
 ## Agents and Personas (Stages 3-5)
 

@@ -34,6 +34,7 @@ FACT_LABELS: dict[str, str] = {
     "xg": "xG", "xg_prevented": "xG prevented", "shot_speed_kmh": "Shot speed (km/h)",
     "distance_m": "Distance (m)", "difficulty": "Pass difficulty", "length_m": "Pass length (m)",
     "momentum": "Momentum", "turnovers_per_minute": "Turnovers per min",
+    "carry_distance_m": "Distance carried (m)", "ball_speed_kmh": "Ball speed (km/h)",
 }
 SUPERFAN_OWN_PREFIX: str = "Get in! "
 SUPERFAN_SETBACK_PREFIX: str = "So close! "
@@ -78,6 +79,20 @@ def _speed(c: MomentContext) -> ExplanationParts:
             [f"Shot speed {_f(f, 'shot_speed_kmh')} km/h"], TacticalTheme.INDIVIDUAL_BRILLIANCE)
 
 
+def _distance(c: MomentContext) -> ExplanationParts:
+    f = c.moment.facts
+    if f.get("indicator") == "long_pass":
+        return (f"{_f(f, 'passer')} finds {_f(f, 'receiver')} from {_f(f, 'length_m')} m",
+                "A completed pass this long moves the ball past whole lines of defenders in one action. "
+                "It lets the team attack before the opponent can reorganise.",
+                [f"Length {_f(f, 'length_m')} m", f"Ball speed {_f(f, 'ball_speed_kmh')} km/h"],
+                TacticalTheme.INDIVIDUAL_BRILLIANCE)
+    return (f"{_f(f, 'player')} passes {_f(f, 'threshold_m')} m carried",
+            f"{_f(f, 'player')} has now carried the ball {_f(f, 'carry_distance_m')} m. "
+            "Players who drive forward with the ball are carrying their team's attack.",
+            [f"Distance carried {_f(f, 'carry_distance_m')} m"], TacticalTheme.INDIVIDUAL_BRILLIANCE)
+
+
 def _difficult_pass(c: MomentContext) -> ExplanationParts:
     f = c.moment.facts
     return (f"{_f(f, 'passer')} finds {_f(f, 'receiver')}",
@@ -111,7 +126,8 @@ def _milestone(c: MomentContext) -> ExplanationParts:
 
 EXPLAINERS: dict[MomentKind, Callable[[MomentContext], ExplanationParts]] = {
     MomentKind.GOAL: _goal, MomentKind.BIG_CHANCE_MISSED: _big_chance, MomentKind.GREAT_SAVE: _great_save,
-    MomentKind.SPEED_THRESHOLD: _speed, MomentKind.DIFFICULT_PASS: _difficult_pass,
+    MomentKind.SPEED_THRESHOLD: _speed, MomentKind.DISTANCE_THRESHOLD: _distance,
+    MomentKind.DIFFICULT_PASS: _difficult_pass,
     MomentKind.MOMENTUM_SWING: _momentum, MomentKind.CHAOS_SPELL: _chaos, MomentKind.MILESTONE: _milestone,
 }
 

@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Distance indicators for player tagging: completed passes of 40 m or more and players passing 300 m and 400 m
+  carried, with explanation templates and a newcomer glossary entry.
+
 - Architecture documentation with Mermaid diagrams, submission text, and a timed two-minute demo script.
 
 - Synthetic dataset generator: matches, enriched events (absolute coordinates, xG, pass difficulty, momentum,
