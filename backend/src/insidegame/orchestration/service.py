@@ -55,6 +55,10 @@ def _template_outcome(value: T) -> AgentOutcome[T]:
     return AgentOutcome(value, OutputSource.FALLBACK, DEGRADED_ATTEMPTS, DEGRADED_LATENCY_MS, ("workflow degraded",))
 
 
+def _tracked_players(audience: tuple[ViewerContext, ...]) -> tuple[str, ...]:
+    return tuple(v.viewer.favourite_player_id for v in audience if v.viewer.favourite_player_id)
+
+
 def degraded_broadcast(match_id: str, context: MomentContext, job: MomentJob) -> MomentBroadcast:
     """Build a broadcast purely from templates when the workflow cannot run."""
     explanation = _template_outcome(explanation_template(context))
@@ -106,7 +110,7 @@ class MatchIntelligenceService:
     def interpret(self, event: MatchEvent) -> Interpretation:
         """Interpret an event and decide which moments to send to the agents, without awaiting them."""
         update = self.analyzer.ingest(event)
-        jobs = tuple(MomentJob(build_moment_context(moment, self.analyzer), audience)
+        jobs = tuple(MomentJob(build_moment_context(moment, self.analyzer, _tracked_players(audience)), audience)
                      for moment, audience in self.producer.select(update.moments, tuple(self.viewers.values())))
         stage = None
         if event.event_type is EventType.PERIOD_END:

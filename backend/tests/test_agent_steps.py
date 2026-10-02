@@ -102,3 +102,42 @@ def test_numbers_from_tool_results_are_grounded(
     explanation = explanation_template(goal_context).model_copy(update={"evidence": [f"{pressures} pressures"]})
     assert explanation_validator(lambda: [goal_context.to_prompt_dict()])(explanation) is not None
     assert explanation_validator(lambda: [goal_context.to_prompt_dict(), ledger.entries])(explanation) is None
+
+
+def test_fenced_json_from_local_models_is_accepted(goal_context: MomentContext) -> None:
+    fenced = '```json\n{"line": "What a strike!"}\n```'
+    client = ScriptedChatClient({NARRATOR_KEY: [fenced]})
+    outcome = asyncio.run(narrate(create_agent_suite(client), goal_context, explanation_template(goal_context), POLICY))
+    assert outcome.source is OutputSource.MODEL and outcome.value.line == "What a strike!"
+
+
+def test_concurrency_gate_serialises_calls_and_times_only_the_call(goal_context: MomentContext) -> None:
+    slow = 0.05
+    gated = RunPolicy(timeout_s=slow * 3, max_attempts=1, prompt_suffix="", gate=None)
+
+    async def scenario() -> list[OutputSource]:
+        policy = RunPolicy(gated.timeout_s, 1, "", False, asyncio.Semaphore(1))
+        client = ScriptedChatClient({NARRATOR_KEY: ['{"line": "Goal!"}'] * 4}, delay_s=slow)
+        suite, explanation = create_agent_suite(client), explanation_template(goal_context)
+        outcomes = await asyncio.gather(*(narrate(suite, goal_context, explanation, policy) for _ in range(4)))
+        return [o.source for o in outcomes]
+
+    assert asyncio.run(scenario()) == [OutputSource.MODEL] * 4
+
+
+def test_tracked_player_stats_reach_the_personalizer(
+    analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
+) -> None:
+    from insidegame.agents.context import build_moment_context
+    analyzer = analysed_match[0]
+    moment = next(m for m in analyzer.moments if m.player_ids)
+    tracked = next(p for p in analyzer.metadata.home.players if p.player_id not in moment.player_ids)
+    context = build_moment_context(moment, analyzer, (tracked.player_id,))
+    assert tracked.name in context.to_prompt_dict()["players"]
+    card = json.dumps({"title": "t", "body": "b", "stat_callouts": []})
+    client = ScriptedChatClient({PERSONALIZER_KEY: [card]})
+    viewer = ViewerContext(ViewerProfile("p", PersonaKey.PLAYER_TRACKER, favourite_player_id=tracked.player_id),
+                           tracked_player_name=tracked.name)
+    asyncio.run(personalize(create_agent_suite(client), context, explanation_template(context), viewer, POLICY))
+    prompt = client.requests[0][1][-1].text
+    assert f"{tracked.name}'s point of view" in prompt

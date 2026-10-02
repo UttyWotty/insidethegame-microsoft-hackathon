@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- MLX model provider (mlx_lm.server) with inline JSON schema prompting for servers without structured output.
+- Per-runtime concurrency gate; local providers default to one call at a time, timed after the gate.
+- Agent evaluation harness (`insidegame.evaluation`) reporting per-role model, corrected, and fallback rates,
+  latency percentiles, rejection reasons, and persona samples; first MLX report in `docs/evaluations/`.
+- Tracked players' live statistics in moment context and point-of-view framing for the Player Tracker.
+
 - Broadcast frontend (React, TypeScript, Vite): live pitch, score bug, five persona overlay layouts with
   provenance, team stats, momentum chart, commentary ticker, recap dialog, and five-persona multiview.
 - Backfill of recent relevant moments when a viewer segment joins mid-match.
@@ -55,9 +61,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Default local provider is MLX instead of Ollama.
 - Momentum and chaos moments wait five minutes into each period before firing.
 - Fallback commentary no longer repeats the minute.
 - Match service split into fast interpretation and background production with dynamic viewer segments.
 - Superfan fallback tone distinguishes own-club setbacks from successes.
 - Cues for fallback translations are labelled English.
 - Recalibrated simulator tackle and scoring rates toward realistic top-flight averages.
+
+### Fixed
+
+- Fenced JSON from local models was rejected because the framework's lazy structured value raised before the
+  runner's own parser ran; the runner now falls back to its parser.
+- Template punctuation no longer doubles a trailing period from model headlines.
+- `httpx` pinned below 1.0 to avoid an incompatible pre-release.

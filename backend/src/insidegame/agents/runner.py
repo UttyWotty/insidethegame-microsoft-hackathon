@@ -5,6 +5,7 @@ Every outcome records its source, attempts, latency, and problems for transparen
 """
 
 import asyncio
+import json
 import logging
 import re
 import time
@@ -26,6 +27,8 @@ Validator = Callable[[T], str | None]
 DEFAULT_TIMEOUT_S: float = 30.0
 DEFAULT_MAX_ATTEMPTS: int = 2
 DEFAULT_PROMPT_SUFFIX: str = ""
+DEFAULT_INLINE_SCHEMA: bool = False
+UNLIMITED_CONCURRENCY: None = None
 MS_PER_SECOND: int = 1000
 THINK_BLOCK: re.Pattern[str] = re.compile(r"<think>.*?</think>", re.DOTALL)
 CODE_FENCE: re.Pattern[str] = re.compile(r"^```(?:json)?\s*|\s*```$")
@@ -43,12 +46,16 @@ class OutputSource(StrEnum):
 class RunPolicy:
     """Execution limits for agent calls.
 
-    Defaults: DEFAULT_TIMEOUT_S per attempt, DEFAULT_MAX_ATTEMPTS attempts, and no prompt suffix.
+    Defaults: DEFAULT_TIMEOUT_S per attempt, DEFAULT_MAX_ATTEMPTS attempts, no prompt suffix, and no inline schema.
+    inline_schema writes the JSON schema into the prompt for servers that ignore response_format.
+    gate limits concurrent model calls (None means unlimited); the timeout starts once a call passes the gate.
     """
 
     timeout_s: float = DEFAULT_TIMEOUT_S
     max_attempts: int = DEFAULT_MAX_ATTEMPTS
     prompt_suffix: str = DEFAULT_PROMPT_SUFFIX
+    inline_schema: bool = DEFAULT_INLINE_SCHEMA
+    gate: asyncio.Semaphore | None = UNLIMITED_CONCURRENCY
 
 
 @dataclass(frozen=True)
@@ -76,11 +83,33 @@ def extract_json_text(text: str) -> str:
     return CODE_FENCE.sub("", THINK_BLOCK.sub("", text).strip()).strip()
 
 
+def schema_instruction(schema: type[BaseModel]) -> str:
+    """Prompt text describing the required JSON output for servers without structured output support."""
+    return f"Respond with one JSON object only, matching this JSON schema:\n{json.dumps(schema.model_json_schema())}"
+
+
 def _parse(response: Any, schema: type[T]) -> T:
-    value = getattr(response, "value", None)
+    """Use the framework's structured value when it parses, otherwise parse the cleaned text ourselves.
+
+    Agent Framework parses response.value lazily and raises on fenced or prefixed JSON, which local servers emit.
+    """
+    try:
+        value = getattr(response, "value", None)
+    except ValidationError:
+        value = None
     if isinstance(value, schema):
         return value
     return schema.model_validate_json(extract_json_text(response.text))
+
+
+async def _gated_call(
+    agent: RunnableAgent, text: str, schema: type[T], tools: Sequence[Any] | None, policy: RunPolicy
+) -> Any:
+    call = agent.run(text, tools=list(tools) if tools else None, options={"response_format": schema})
+    if policy.gate is None:
+        return await asyncio.wait_for(call, policy.timeout_s)
+    async with policy.gate:
+        return await asyncio.wait_for(call, policy.timeout_s)
 
 
 def _elapsed_ms(start: float) -> int:
@@ -94,12 +123,10 @@ async def run_resilient(
     """Run an agent until it returns a valid output, otherwise return the fallback."""
     start, problems, current = time.perf_counter(), [], prompt
     for attempt in range(1, policy.max_attempts + 1):
-        text = f"{current}\n{policy.prompt_suffix}".strip()
+        schema_text = schema_instruction(schema) if policy.inline_schema else ""
+        text = "\n".join(part for part in (current, schema_text, policy.prompt_suffix) if part)
         try:
-            response = await asyncio.wait_for(
-                agent.run(text, tools=list(tools) if tools else None, options={"response_format": schema}),
-                policy.timeout_s,
-            )
+            response = await _gated_call(agent, text, schema, tools, policy)
             value = _parse(response, schema)
             problem = validate(value)
             if problem is None:
