@@ -39,3 +39,7 @@ class SessionNotFoundError(InsideGameError):
 
 class SessionLimitError(InsideGameError):
     """Raised when the maximum number of concurrent live sessions is reached."""
+
+
+class RateLimitError(InsideGameError):
+    """Raised when a caller exceeds the allowed request rate for a model-backed operation."""

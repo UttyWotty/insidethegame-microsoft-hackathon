@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Sliding-window rate limit (default 20 questions per match per minute) on `/ask` and the MCP companion tool,
+  returning 429 with a retry hint.
+
 - Distance indicators for player tagging: completed passes of 40 m or more and players passing 300 m and 400 m
   carried, with explanation templates and a newcomer glossary entry.
 

@@ -5,11 +5,14 @@ The registry caps concurrent sessions, evicting finished ones first.
 """
 
 import asyncio
+import os
+import time
 import uuid
 
 from insidegame.agents.factory import AgentSuite
 from insidegame.agents.runner import RunPolicy
-from insidegame.core.exceptions import SessionLimitError, SessionNotFoundError
+from insidegame.core.exceptions import RateLimitError, SessionLimitError, SessionNotFoundError
+from insidegame.core.rate_limit import SlidingWindowLimiter
 from insidegame.live.pacing import MAX_SPEED, MIN_SPEED
 from insidegame.live.session import MatchSession, SessionStatus, Sleeper
 from insidegame.orchestration.service import MatchIntelligenceService
@@ -18,6 +21,8 @@ from insidegame.simulation.roster import build_fixture
 
 MAX_SESSIONS: int = 20
 SESSION_ID_LENGTH: int = 8
+ASK_MAX_PER_WINDOW: int = int(os.getenv("ASK_MAX_PER_MINUTE", "20"))
+ASK_WINDOW_S: float = 60.0
 
 
 class SessionRegistry:
@@ -28,6 +33,7 @@ class SessionRegistry:
         self.suite, self.policy, self.sleep = suite, policy, sleep
         self.sessions: dict[str, MatchSession] = {}
         self.runners: dict[str, asyncio.Task[None]] = {}
+        self.ask_limiter = SlidingWindowLimiter(ASK_MAX_PER_WINDOW, ASK_WINDOW_S)
 
     def _make_room(self) -> None:
         if len(self.sessions) < MAX_SESSIONS:
@@ -55,6 +61,13 @@ class SessionRegistry:
         if session_id not in self.sessions:
             raise SessionNotFoundError(f"Unknown session {session_id!r}")
         return self.sessions[session_id]
+
+    def check_ask_rate(self, session_id: str) -> None:
+        """Raise RateLimitError when a session has asked too many questions in the current window."""
+        now = time.monotonic()
+        if not self.ask_limiter.allow(session_id, now):
+            wait = self.ask_limiter.retry_after(session_id, now)
+            raise RateLimitError(f"Too many questions for this match; retry in {wait:.0f}s")
 
     async def shutdown(self) -> None:
         """Cancel every running replay."""

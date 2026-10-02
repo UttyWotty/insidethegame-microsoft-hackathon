@@ -24,6 +24,7 @@ from insidegame.api.mcp_server import build_mcp_server
 from insidegame.core.exceptions import (
     FixtureError,
     PersonaConfigError,
+    RateLimitError,
     SessionLimitError,
     SessionNotFoundError,
 )
@@ -40,6 +41,7 @@ API_TITLE: str = "Inside the Game API"
 API_VERSION: str = "0.1.0"
 ERROR_STATUS: dict[type[Exception], int] = {
     FixtureError: 400, PersonaConfigError: 400, SessionNotFoundError: 404, SessionLimitError: 429,
+    RateLimitError: 429,
 }
 
 

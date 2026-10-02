@@ -67,6 +67,7 @@ async def ask(session_id: str, body: AskRequest, request: Request) -> dict[str, 
     """Answer a viewer's question about the live match in their persona's voice and language."""
     registry = _registry(request)
     session = registry.get(session_id)
+    registry.check_ask_rate(session_id)
     analyzer = session.service.analyzer
     profile = build_segment_profile(body.persona, body.language, body.team, body.player)
     viewer = build_viewer_context(profile, analyzer.metadata)
