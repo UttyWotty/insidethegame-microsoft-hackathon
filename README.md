@@ -46,6 +46,27 @@ acting team (attacking toward x = 105).
 - Model Context Protocol server exposing match intelligence to GitHub Copilot and Foundry agents
 - Azure Developer CLI with Bicep infrastructure as code; GitHub Actions CI and OIDC deployment
 
+## Synthetic Datasets
+
+The simulator and analytics engine double as a dataset factory. One command produces analytics- and ML-ready
+JSON Lines tables across every fixture pairing:
+
+```bash
+.venv/bin/python -m insidegame.datasets.generate --matches 48 --start-seed 1 --out data/synthetic
+```
+
+| File | Contents |
+|---|---|
+| `matches.jsonl` | Clubs, styles, score, possession, xG, key moment count |
+| `events.jsonl` | Every event with absolute coordinates, xG, pass difficulty, momentum, rhythm state, triggered moments |
+| `players.jsonl` | Per-player match statistics |
+| `moments.jsonl` | Labelled key moments with importance and facts |
+| `README.md` | Generated dataset card: parameters, schema, statistics, intended uses, limitations |
+
+Twelve matches (about 30,000 events) generate in under two seconds. A two-match sample is committed in
+[`data/sample/`](data/sample/README.md). The files load directly into Microsoft Fabric lakehouses, notebooks,
+or training pipelines.
+
 ## Match Interpretation (Stage 2)
 
 `MatchAnalyzer.ingest(event)` interprets each event as it arrives, with no I/O:
@@ -273,6 +294,7 @@ backend/
     api/          FastAPI app, routers, server-sent events, MCP server
     adapters/     model client (MLX, Ollama, Foundry, offline) and telemetry setup
     evaluation/   agent evaluation harness
+    datasets/     synthetic dataset tables, dataset card, generator CLI
   tests/          unit and integration tests
 frontend/
   src/api/        HTTP client and server-sent event hook
