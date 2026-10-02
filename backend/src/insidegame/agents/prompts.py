@@ -74,6 +74,8 @@ def _persona_brief(viewer: ViewerContext) -> dict[str, object]:
         brief["favourite_club"] = viewer.favourite_team_name
     if viewer.viewer.persona is PersonaKey.PLAYER_TRACKER:
         brief["tracked_player"] = viewer.tracked_player_name
+        brief["framing"] = (f"Write from {viewer.tracked_player_name}'s point of view. If they were not involved, "
+                            "say how the moment affects them, citing their own statistics from context.players.")
     return brief
 
 

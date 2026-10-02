@@ -122,7 +122,7 @@ def explanation_template(context: MomentContext) -> Explanation:
 
 def commentary_template(context: MomentContext, explanation: Explanation) -> Commentary:
     """Build a commentary line from the explanation headline."""
-    return Commentary(line=f"{explanation.headline}.")
+    return Commentary(line=f"{explanation.headline.rstrip('.')}.")
 
 
 def _callouts(context: MomentContext) -> list[StatCallout]:
@@ -152,7 +152,7 @@ def persona_card_template(context: MomentContext, explanation: Explanation, view
                     for k, v in stats.items()][:MAX_CALLOUTS]
     elif persona is PersonaKey.NEWCOMER:
         term, meaning = concept_for(context.moment.kind)
-        body = f"{explanation.headline}. {term}: {meaning}"
+        body = f"{explanation.headline.rstrip('.')}. {term}: {meaning}"
     return PersonaCard(title=title, body=body, stat_callouts=callouts)
 
 

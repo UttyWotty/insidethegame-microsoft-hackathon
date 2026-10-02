@@ -171,7 +171,7 @@ npm test                                                                    # fr
 
 ## Setup
 
-Requirements: Python 3.12+, [uv](https://docs.astral.sh/uv/), and optionally [Ollama](https://ollama.com) for local model testing.
+Requirements: Python 3.12+, [uv](https://docs.astral.sh/uv/), Node 20+, and optionally [MLX](https://github.com/ml-explore/mlx-lm) (Apple silicon) or [Ollama](https://ollama.com) for local model testing.
 
 ```bash
 uv venv --python 3.12 .venv
@@ -180,27 +180,39 @@ uv pip install --python .venv/bin/python -e "backend[dev]"
 ```
 
 Local models (development only): the agent layer uses the Agent Framework OpenAI-compatible client, so it can
-target a local Ollama server during development and Microsoft Foundry in deployment.
+target a local MLX or Ollama server during development and Microsoft Foundry in deployment.
 
 ```bash
-ollama pull qwen3:8b
+mlx_lm.server --model mlx-community/gemma-3-12b-it-4bit --host 127.0.0.1 --port 8766
 ```
 
 Model configuration (environment variables, all optional):
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `MODEL_PROVIDER` | `ollama` | `ollama` locally, `foundry` for Microsoft Foundry, `offline` for templates only |
-| `MODEL_NAME` | `qwen3:8b` | Model or deployment name |
-| `MODEL_BASE_URL` | `http://localhost:11434/v1` | OpenAI-compatible endpoint |
-| `MODEL_API_KEY` | `ollama` | API key (required for `foundry`) |
+| `MODEL_PROVIDER` | `mlx` | `mlx` or `ollama` locally, `foundry` for Microsoft Foundry, `offline` for templates only |
+| `MODEL_NAME` | `mlx-community/gemma-3-12b-it-4bit` | Model or deployment name |
+| `MODEL_BASE_URL` | `http://127.0.0.1:8766/v1` | OpenAI-compatible endpoint |
+| `MODEL_API_KEY` | `local` | API key (required for `foundry`) |
+| `MODEL_MAX_CONCURRENCY` | 1 for local providers, unlimited otherwise | Concurrent model calls; `0` means unlimited |
 | `MODEL_TIMEOUT_S` | `45` | Per-attempt timeout |
 | `MODEL_MAX_ATTEMPTS` | `2` | Attempts before falling back |
-| `MODEL_PROMPT_SUFFIX` | `/no_think` | Appended to prompts for local qwen3 only |
+| `MODEL_PROMPT_SUFFIX` | empty | Appended to prompts for local providers (for example `/no_think` for qwen3) |
 | `API_HOST` / `API_PORT` | `127.0.0.1` / `8000` | API bind address |
 | `FRONTEND_ORIGINS` | `http://localhost:5199` | Comma-separated CORS origins |
 
 Tests never call a model; agents are tested with a scripted fake chat client.
+
+## Agent Evaluation
+
+`python -m insidegame.evaluation.run --max-moments 4 --output report.json` runs a simulated match through the
+live agents and reports, per agent role, the share of outputs accepted from the model, corrected after a
+rejection, or replaced by a fallback, with latency percentiles, top rejection reasons, and persona samples.
+Reports are kept in `docs/evaluations/`.
+
+Latest local run (MLX, gemma-3-12b 4-bit, M1 Max, two moments plus recap): analyst, narrator, and translator
+outputs were 100% model-generated and grounded; persona cards 75% (the rest timed out under local load and fell
+back to grounded templates, as designed).
 
 ## Project Structure
 

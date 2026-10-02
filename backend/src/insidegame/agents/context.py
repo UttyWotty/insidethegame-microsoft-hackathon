@@ -59,8 +59,13 @@ def _pick(counters: ActionCounters, keys: tuple[str, ...]) -> dict[str, ContextV
     return {k: data[k] for k in keys if k in data}  # type: ignore[misc]
 
 
-def build_moment_context(moment: KeyMoment, analyzer: MatchAnalyzer) -> MomentContext:
-    """Assemble prompt context for a moment from the analyzer's current state."""
+def build_moment_context(
+    moment: KeyMoment, analyzer: MatchAnalyzer, tracked_player_ids: tuple[str, ...] = ()
+) -> MomentContext:
+    """Assemble prompt context for a moment; tracked players' stats are included even when not involved.
+
+    Defaults: tracked_player_ids is empty (no extra players).
+    """
     metadata, stats = analyzer.metadata, analyzer.stats
     event = analyzer.last_event
     teams = {
@@ -70,8 +75,9 @@ def build_moment_context(moment: KeyMoment, analyzer: MatchAnalyzer) -> MomentCo
         }
         for team in (metadata.home, metadata.away)
     }
+    player_ids = dict.fromkeys((*moment.player_ids, *tracked_player_ids))
     players = {stats.players[pid].name: _pick(stats.players[pid], PLAYER_CONTEXT_KEYS)
-               for pid in moment.player_ids if pid in stats.players}
+               for pid in player_ids if pid in stats.players}
     reading = analyzer.last_reading.to_dict() if analyzer.last_reading else {}
     team_names = {metadata.home.team_id: metadata.home.name, metadata.away.team_id: metadata.away.name}
     return MomentContext(

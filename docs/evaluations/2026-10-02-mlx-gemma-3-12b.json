@@ -1,0 +1,142 @@
+{
+  "broadcasts": 2,
+  "roles": {
+    "analyst": {
+      "calls": 2,
+      "model_rate": 1.0,
+      "corrected_rate": 0.0,
+      "fallback_rate": 0.0,
+      "latency_p50_ms": 36164,
+      "latency_p95_ms": 36164,
+      "top_problems": []
+    },
+    "narrator": {
+      "calls": 2,
+      "model_rate": 1.0,
+      "corrected_rate": 0.0,
+      "fallback_rate": 0.0,
+      "latency_p50_ms": 13498,
+      "latency_p95_ms": 13498,
+      "top_problems": []
+    },
+    "card": {
+      "calls": 8,
+      "model_rate": 0.75,
+      "corrected_rate": 0.0,
+      "fallback_rate": 0.25,
+      "latency_p50_ms": 114956,
+      "latency_p95_ms": 261076,
+      "top_problems": []
+    },
+    "translation": {
+      "calls": 1,
+      "model_rate": 1.0,
+      "corrected_rate": 0.0,
+      "fallback_rate": 0.0,
+      "latency_p50_ms": 209910,
+      "latency_p95_ms": 209910,
+      "top_problems": []
+    },
+    "editor": {
+      "calls": 1,
+      "model_rate": 0.0,
+      "corrected_rate": 0.0,
+      "fallback_rate": 1.0,
+      "latency_p50_ms": 60002,
+      "latency_p95_ms": 60002,
+      "top_problems": [
+        [
+          "timed out after 60.0s",
+          1
+        ]
+      ]
+    }
+  },
+  "samples": [
+    {
+      "minute": "27'",
+      "kind": "momentum_swing",
+      "explanation": {
+        "headline": "Kestrel Bay Athletic regain momentum after a period of sustained pressure.",
+        "why_it_matters": "This moment signifies a shift in the flow of the game, allowing Kestrel Bay Athletic to reassert their dominance after Ironvale United had briefly threatened their control. The ability to regain momentum is crucial in maintaining pressure and ultimately creating more scoring opportunities.",
+        "evidence": [
+          "Kestrel Bay Athletic's momentum has swung to 0.56, indicating a clear shift in their favor.",
+          "Prior to this, Kestrel Bay Athletic's home threat was only 0.21, suggesting they were struggling to create chances.",
+          "Ironvale United's threat was only 0.06, showing their limited impact on the game.",
+          "Kestrel Bay Athletic currently holds 53.7% of the possession, demonstrating their desire to control the game."
+        ],
+        "theme": "pressure_shift"
+      },
+      "commentary": "Kestrel Bay Athletic's momentum surges to 0.56, wresting control back from Ironvale United after a brief scare.",
+      "cards": {
+        "analyst": {
+          "title": "Momentum Shift: Kestrel Bay Reasserts Control",
+          "body": "Kestrel Bay's momentum now at 0.56 after a dip. Home threat climbs from 0.21, while Ironvale's remains negligible at 0.06. Kestrel Bay maintains 53.7% possession, indicating continued pressure."
+        },
+        "superfan": {
+          "title": "Kestrel Bay's back on the front foot!",
+          "body": "Come on you Kestrel Bay! We've wrestled back control. That home threat was low before, but now it's 0.21! Let's keep the pressure on and get that goal!"
+        },
+        "newcomer": {
+          "title": "What's Momentum?",
+          "body": "Looks like Kestrel Bay Athletic is building some momentum! It means they're creating more danger right now. Their threat is up to 0.56, compared to 0.21 just before. Ironvale United's threat is only 0.06. "
+        }
+      }
+    },
+    {
+      "minute": "33'",
+      "kind": "big_chance_missed",
+      "explanation": {
+        "headline": "Lindqvist misses a clear chance for Kestrel Bay Athletic.",
+        "why_it_matters": "This missed opportunity significantly impacts Kestrel Bay Athletic's momentum, as they were dominating possession and creating chances. Failing to convert a chance with an xG of 0.651 at the 33' minute could prove costly in a tight, 0-0 contest.",
+        "evidence": [
+          "Kestrel Bay Athletic's possession is currently at 54.2%, indicating their control of the game.",
+          "The shot was taken from a distance of just 2.09 meters, suggesting a relatively easy chance.",
+          "Lindqvist's xG for the shot was 0.651, highlighting the high probability of scoring.",
+          "The current match rhythm is 'chaos', suggesting a period of unpredictable play where a goal could change the game's trajectory."
+        ],
+        "theme": "missed_opportunity"
+      },
+      "commentary": "Goran Lindqvist with a miss from 2.09 meters! Kestrel Bay Athletic's xG was 0.651, and they're still searching for that breakthrough.",
+      "cards": {
+        "analyst": {
+          "title": "Lindqvist Misses High xG Chance",
+          "body": "At 33', Lindqvist's 0.651 xG shot from 2.09m went off target. Kestrel Bay Athletic's 54.2% possession couldn't translate; the current 'chaos' rhythm demands a conversion."
+        },
+        "casual/es": {
+          "title": "¡Ay, qué chance perdida!",
+          "body": "¡Lindqvist la tuvo cerca! Kestrel Bay domina la posesión con un 54%, pero el marcador sigue 0-0 en el minuto 33."
+        },
+        "superfan": {
+          "title": "Lindqvist misses a clear chance for Kestrel Bay Athletic.",
+          "body": "So close! This missed opportunity significantly impacts Kestrel Bay Athletic's momentum, as they were dominating possession and creating chances. Failing to convert a chance with an xG of 0.651 at the 33' minute could prove costly in a tight, 0-0 contest."
+        },
+        "player_tracker": {
+          "title": "Lindqvist misses a big chance for Kestrel Bay",
+          "body": "That's gotta sting. Kestrel Bay's dominating with 54.2% possession, but Lindqvist missed a 0.651 xG chance from just 2.09 meters. My own carry distance is 54.55m, gotta make those count!"
+        },
+        "newcomer": {
+          "title": "Lindqvist misses a clear chance for Kestrel Bay Athletic.",
+          "body": "Lindqvist misses a clear chance for Kestrel Bay Athletic. Big chance: A big chance is a shot that usually goes in, so missing it can change a match."
+        }
+      }
+    }
+  ],
+  "recaps": [
+    {
+      "headline": "Full-time: Kestrel Bay Athletic 1-1 Ironvale United",
+      "summary": "Full-time: Kestrel Bay Athletic 1-1 Ironvale United. Kestrel Bay Athletic had 53.2% of the ball and 7 shots, while Ironvale United managed 12. Hugo Varga was the most influential player on the pitch.",
+      "turning_points": [
+        "27' momentum swing: Kestrel Bay Athletic",
+        "33' big chance missed: Goran Lindqvist",
+        "51' goal: Jonas Quarry",
+        "71' goal: Hugo Varga",
+        "71' momentum swing: Ironvale United",
+        "76' great save: Kofi Eklund"
+      ],
+      "standout_player": "Hugo Varga",
+      "tactical_story": "Kestrel Bay Athletic generated 1.0 xG against 0.97 for Ironvale United, which shaped how the match was controlled."
+    }
+  ],
+  "provider": "mlx"
+}
