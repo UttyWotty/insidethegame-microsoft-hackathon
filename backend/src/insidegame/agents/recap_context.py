@@ -11,6 +11,7 @@ from insidegame.analytics.analyzer import MatchAnalyzer
 from insidegame.analytics.stats import PlayerStats
 
 MAX_RECAP_MOMENTS: int = 6
+MIN_TURNING_POINT_IMPORTANCE: float = 0.45
 POSSESSION_DECIMALS: int = 1
 XG_DECIMALS: int = 2
 IMPACT_GOAL: float = 3.0
@@ -66,7 +67,8 @@ def build_recap_context(analyzer: MatchAnalyzer, stage: RecapStage) -> RecapCont
     """Assemble recap evidence from the analyzer's current state."""
     metadata, stats, event = analyzer.metadata, analyzer.stats, analyzer.last_event
     team_names = {metadata.home.team_id: metadata.home.name, metadata.away.team_id: metadata.away.name}
-    top = sorted(analyzer.moments, key=lambda m: m.importance, reverse=True)[:MAX_RECAP_MOMENTS]
+    turning = [m for m in analyzer.moments if m.importance >= MIN_TURNING_POINT_IMPORTANCE]
+    top = sorted(turning, key=lambda m: m.importance, reverse=True)[:MAX_RECAP_MOMENTS]
     moments = [{"minute": m.minute_label, "kind": m.kind.value, "team": team_names.get(m.team_id or ""),
                 "facts": dict(m.facts)} for m in sorted(top, key=lambda m: (m.period, m.match_second))]
     teams = {

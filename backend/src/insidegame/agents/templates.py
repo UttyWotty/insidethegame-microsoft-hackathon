@@ -87,7 +87,8 @@ def _distance(c: MomentContext) -> ExplanationParts:
                 "It lets the team attack before the opponent can reorganise.",
                 [f"Length {_f(f, 'length_m')} m", f"Ball speed {_f(f, 'ball_speed_kmh')} km/h"],
                 TacticalTheme.INDIVIDUAL_BRILLIANCE)
-    return (f"{_f(f, 'player')} passes {_f(f, 'threshold_m')} m carried",
+    threshold = int(float(f.get("threshold_m") or 0))
+    return (f"{_f(f, 'player')} tops {threshold} m carried with the ball",
             f"{_f(f, 'player')} has now carried the ball {_f(f, 'carry_distance_m')} m. "
             "Players who drive forward with the ball are carrying their team's attack.",
             [f"Distance carried {_f(f, 'carry_distance_m')} m"], TacticalTheme.INDIVIDUAL_BRILLIANCE)
@@ -179,10 +180,19 @@ def untranslated_card(card: PersonaCard) -> TranslatedCard:
     return TranslatedCard(title=card.title, body=card.body, stat_labels=[c.label for c in card.stat_callouts])
 
 
+KIND_LABELS: dict[str, str] = {
+    MomentKind.GOAL.value: "goal", MomentKind.BIG_CHANCE_MISSED.value: "big chance missed",
+    MomentKind.GREAT_SAVE.value: "great save", MomentKind.SPEED_THRESHOLD.value: "thunderous strike",
+    MomentKind.DISTANCE_THRESHOLD.value: "long-range play", MomentKind.DIFFICULT_PASS.value: "defence-splitting pass",
+    MomentKind.MOMENTUM_SWING.value: "momentum swing", MomentKind.CHAOS_SPELL.value: "chaotic spell",
+    MomentKind.MILESTONE.value: "milestone",
+}
+
+
 def _turning_point(moment: dict[str, object]) -> str:
     facts = moment.get("facts")
     actor = moment_actor(facts) if isinstance(facts, dict) else None
-    label = str(moment["kind"]).replace("_", " ")
+    label = KIND_LABELS.get(str(moment["kind"]), str(moment["kind"]).replace("_", " "))
     return f"{moment['minute']} {label}" + (f": {actor}" if actor else f": {moment.get('team') or 'both sides'}")
 
 
