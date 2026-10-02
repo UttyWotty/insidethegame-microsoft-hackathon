@@ -15,7 +15,7 @@ AI-powered match intelligence built on synthetic football event data: ingest liv
 - Stages 3-5 (Explain, Render, Personalize): multi-agent workflow, overlay cues, and recaps implemented.
 - Live API: real-time replay with personalized server-sent event streams implemented.
 - Broadcast frontend: live pitch, five persona overlays, stats, momentum, commentary, recaps, and multiview implemented.
-- Cloud deployment: in progress.
+- Azure deployment: infrastructure as code, container, CI, and keyless Foundry auth ready (`azd up`).
 
 ## Synthetic Match Engine
 
@@ -40,9 +40,10 @@ acting team (attacking toward x = 105).
 
 ## Planned Stack
 
-- Microsoft Foundry (models and hosted agents)
-- Microsoft Agent Framework (multi-agent orchestration)
-- Azure cloud-native services for deployment
+- Microsoft Agent Framework: agents, tools, structured outputs, workflow orchestration, OpenTelemetry
+- Microsoft Foundry: project and model deployment, keyless managed identity access
+- Azure Container Apps, Azure Container Registry, Log Analytics, Application Insights
+- Azure Developer CLI with Bicep infrastructure as code; GitHub Actions CI and OIDC deployment
 
 ## Match Interpretation (Stage 2)
 
@@ -126,12 +127,12 @@ tasks and publish when ready, so the event feed never waits for a model.
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/health` | Lightweight liveness (configuration only) |
-| GET | `/diagnostics` | Checks the model endpoint is reachable |
-| GET | `/clubs`, `/personas`, `/languages` | Metadata for building a viewer profile |
-| POST | `/matches` | Start a replay: `{home, away, seed, speed}` (speed = match seconds per real second) |
-| GET | `/matches`, `/matches/{id}` | List sessions; session state, snapshot, and recaps |
-| GET | `/matches/{id}/stream?persona=&language=&team=&player=` | Personalized SSE feed |
+| GET | `/api/health` | Lightweight liveness (configuration only) |
+| GET | `/api/diagnostics` | One minimal real model call proving provider, credentials, and deployment |
+| GET | `/api/clubs`, `/api/personas`, `/api/languages` | Metadata for building a viewer profile |
+| POST | `/api/matches` | Start a replay: `{home, away, seed, speed}` (speed = match seconds per real second) |
+| GET | `/api/matches`, `/api/matches/{id}` | List sessions; session state, snapshot, and recaps |
+| GET | `/api/matches/{id}/stream?persona=&language=&team=&player=` | Personalized SSE feed |
 
 Stream message types: `match`, `event` (raw event with xG, pass quality, rhythm, and moments), `snapshot`
 (score, team and player statistics, rhythm), `cue` (overlay for this viewer segment), `recap`, and `end`.
@@ -142,8 +143,8 @@ oldest queued messages, never the newest.
 
 ```bash
 MODEL_PROVIDER=offline .venv/bin/python -m insidegame.main     # templates only, no model server
-curl -X POST localhost:8000/matches -H 'content-type: application/json' -d '{"speed": 30}'
-curl -N "localhost:8000/matches/<session_id>/stream?persona=analyst"
+curl -X POST localhost:8000/api/matches -H 'content-type: application/json' -d '{"speed": 30}'
+curl -N "localhost:8000/api/matches/<session_id>/stream?persona=analyst"
 ```
 
 ## Broadcast Frontend
@@ -199,6 +200,12 @@ Model configuration (environment variables, all optional):
 | `MODEL_MAX_ATTEMPTS` | `2` | Attempts before falling back |
 | `MODEL_PROMPT_SUFFIX` | empty | Appended to prompts for local providers (for example `/no_think` for qwen3) |
 | `API_HOST` / `API_PORT` | `127.0.0.1` / `8000` | API bind address |
+| `AZURE_OPENAI_ENDPOINT` | empty | Foundry resource endpoint (required for `foundry`) |
+| `AZURE_OPENAI_API_VERSION` | `2024-10-21` | Azure OpenAI API version |
+| `AZURE_CLIENT_ID` | empty | User-assigned managed identity client id; empty uses the default credential chain |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | empty | Enables OpenTelemetry export to Application Insights |
+| `TELEMETRY_SENSITIVE_DATA` | `false` | Include prompts and responses in traces |
+| `STATIC_DIR` | empty | Built frontend directory served at `/` (set in the container) |
 | `FRONTEND_ORIGINS` | `http://localhost:5199` | Comma-separated CORS origins |
 
 Tests never call a model; agents are tested with a scripted fake chat client.
@@ -227,7 +234,8 @@ backend/
     orchestration/ producer policy, workflow executors, overlay cues, match service
     live/         real-time replay sessions, viewer segments, pub/sub fan-out
     api/          FastAPI app, routers, server-sent events
-    adapters/     environment-driven model client configuration
+    adapters/     model client (MLX, Ollama, Foundry, offline) and telemetry setup
+    evaluation/   agent evaluation harness
   tests/          unit and integration tests
 frontend/
   src/api/        HTTP client and server-sent event hook
@@ -241,6 +249,18 @@ Dependency direction: `api -> live -> orchestration -> agents -> analytics -> do
 ## Branching
 
 This repository follows Git Flow: `main` holds released code, `develop` is the integration branch, and work happens on `feature/*` branches merged into `develop` via pull request.
+
+## Deployment
+
+Everything needed to run on Azure is in the repository: `Dockerfile` (single container for API and frontend),
+`azure.yaml` and `infra/` (Bicep: Foundry project and model deployment, Container Apps, registry, managed
+identity, monitoring), and `.github/workflows/` (CI on every pull request, OIDC deployment on demand).
+
+```bash
+azd auth login && azd up
+```
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the full walkthrough, verification, costs, and teardown.
 
 ## License
 

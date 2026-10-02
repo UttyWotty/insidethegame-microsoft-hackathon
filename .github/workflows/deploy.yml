@@ -1,0 +1,32 @@
+# Manual deployment to Azure with the Azure Developer CLI using GitHub OIDC (no stored secrets).
+# Configure once with `azd pipeline config`, which creates the federated credential and repository variables.
+# Provisions infrastructure and deploys the container in one run.
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
+      AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Azure/setup-azd@v2
+      - name: Sign in with federated credentials
+        run: |
+          azd auth login \
+            --client-id "$AZURE_CLIENT_ID" \
+            --federated-credential-provider github \
+            --tenant-id "$AZURE_TENANT_ID"
+      - name: Provision and deploy
+        run: azd up --no-prompt

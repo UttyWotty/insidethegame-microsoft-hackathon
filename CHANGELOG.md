@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Azure deployment: multi-stage Dockerfile serving API and frontend from one non-root container, azd project,
+  and Bicep for Microsoft Foundry (account, project, model deployment), Container Apps, Container Registry,
+  managed identity with least-privilege roles, Log Analytics, and Application Insights.
+- Keyless Foundry provider using managed identity (`DefaultAzureCredential`), with optional key auth.
+- OpenTelemetry export of Agent Framework traces to Application Insights.
+- GitHub Actions CI (backend tests, frontend typecheck/tests/build, container build) and OIDC deploy workflow.
+- Deployment guide in `docs/DEPLOYMENT.md`.
+
 - MLX model provider (mlx_lm.server) with inline JSON schema prompting for servers without structured output.
 - Per-runtime concurrency gate; local providers default to one call at a time, timed after the gate.
 - Agent evaluation harness (`insidegame.evaluation`) reporting per-role model, corrected, and fallback rates,
@@ -61,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- All API routes are served under `/api`; `/api/diagnostics` now makes one minimal real model call.
 - Default local provider is MLX instead of Ollama.
 - Momentum and chaos moments wait five minutes into each period before firing.
 - Fallback commentary no longer repeats the minute.

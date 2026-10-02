@@ -13,7 +13,7 @@ export default defineConfig({
   server: {
     port: 5199,
     strictPort: true,
-    proxy: { "/api": { target: BACKEND_URL, changeOrigin: true, rewrite: (path) => path.replace(/^\/api/, "") } },
+    proxy: { "/api": { target: BACKEND_URL, changeOrigin: true } },
   },
   test: { environment: "node", include: ["src/**/*.test.ts"] },
 });
