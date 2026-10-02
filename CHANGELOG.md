@@ -15,4 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Synthetic match engine: seeded possession-chain simulator producing full 90-minute event streams
+  (passes, carries, shots, goals, saves, pressure, tackles, interceptions, fouls, possession changes).
+- Fictional club presets with distinct tactical styles that adapt to game state and fatigue.
+- Immutable, JSON-serialisable domain models for matches, teams, players, and events.
+- Test suite covering geometry, probability models, roster generation, and statistical realism.
 - Repository scaffolding: README, changelog, license, and ignore rules.
