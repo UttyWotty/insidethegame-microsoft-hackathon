@@ -87,3 +87,21 @@ export interface CompanionReply {
   question: string; answer: string; stat_callouts: { label: string; value: string }[]; follow_ups: string[];
   language: string; source: OutputSource; latency_ms: number;
 }
+
+export interface TimelineEntry { moment_id: string; minute: string; kind: string; importance: number; status: string }
+
+export interface BroadcastRecord {
+  moment_id: string; minute: string; kind: string; importance: number; degraded: boolean;
+  status: "aired" | "held" | "released"; commentary: string;
+  explanation: { headline: string; why_it_matters: string; evidence: string[]; theme: string };
+  cues: OverlayCue[];
+}
+
+export interface PipelineHealth {
+  moments: number; cues: number; mean_card_latency_ms: number;
+  source_rates: Record<string, Record<string, number>>; fact_checks: Record<string, number>;
+}
+
+export interface ProducerSummary {
+  hold: boolean; segments: number; timeline: TimelineEntry[]; records: BroadcastRecord[]; health: PipelineHealth;
+}

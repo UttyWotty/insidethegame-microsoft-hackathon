@@ -23,6 +23,7 @@ from insidegame.commentary.play_by_play import PlayByPlay
 from insidegame.core.exceptions import SessionLimitError
 from insidegame.domain.match import MatchResult
 from insidegame.live.pacing import replay_delay_s
+from insidegame.live.producer import AirStatus, ProducerDesk
 from insidegame.orchestration.messages import MomentJob
 from insidegame.orchestration.service import MatchIntelligenceService, degraded_broadcast
 
@@ -95,6 +96,7 @@ class MatchSession:
         self.tasks: set[asyncio.Task[None]] = set()
         self.recent_moments: deque[MomentContext] = deque(maxlen=MOMENT_HISTORY)
         self.play_by_play = PlayByPlay(result.metadata)
+        self.desk = ProducerDesk()
         self.commentary: deque[dict[str, object]] = deque(maxlen=COMMENTARY_HISTORY)
 
     def describe(self) -> dict[str, object]:
@@ -176,10 +178,30 @@ class MatchSession:
         except Exception:  # noqa: BLE001 - resilience boundary for background work
             logger.exception("Production failed for %s; publishing degraded cues", job.context.moment.moment_id)
             broadcast = degraded_broadcast(self.result.metadata.match_id, job.context, job)
-        for cue in broadcast.cues:
-            data = cue.to_dict()
-            self.cue_history.setdefault(cue.viewer_id, deque(maxlen=CUE_HISTORY)).append(data)
-            self.publish(LiveMessage(MessageType.CUE, data, segment_id=cue.viewer_id))
+        record = self.desk.record(broadcast)
+        if record.status is AirStatus.HELD:
+            return
+        self._air([cue.to_dict() for cue in broadcast.cues])
+
+    def _air(self, cues: list[dict[str, object]]) -> None:
+        for data in cues:
+            segment = str(data["viewer_id"])
+            self.cue_history.setdefault(segment, deque(maxlen=CUE_HISTORY)).append(data)
+            self.publish(LiveMessage(MessageType.CUE, data, segment_id=segment))
+
+    def set_hold(self, hold: bool) -> None:
+        """Hold new AI overlays for producer approval, or air them immediately again."""
+        self.desk.hold = hold
+
+    def release(self, moment_id: str | None) -> int:
+        """Air held overlays for one moment, or all held moments; returns how many cues were aired."""
+        cues = self.desk.release(moment_id)
+        self._air(cues)
+        return len(cues)
+
+    def producer_summary(self) -> dict[str, object]:
+        """State for the producer console."""
+        return self.desk.summary(self.service.analyzer.moments, len(self.service.viewers))
 
     async def _recap(self, stage: RecapStage) -> None:
         """Write the shared recap, then publish it to each viewer segment with that segment's persona take."""

@@ -18,7 +18,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from insidegame.adapters.model_client import ModelRuntime, build_model_runtime
 from insidegame.adapters.telemetry import setup_telemetry
 from insidegame.agents.factory import create_agent_suite
-from insidegame.api import routes_matches, routes_meta
+from insidegame.api import routes_matches, routes_meta, routes_producer
 from insidegame.api.mcp_auth import BearerTokenGuard
 from insidegame.api.mcp_server import build_mcp_server
 from insidegame.core.exceptions import (
@@ -80,6 +80,7 @@ def create_app(
         app.add_exception_handler(error, _handler(status))
     app.include_router(routes_meta.router, prefix=API_PREFIX)
     app.include_router(routes_matches.router, prefix=API_PREFIX)
+    app.include_router(routes_producer.router, prefix=API_PREFIX)
     app.mount(MCP_PATH, BearerTokenGuard(mcp_app, MCP_API_KEY))
     if static_dir and os.path.isdir(static_dir):
         app.mount("/", StaticFiles(directory=static_dir, html=True), name="frontend")
