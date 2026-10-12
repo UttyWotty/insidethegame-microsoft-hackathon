@@ -77,6 +77,7 @@ JSON Lines tables across every fixture pairing:
 | `events.jsonl` | Every event with absolute coordinates, xG, pass difficulty, momentum, rhythm state, triggered moments |
 | `players.jsonl` | Per-player match statistics |
 | `moments.jsonl` | Labelled key moments with importance and facts |
+| `tracking.jsonl` | Ball and all 22 player positions in the absolute home frame, sampled every fifth event |
 | `README.md` | Generated dataset card: parameters, schema, statistics, intended uses, limitations |
 
 Twelve matches (about 30,000 events) generate in under two seconds. A two-match sample is committed in

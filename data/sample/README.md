@@ -16,7 +16,8 @@ Inside the Game analytics engine. Every file is JSON Lines.
 | `matches.jsonl` | 2 | One row per match: clubs, styles, score, possession, xG, key moment count |
 | `events.jsonl` | 5050 | Every event with absolute coordinates, xG, pass difficulty, momentum, rhythm state |
 | `players.jsonl` | 44 | Per-player match statistics |
-| `moments.jsonl` | 27 | Labelled key moments with importance and supporting facts |
+| `moments.jsonl` | 42 | Labelled key moments with importance and supporting facts |
+| `tracking.jsonl` | 1011 | Ball and all 22 player positions after every 5th event |
 
 ## Headline statistics
 
@@ -27,7 +28,9 @@ Inside the Game analytics engine. Every file is JSON Lines.
 ## Coordinates
 
 Metres on a 105 x 68 pitch. `start_x`/`end_x` are absolute: the home side attacks toward x = 105 for the whole
-match (no end swap), so heatmaps and models need no per-team normalisation.
+match (no end swap), so heatmaps and models need no per-team normalisation. Tracking rows use the same frame:
+`players` is a list of `[player_id, x, y]`, and positions come from a formation-aware model (teams push up and
+spread in possession, compact and shift toward the ball out of it) rather than physical motion capture.
 
 ## Intended uses
 
@@ -36,5 +39,6 @@ success, moment detection), and testing broadcast graphics or agent pipelines wi
 
 ## Limitations
 
-Synthetic data calibrated to typical top-flight averages; it has no off-ball tracking, set-piece detail beyond
-kick-offs and restarts, substitutions, or cards. Do not use it to draw conclusions about real players or clubs.
+Synthetic data calibrated to typical top-flight averages; tracking is event-sampled and modelled (not
+continuous, so it is unsuitable for speed or sprint analysis), and there is no set-piece detail beyond
+kick-offs and restarts, no substitutions, and no cards. Do not use it to draw conclusions about real players or clubs.
