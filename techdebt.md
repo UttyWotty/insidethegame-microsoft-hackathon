@@ -1,17 +1,34 @@
 <!--
 Open follow-ups and technical debt for Inside the Game, tracked in the repository so nothing is forgotten.
 Resolved items are wrapped in HTML comments rather than deleted, preserving history.
-Ordered by priority within each section; status as of 2026-10-02 (develop at PR #27, release v0.1.0 on main).
+Ordered by priority within each section; status as of 2026-10-12 (develop at PR #28, release v0.1.0 on main).
 -->
 
 # Tech Debt and Follow-ups
 
 ## Blockers before submitting
 
+<!--
 - Check the employment contract (or get written permission): the project was built on a work laptop, and the rules
   require the submission to be solely owned by the entrant (rules 4.6 and 4.11). Use a personal machine from now on.
+  Resolved 2026-10-12: the owner confirmed this machine is approved for the project.
+-->
 - Agents have never been seen with real AI output in the UI; every chip shows "Template" in offline mode. Validate on
   a real model (MLX locally, then Foundry) before recording anything.
+  Next run (planned 2026-10-13), local model chosen by the owner: Qwen3.8 27B 6-bit
+  (`ailexleon/Huihui-Qwen3.8-27B-abliterated-mlx-6Bit`) on the existing MLX gateway at `127.0.0.1:8081`
+  (launchd agent `local.mlx-serve-qwen38`; do not start a separate server).
+  1. Confirm no other workload is live: nothing else connected to ports 8080 and 8081
+     (`lsof -nP -iTCP:8081 -sTCP:ESTABLISHED`) and no other MLX job running (on 2026-10-12 an image-generation job in
+     another repo took both gateways down mid-run). Check `curl -s http://127.0.0.1:8081/v1/models` returns the model.
+  2. Evaluate: `MODEL_PROVIDER=mlx MODEL_NAME=ailexleon/Huihui-Qwen3.8-27B-abliterated-mlx-6Bit
+     MODEL_BASE_URL=http://127.0.0.1:8081/v1 MODEL_TIMEOUT_S=240 MODEL_MAX_CONCURRENCY=1
+     .venv/bin/python -m insidegame.evaluation.run --max-moments 3
+     --output docs/evaluations/2026-10-13-mlx-qwen3.8-27b-6bit.json`. The 240-second timeout is needed: warm speed
+     is about 18 tokens/s prefill and 11 tokens/s decode, so the default 45 seconds would time out.
+  3. Run a live match in the UI with the same variables and confirm the chips show model output (not "Template")
+     for analyst, narrator, translator, persona cards, fact-checker, and recaps; note anything that falls back.
+  4. Fix prompt or parsing issues found, commit the report, and update the README "Latest local run" line.
 
 ## Azure go-live (needs a personal Azure subscription)
 
