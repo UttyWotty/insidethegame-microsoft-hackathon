@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Submission text and demo script describe the seven agents, fact-checking, the producer console, tracking, and
+  the Copilot-via-MCP segment; the script requires real AI output before recording and uses the exact UI labels.
 - Continuous play-by-play commentary from kick-off (kick-offs, final-third attacks, long passes, dribbles, tackles,
   interceptions, high pressing, long spells, half-time and full-time), paced at about one line per match minute and
   shared by every viewer.
