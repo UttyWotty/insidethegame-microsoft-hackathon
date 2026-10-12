@@ -4,9 +4,10 @@ The card records how the data was generated, its schema, headline statistics, an
 It is built from the same rows that are written, so the numbers always match the files.
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from insidegame.datasets.rows import Row
+from insidegame.datasets.tracking_rows import DEFAULT_SAMPLE_EVERY
 
 STAT_DECIMALS: int = 2
 
@@ -15,8 +16,8 @@ def _mean(values: Sequence[float]) -> float:
     return round(sum(values) / len(values), STAT_DECIMALS) if values else 0.0
 
 
-def dataset_card(matches: Sequence[Row], event_count: int, moment_count: int, player_count: int) -> str:
-    """Return the Markdown dataset card."""
+def dataset_card(matches: Sequence[Row], counts: Mapping[str, int]) -> str:
+    """Return the Markdown dataset card; counts maps each table name (events, players, moments, tracking) to rows."""
     goals = [float(m["home_goals"]) + float(m["away_goals"]) for m in matches]  # type: ignore[arg-type]
     xg = [float(m["home_xg"]) + float(m["away_xg"]) for m in matches]  # type: ignore[arg-type]
     seeds = sorted({int(m["seed"]) for m in matches})  # type: ignore[call-overload]
@@ -36,9 +37,10 @@ Inside the Game analytics engine. Every file is JSON Lines.
 | File | Rows | Description |
 |---|---|---|
 | `matches.jsonl` | {len(matches)} | One row per match: clubs, styles, score, possession, xG, key moment count |
-| `events.jsonl` | {event_count} | Every event with absolute coordinates, xG, pass difficulty, momentum, rhythm state |
-| `players.jsonl` | {player_count} | Per-player match statistics |
-| `moments.jsonl` | {moment_count} | Labelled key moments with importance and supporting facts |
+| `events.jsonl` | {counts['events']} | Every event with absolute coordinates, xG, pass difficulty, momentum, rhythm state |
+| `players.jsonl` | {counts['players']} | Per-player match statistics |
+| `moments.jsonl` | {counts['moments']} | Labelled key moments with importance and supporting facts |
+| `tracking.jsonl` | {counts['tracking']} | Ball and all 22 player positions after every {DEFAULT_SAMPLE_EVERY}th event |
 
 ## Headline statistics
 
@@ -49,7 +51,9 @@ Inside the Game analytics engine. Every file is JSON Lines.
 ## Coordinates
 
 Metres on a 105 x 68 pitch. `start_x`/`end_x` are absolute: the home side attacks toward x = 105 for the whole
-match (no end swap), so heatmaps and models need no per-team normalisation.
+match (no end swap), so heatmaps and models need no per-team normalisation. Tracking rows use the same frame:
+`players` is a list of `[player_id, x, y]`, and positions come from a formation-aware model (teams push up and
+spread in possession, compact and shift toward the ball out of it) rather than physical motion capture.
 
 ## Intended uses
 
@@ -58,6 +62,7 @@ success, moment detection), and testing broadcast graphics or agent pipelines wi
 
 ## Limitations
 
-Synthetic data calibrated to typical top-flight averages; it has no off-ball tracking, set-piece detail beyond
-kick-offs and restarts, substitutions, or cards. Do not use it to draw conclusions about real players or clubs.
+Synthetic data calibrated to typical top-flight averages; tracking is event-sampled and modelled (not
+continuous, so it is unsuitable for speed or sprint analysis), and there is no set-piece detail beyond
+kick-offs and restarts, no substitutions, and no cards. Do not use it to draw conclusions about real players or clubs.
 """

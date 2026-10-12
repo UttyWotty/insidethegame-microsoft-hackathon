@@ -10,6 +10,7 @@ from pathlib import Path
 from insidegame.core.constants import PITCH_LENGTH_M, PITCH_WIDTH_M
 from insidegame.datasets.generate import generate
 from insidegame.datasets.rows import build_tables
+from insidegame.datasets.tracking_rows import DEFAULT_SAMPLE_EVERY, tracking_rows
 from insidegame.domain.enums import EventType
 from insidegame.simulation.engine import simulate_match
 from insidegame.simulation.roster import build_fixture
@@ -40,8 +41,25 @@ def test_away_coordinates_are_mirrored_into_the_home_frame() -> None:
 
 def test_generator_writes_all_tables_and_a_consistent_card(tmp_path: Path) -> None:
     counts = generate(2, 1, tmp_path)
-    for name in ("matches", "events", "players", "moments"):
+    for name in ("matches", "events", "players", "moments", "tracking"):
         lines = (tmp_path / f"{name}.jsonl").read_text(encoding="utf-8").splitlines()
         assert len(lines) == counts[name] and json.loads(lines[0])
     card = (tmp_path / "README.md").read_text(encoding="utf-8")
     assert f"| `events.jsonl` | {counts['events']} |" in card and "fictional" in card.lower()
+    assert f"| `tracking.jsonl` | {counts['tracking']} |" in card
+
+
+def test_tracking_rows_sample_every_nth_event_with_all_players_on_the_pitch() -> None:
+    result = simulate_match(build_fixture("brookhaven", "ironvale", 5))
+    rows = tracking_rows(result)
+    assert len(rows) == -(-len(result.events) // DEFAULT_SAMPLE_EVERY)
+    assert [r["event_id"] for r in rows] == [e.event_id for e in result.events[::DEFAULT_SAMPLE_EVERY]]
+    for row in rows:
+        players = row["players"]
+        assert len(players) == SQUAD_PLAYERS  # type: ignore[arg-type]
+        assert all(0 <= x <= PITCH_LENGTH_M and 0 <= y <= PITCH_WIDTH_M for _, x, y in players)  # type: ignore[union-attr]
+
+
+def test_full_rate_tracking_keeps_every_frame() -> None:
+    result = simulate_match(build_fixture("brookhaven", "ironvale", 5))
+    assert len(tracking_rows(result, sample_every=1)) == len(result.events)

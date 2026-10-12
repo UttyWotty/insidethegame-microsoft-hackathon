@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Dataset export writes `tracking.jsonl`: ball and all 22 player positions every fifth event, in the same absolute
+  home frame as the events; the dataset card documents it, and the two-match sample in `data/sample/` is refreshed.
 - Landing screen with the value proposition, four differentiators, and a one-click demo match.
 - Shot traces on the pitch (xG bubble sized by chance quality, result label) and a full-width GOAL banner in the
   scoring club's colours; the half-time recap closes itself after 15 seconds so play is not covered.

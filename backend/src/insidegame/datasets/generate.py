@@ -1,7 +1,7 @@
 """Command-line dataset generator: simulate many matches across every fixture pairing and write the tables.
 
 Usage: python -m insidegame.datasets.generate --matches 48 --start-seed 1 --out data/synthetic
-The output directory receives four JSON Lines files and a dataset card.
+The output directory receives five JSON Lines files (including sampled 22-player tracking) and a dataset card.
 """
 
 import argparse
@@ -12,6 +12,7 @@ from pathlib import Path
 
 from insidegame.datasets.card import dataset_card
 from insidegame.datasets.rows import Row, build_tables
+from insidegame.datasets.tracking_rows import tracking_rows
 from insidegame.simulation.engine import simulate_match
 from insidegame.simulation.roster import CLUB_PRESETS, build_fixture
 
@@ -32,16 +33,17 @@ def _write_jsonl(path: Path, rows: Iterable[Row]) -> int:
 def generate(matches: int, start_seed: int, output: Path) -> dict[str, int]:
     """Simulate and analyse matches, cycling through all home and away pairings, then write the dataset."""
     pairings = list(itertools.permutations(CLUB_PRESETS, 2))
-    tables = [build_tables(simulate_match(build_fixture(*pairings[i % len(pairings)], start_seed + i)))
-              for i in range(matches)]
+    results = [simulate_match(build_fixture(*pairings[i % len(pairings)], start_seed + i)) for i in range(matches)]
+    tables = [build_tables(result) for result in results]
     output.mkdir(parents=True, exist_ok=True)
     counts = {
         "matches": _write_jsonl(output / "matches.jsonl", (t.match for t in tables)),
         "events": _write_jsonl(output / "events.jsonl", (row for t in tables for row in t.events)),
         "players": _write_jsonl(output / "players.jsonl", (row for t in tables for row in t.players)),
         "moments": _write_jsonl(output / "moments.jsonl", (row for t in tables for row in t.moments)),
+        "tracking": _write_jsonl(output / "tracking.jsonl", (row for r in results for row in tracking_rows(r))),
     }
-    card = dataset_card([t.match for t in tables], counts["events"], counts["moments"], counts["players"])
+    card = dataset_card([t.match for t in tables], counts)
     (output / "README.md").write_text(card, encoding="utf-8")
     return counts
 
