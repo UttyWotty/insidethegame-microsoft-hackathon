@@ -26,6 +26,7 @@ from insidegame.core.exceptions import SessionLimitError
 from insidegame.domain.match import MatchResult
 from insidegame.live.pacing import replay_delay_s
 from insidegame.live.producer import AirStatus, ProducerDesk
+from insidegame.live.spoken_lines import find_spoken_line
 from insidegame.orchestration.cues import MomentBroadcast
 from insidegame.orchestration.messages import MomentJob
 from insidegame.orchestration.producer import is_stale
@@ -242,6 +243,10 @@ class MatchSession:
         cues = self.desk.release(moment_id)
         self._air(cues)
         return len(cues)
+
+    def spoken_line(self, ref: str, segment: str | None) -> tuple[str, str]:
+        """Text and language of a commentary line this session produced, for spoken commentary."""
+        return find_spoken_line(ref, segment, self.commentary, self.cue_history)
 
     def producer_summary(self) -> dict[str, object]:
         """State for the producer console."""

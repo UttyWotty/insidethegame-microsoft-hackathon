@@ -24,7 +24,8 @@ azd up
 | Log Analytics + Application Insights | Container logs plus Agent Framework OpenTelemetry traces |
 
 Security defaults: local (key) auth is **disabled** on the Foundry resource, the app authenticates with its
-managed identity (`Cognitive Services OpenAI User` role only), the registry has no admin user, and the
+managed identity (`Cognitive Services OpenAI User` for models and `Cognitive Services Speech User` for spoken
+commentary, nothing broader), the registry has no admin user, and the
 container runs as a non-root user. Prompt and response contents are not sent to telemetry unless
 `TELEMETRY_SENSITIVE_DATA=true`.
 
@@ -120,4 +121,5 @@ azd down --purge
 |---|---|
 | `InsufficientQuota` during provisioning | Choose another region or lower `AZURE_MODEL_CAPACITY` |
 | `/api/diagnostics` returns 401 or 403 | Role assignments can take a few minutes to propagate; retry |
+| Voice uses the browser voice, not a neural one | `/api/speech/status` must show available; a 401 from speech means the Speech User role has not propagated yet |
 | Overlays show the `Template` chip | The model call failed or timed out; check `/api/diagnostics` and Application Insights |

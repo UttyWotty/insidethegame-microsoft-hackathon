@@ -4,10 +4,11 @@
  * Changing persona or language reconnects to a different segment of the same live match.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { api } from "../api/client";
 import { useMatchStream } from "../api/useMatchStream";
 import { teamColor } from "../lib/teams";
 import { useNow } from "../lib/useNow";
-import { speechSupported, useSpokenCommentary } from "../lib/useSpokenCommentary";
+import { speechSupported, useSpokenCommentary, type SpeechUrlBuilder } from "../lib/useSpokenCommentary";
 import { activeCue } from "../state/matchState";
 import type { MatchEvent, MatchMetadata, Point, Recap, ViewerSettings } from "../types";
 
@@ -51,8 +52,14 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
     [state.session, state.players, state.lastEvent, viewer.player]);
   const [seenStages, setSeenStages] = useState<Set<string>>(() => new Set());
   const [voiceOn, setVoiceOn] = useState(false);
+  const [neuralVoice, setNeuralVoice] = useState(false);
   const toggleVoice = useCallback(() => setVoiceOn((on) => !on), []);
-  useSpokenCommentary(state.ticker, viewer.language, voiceOn);
+  useEffect(() => {
+    api.speechStatus().then((s) => setNeuralVoice(s.available)).catch(() => setNeuralVoice(false));
+  }, []);
+  const speechUrl = useMemo<SpeechUrlBuilder>(
+    () => (neuralVoice ? (ref, segment) => api.speechUrl(sessionId, ref, segment) : null), [neuralVoice, sessionId]);
+  useSpokenCommentary(state.ticker, viewer.language, voiceOn, speechUrl);
 
   useEffect(() => {
     const fresh = state.recaps.find((r) => !seenStages.has(r.stage));
@@ -106,7 +113,7 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
           ))}
         </div>
         <CommentaryTicker items={state.ticker}
-          voice={speechSupported ? { on: voiceOn, onToggle: toggleVoice } : undefined} />
+          voice={speechSupported || neuralVoice ? { on: voiceOn, onToggle: toggleVoice } : undefined} />
       </div>
       <aside className="rail">
         <AskPanel sessionId={sessionId} viewer={viewer} />

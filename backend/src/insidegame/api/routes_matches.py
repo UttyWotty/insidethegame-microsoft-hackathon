@@ -12,6 +12,7 @@ from insidegame.agents.context import build_viewer_context
 from insidegame.agents.question_context import build_question_context
 from insidegame.agents.runner import OutputSource
 from insidegame.agents.steps import answer_question
+from insidegame.api.clients import client_key
 from insidegame.api.models import AskRequest, CreateMatchRequest
 from insidegame.api.sse import stream
 from insidegame.live.registry import SessionRegistry
@@ -20,27 +21,12 @@ from insidegame.live.segments import fixture_segment_profile
 SSE_MEDIA_TYPE: str = "text/event-stream"
 SSE_HEADERS: dict[str, str] = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 HTTP_CREATED: int = 201
-FORWARDED_FOR_HEADER: str = "x-forwarded-for"
-UNKNOWN_CLIENT: str = "unknown"
 
 router = APIRouter(prefix="/matches")
 
 
 def _registry(request: Request) -> SessionRegistry:
     return request.app.state.registry
-
-
-def client_key(request: Request) -> str:
-    """Identify the caller for rate limiting.
-
-    Behind the Container Apps ingress the client address is the last X-Forwarded-For entry, the one the platform
-    proxy appended; earlier entries are client-supplied and could be forged. Without the header the socket peer
-    address is used, and UNKNOWN_CLIENT when neither is available.
-    """
-    forwarded = request.headers.get(FORWARDED_FOR_HEADER, "")
-    if forwarded.strip():
-        return forwarded.split(",")[-1].strip()
-    return request.client.host if request.client else UNKNOWN_CLIENT
 
 
 @router.post("", status_code=HTTP_CREATED)

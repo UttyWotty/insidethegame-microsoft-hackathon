@@ -16,20 +16,25 @@ from fastapi.staticfiles import StaticFiles
 from mcp.server.transport_security import TransportSecuritySettings
 
 from insidegame.adapters.model_client import ModelRuntime, build_model_runtime
+from insidegame.adapters.speech_client import build_speech_client
 from insidegame.adapters.telemetry import setup_telemetry
 from insidegame.agents.factory import create_agent_suite
-from insidegame.api import routes_matches, routes_meta, routes_producer
+from insidegame.api import routes_matches, routes_meta, routes_producer, routes_speech
 from insidegame.api.mcp_auth import BearerTokenGuard
 from insidegame.api.mcp_server import build_mcp_server
 from insidegame.core.exceptions import (
     FixtureError,
+    LineNotFoundError,
     PersonaConfigError,
     RateLimitError,
     SessionLimitError,
     SessionNotFoundError,
+    SpeechUnavailableError,
 )
+from insidegame.core.rate_limit import SlidingWindowLimiter
 from insidegame.live.registry import SessionRegistry
 from insidegame.live.session import Sleeper
+from insidegame.speech.synthesizer import SpeechSynthesizer
 
 FRONTEND_ORIGINS: list[str] = os.getenv("FRONTEND_ORIGINS", "http://localhost:5199").split(",")
 STATIC_DIR: str = os.getenv("STATIC_DIR", "")
@@ -41,19 +46,22 @@ API_TITLE: str = "Inside the Game API"
 API_VERSION: str = "0.1.0"
 ERROR_STATUS: dict[type[Exception], int] = {
     FixtureError: 400, PersonaConfigError: 400, SessionNotFoundError: 404, SessionLimitError: 429,
-    RateLimitError: 429,
+    RateLimitError: 429, LineNotFoundError: 404, SpeechUnavailableError: 503,
 }
 
 
 ErrorHandler = Callable[[Request, Exception], Awaitable[JSONResponse]]
+SpeechFactory = Callable[[], SpeechSynthesizer | None]
 
 
 def create_app(
-    runtime: ModelRuntime | None = None, sleep: Sleeper = asyncio.sleep, static_dir: str = STATIC_DIR
+    runtime: ModelRuntime | None = None, sleep: Sleeper = asyncio.sleep, static_dir: str = STATIC_DIR,
+    speech_factory: SpeechFactory = build_speech_client,
 ) -> FastAPI:
     """Build the application.
 
-    Defaults: runtime is the environment model runtime, sleep is asyncio.sleep, static_dir is STATIC_DIR.
+    Defaults: runtime is the environment model runtime, sleep is asyncio.sleep, static_dir is STATIC_DIR, and
+    speech_factory is build_speech_client (Azure AI Speech when SPEECH_ENDPOINT is set, otherwise none).
     """
 
     mcp = build_mcp_server(lambda: app.state.registry)
@@ -69,6 +77,9 @@ def create_app(
         resolved = runtime or build_model_runtime()
         app.state.runtime = resolved
         app.state.registry = SessionRegistry(create_agent_suite(resolved.client), resolved.policy, sleep)
+        app.state.speech = speech_factory()
+        app.state.speech_limiter = SlidingWindowLimiter(routes_speech.SPEECH_MAX_PER_WINDOW,
+                                                        routes_speech.SPEECH_WINDOW_S)
         async with mcp.session_manager.run():
             yield
         await app.state.registry.shutdown()
@@ -81,6 +92,7 @@ def create_app(
     app.include_router(routes_meta.router, prefix=API_PREFIX)
     app.include_router(routes_matches.router, prefix=API_PREFIX)
     app.include_router(routes_producer.router, prefix=API_PREFIX)
+    app.include_router(routes_speech.router, prefix=API_PREFIX)
     app.mount(MCP_PATH, BearerTokenGuard(mcp_app, MCP_API_KEY))
     if static_dir and os.path.isdir(static_dir):
         app.mount("/", StaticFiles(directory=static_dir, html=True), name="frontend")

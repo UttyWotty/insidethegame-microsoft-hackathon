@@ -46,6 +46,8 @@ grounded fallback guarantees the broadcast never goes blank.
   OpenTelemetry instrumentation.
 - **Microsoft Foundry:** project and model deployment, accessed keylessly with a managed identity, plus a hosted
   agent in Foundry Agent Service that uses this project's MCP server to answer questions about live matches.
+- **Azure AI Speech:** neural voices read commentary aloud in each viewer's language, keyless through the app's
+  managed identity on the same AI Services account; only lines the match produced can be voiced.
 - **Model Context Protocol:** the live match intelligence is an MCP server, usable from GitHub Copilot agent mode
   or Foundry agents.
 - **Azure Container Apps, Container Registry, Application Insights, Log Analytics:** one container, provisioned

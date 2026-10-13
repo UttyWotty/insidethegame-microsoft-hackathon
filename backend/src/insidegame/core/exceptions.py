@@ -43,3 +43,11 @@ class SessionLimitError(InsideGameError):
 
 class RateLimitError(InsideGameError):
     """Raised when a caller exceeds the allowed request rate for a model-backed operation."""
+
+
+class SpeechUnavailableError(InsideGameError):
+    """Raised when spoken audio is requested but no speech service is configured or it failed."""
+
+
+class LineNotFoundError(InsideGameError):
+    """Raised when a spoken line is requested that the match session did not produce or no longer holds."""

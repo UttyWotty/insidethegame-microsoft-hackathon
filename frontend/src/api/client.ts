@@ -29,6 +29,11 @@ export interface CreateMatch { home: string; away: string; seed: number; speed: 
 
 export const api = {
   health: () => request<Health>("/health"),
+  speechStatus: () => request<{ available: boolean }>("/speech/status"),
+  speechUrl: (sessionId: string, ref: string, segment?: string) => {
+    const query = new URLSearchParams({ ref, ...(segment ? { segment } : {}) });
+    return `${API_BASE}/matches/${encodeURIComponent(sessionId)}/speech?${query}`;
+  },
   clubs: () => request<ClubInfo[]>("/clubs"),
   personas: () => request<PersonaInfo[]>("/personas"),
   languages: () => request<Record<string, string>>("/languages"),

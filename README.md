@@ -58,6 +58,8 @@ acting team (attacking toward x = 105).
 - Microsoft Agent Framework: agents, tools, structured outputs, workflow orchestration, OpenTelemetry
 - Microsoft Foundry: project and model deployment, keyless managed identity access, hosted agent in Foundry
   Agent Service using the project's MCP server
+- Azure AI Speech: neural text to speech for spoken commentary on the same AI Services account, keyless via the
+  app's managed identity (browser speech is the fallback)
 - Azure Container Apps, Azure Container Registry, Log Analytics, Application Insights
 - Model Context Protocol server exposing match intelligence to GitHub Copilot and Foundry agents
 - Azure Developer CLI with Bicep infrastructure as code; GitHub Actions CI and OIDC deployment
@@ -183,6 +185,8 @@ skipped.
 | GET | `/api/matches/{id}/stream?persona=&language=&team=&player=` | Personalized SSE feed |
 | GET | `/api/matches/{id}/producer` | Producer console state: timeline, broadcast records, pipeline health |
 | POST | `/api/matches/{id}/producer/hold`, `/producer/release` | Hold AI overlays for approval; release one or all |
+| GET | `/api/speech/status` | Whether neural speech is configured (configuration only, no service call) |
+| GET | `/api/matches/{id}/speech?ref=&segment=` | MP3 of one commentary line this match produced (never arbitrary text) |
 | POST | `/api/matches/{id}/ask` | Ask the Match Companion: `{question, persona, language, team, player}` |
 
 Stream message types: `match`, `event` (raw event with xG, pass quality, rhythm, and moments), `snapshot`
@@ -246,9 +250,10 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   explainer card. Every overlay shows provenance (AI, corrected, or template, with latency).
 - **Live data rail:** team comparison bars, a diverging momentum chart with a plain-language rhythm label,
   and a commentary ticker mixing continuous play-by-play from kick-off, agent commentary on key moments
-  (translated for non-English viewers), and key events. A **Voice** toggle reads commentary aloud with the
-  browser's speech synthesis in the viewer's language; only lines actually in that language are spoken, and
-  play-by-play is dropped first when lines arrive faster than they can be read.
+  (translated for non-English viewers), and key events. A **Voice** toggle reads commentary aloud in the viewer's
+  language: with Azure AI Speech neural voices when the deployment has it, otherwise (or if a request fails) with
+  the browser's speech synthesis. Only lines actually in that language are spoken, and play-by-play is dropped
+  first when lines arrive faster than they can be read.
 - **Recaps:** half-time and full-time recaps open in an accessible dialog, led by the viewer's persona take.
 - **Ask the analyst:** viewers question the Match Companion about the live match and get grounded answers
   in their persona's voice and language, with supporting stats and suggested follow-ups. Without a model, a
@@ -310,6 +315,9 @@ Model configuration (environment variables, all optional):
 | `STATIC_DIR` | empty | Built frontend directory served at `/` (set in the container) |
 | `MCP_API_KEY` | empty | Bearer token required by `/mcp`; empty leaves it open |
 | `SHUTDOWN_GRACE_S` | `5` | Seconds open streams may delay shutdown |
+| `SPEECH_ENDPOINT` | empty | AI Services endpoint for neural speech (`https://<name>.cognitiveservices.azure.com/`); empty means browser speech only |
+| `SPEECH_MAX_PER_MINUTE` | `40` | Speech requests per client per minute (429 beyond) |
+| `SPEECH_TIMEOUT_S` | `10` | Timeout for one speech synthesis request |
 | `PRODUCER_KEY` | empty | Required in `X-Producer-Key` for producer routes when set |
 | `PARALLEL_MOMENTS` | `2` | Moments per match whose agent workflows run at once; later moments queue in order |
 | `MATCH_CREATE_MAX_PER_MINUTE` | `6` | New matches per client per minute, via the API or the MCP tool (429 beyond) |
@@ -343,12 +351,13 @@ backend/
     simulation/   seeded synthetic match engine (stage 1 source)
     analytics/    streaming interpretation: xG, pass quality, stats, rhythm, key moments (stage 2)
     tracking/     synthetic 22-player positions from the event stream
+    speech/       neural voice choice and SSML for spoken commentary (pure)
     commentary/   deterministic play-by-play lines
     agents/       personas, schemas, prompts, grounding, fallbacks, resilient agent steps (stages 3-5)
     orchestration/ producer policy, workflow executors, overlay cues, match service
     live/         real-time replay sessions, viewer segments, pub/sub fan-out
     api/          FastAPI app, routers, server-sent events, MCP server
-    adapters/     model client (MLX, Ollama, Foundry, offline) and telemetry setup
+    adapters/     model client (MLX, Ollama, Foundry, offline), Azure AI Speech client, and telemetry setup
     evaluation/   agent evaluation harness
     datasets/     synthetic dataset tables, dataset card, generator CLI
     foundry/      hosted agent definition and registration for Foundry Agent Service

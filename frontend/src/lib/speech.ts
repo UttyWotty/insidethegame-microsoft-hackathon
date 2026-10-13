@@ -11,6 +11,8 @@ export const MAX_PENDING_SPEECH = 2;
 export const SPEECH_RATE = 1.08;
 
 const SPOKEN_TONES: ReadonlySet<TickerItem["tone"]> = new Set(["commentary", "goal", "play"]);
+/** Lines the server holds and can voice with neural speech; event lines such as goals are spoken on-device. */
+const SERVER_TONES: ReadonlySet<TickerItem["tone"]> = new Set(["commentary", "play"]);
 const DROPPABLE_TONE: TickerItem["tone"] = "play";
 
 /** The voice fields the planner needs, matching the browser's SpeechSynthesisVoice. */
@@ -40,6 +42,12 @@ export function enqueueSpeech(pending: readonly TickerItem[], incoming: readonly
     queue.splice(droppable >= 0 ? droppable : 0, 1);
   }
   return queue;
+}
+
+/** Where the server can voice a line: its feed reference and, for moment commentary, the receiving segment. */
+export function serverSpeechRef(item: TickerItem): { ref: string; segment?: string } | null {
+  if (!SERVER_TONES.has(item.tone)) return null;
+  return item.tone === "commentary" ? { ref: item.id, segment: item.segment } : { ref: item.id };
 }
 
 /** Lines in the feed (newest first) that have not been seen yet, returned oldest first. */

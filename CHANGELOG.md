@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Azure AI Speech for spoken commentary: `/api/matches/{id}/speech` returns MP3 from a neural voice per language,
+  only for lines the match produced (looked up by reference, never arbitrary text), cached and rate-limited per
+  client; keyless via the app's managed identity with the Cognitive Services Speech User role on the existing AI
+  Services account (`SPEECH_ENDPOINT` in Bicep). The Voice toggle prefers it and falls back to browser speech.
 - Spoken commentary: a Voice toggle on the commentary panel reads lines aloud with the browser's speech synthesis,
   choosing a voice for the viewer's language and speaking only lines in that language, with a two-line queue that
   drops play-by-play first so speech keeps up. Overlay cues now carry `commentary_language`, so an untranslated

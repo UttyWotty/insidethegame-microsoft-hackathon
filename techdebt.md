@@ -42,14 +42,20 @@ Ordered by priority within each section; status as of 2026-10-12 (develop at PR 
 - Verify: open `https://<app-url>/api/diagnostics` (one real model call through the managed identity), then use the app.
 - Register the Foundry hosted agent: `uv pip install --python .venv/bin/python -e "backend[foundry]"`, then `eval "$(azd env get-values)"` and `.venv/bin/python -m insidegame.foundry.register --ask "Which matches are live?"`.
 - Set up continuous deployment: `azd pipeline config`.
+- Verify neural speech: `curl https://<app-url>/api/speech/status` shows available, then turn on Voice in the app.
+  The REST path (`/tts/cognitiveservices/v1` on the custom-domain endpoint with an Entra token) is untested
+  against Azure; if it returns 401, check the Speech User role assignment and the custom subdomain.
 - Run `python -m insidegame.evaluation.run --max-moments 6` against Foundry, fix prompt or quality issues it shows, and commit the report to `docs/evaluations/`.
 
 ## Features that raise the chance of winning
 
+<!--
 - Spoken commentary with Azure AI Speech (neural text to speech per language); strongest "multi-language
   storytelling" and Microsoft-service showcase. Browser speech synthesis already reads commentary (Voice toggle,
   2026-10-13); remaining: a `/api/speech` adapter on Azure AI Speech with managed identity, a Speech resource in
   Bicep, and the frontend preferring it when configured (needs the Azure subscription to verify).
+  Resolved 2026-10-13: `/api/matches/{id}/speech`, Speech role and endpoint in Bicep, frontend prefers it.
+-->
 - Microsoft Fabric: load `datasets.generate` output into a Fabric lakehouse and build a small Power BI report; reference it in the submission.
 - Foundry evaluations (groundedness, relevance) on agent outputs, linked from the producer console or docs.
 - GitHub Copilot: record Copilot agent mode in VS Code querying the live match through the MCP server (`.vscode/mcp.json` example in README); also register the Foundry hosted agent and show it in the portal.
