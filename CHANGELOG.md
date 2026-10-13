@@ -76,6 +76,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Accessibility review (WCAG 2.2 AA): chip buttons were 22 px tall (now at least 32 px); form control borders were
+  1.5:1 (new 3:1 border token); three club colours fell below 3:1 on the pitch stripes (lightened); the view switcher
+  claimed tab semantics without arrow-key support (now toggle buttons); overlays and goal banners were inserted as new
+  live regions that screen readers may skip (now persistent regions); no skip link; shirt numbers became unreadable
+  at phone width (hidden there, name tags remain).
+- The recap dialog re-ran its focus effect on every match event, pulling focus back repeatedly; it now runs once
+  per opening, keeps Tab inside, returns focus on close, and does not auto-open while the viewer is typing.
 - Shots on target ran above the reference band (40%) because too many unscored, unblocked shots were saved; the
   save share is now 32%, giving about 35% on target.
 - The producer console showed moments whose agents were still working as "Not aired"; they now show as

@@ -273,6 +273,10 @@ React + TypeScript (Vite, no UI library) broadcast interface:
 - Switching persona or language mid-match backfills the most recent relevant moments for the new segment.
 - Accessibility: visible focus, `aria-live` announcements, text equivalents for charts, colour never the
   only signal, and reduced-motion support.
+- Accessibility checks (WCAG 2.2 AA): text pairs at least 5.6:1, form control borders and club colours at least
+  3:1 (club colours against both pitch stripes), every button at least 24 px tall, a skip link, overlays and goals
+  announced through live regions that stay mounted, and a recap dialog that keeps focus inside, returns it on close,
+  and never opens over a field the viewer is typing in.
 - Responsive: on phones the live pitch comes first and the layout stacks without horizontal scrolling.
 - Resilient start-up: metadata loads with exponential backoff, and a visible retry appears if the service is
   unreachable.

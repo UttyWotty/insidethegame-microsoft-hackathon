@@ -18,6 +18,9 @@ button { cursor: pointer; }
 .display { font-family: var(--font-display); letter-spacing: 0.02em; text-transform: uppercase; }
 .muted { color: var(--color-fg-muted); }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+button.chip { min-height: 32px; padding: var(--space-1) var(--space-3); }
+.skip-link { position: absolute; left: var(--space-3); top: -100px; z-index: 1000; padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); background: var(--color-accent); color: var(--color-on-accent); font-weight: 700; }
+.skip-link:focus { top: var(--space-3); }
 
 .app-header {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
@@ -30,14 +33,14 @@ button { cursor: pointer; }
   min-height: 40px; padding: 0 var(--space-4); border: 0; border-radius: var(--radius-sm); background: transparent;
   color: var(--color-fg-muted); font-weight: 600; transition: background var(--duration-fast), color var(--duration-fast);
 }
-.tab[aria-selected="true"] { background: var(--color-accent); color: var(--color-on-accent); }
+.tab[aria-pressed="true"] { background: var(--color-accent); color: var(--color-on-accent); }
 .chip {
   display: inline-flex; align-items: center; gap: var(--space-1); padding: 2px var(--space-2); border-radius: 999px;
   font-size: var(--text-xs); font-weight: 600; background: var(--color-muted); color: var(--color-fg);
 }
 .chip--live { background: var(--color-danger); color: #1a0505; }
 .chip--model { background: var(--color-accent); color: var(--color-on-accent); }
-.chip--check { background: #38bdf8; color: #04121c; }
+.chip--check { background: var(--color-info); color: var(--color-on-info); }
 .chip--fallback { background: var(--color-warning); color: #1f1300; }
 
 .layout { display: grid; grid-template-columns: 300px minmax(0, 1fr) 340px; gap: var(--space-4); padding: var(--space-4); }
@@ -48,7 +51,7 @@ button { cursor: pointer; }
 .stack { display: flex; flex-direction: column; gap: var(--space-3); }
 .field { display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); }
 .field select, .field input {
-  min-height: 44px; padding: 0 var(--space-3); border-radius: var(--radius-sm); border: 1px solid var(--color-border);
+  min-height: 44px; padding: 0 var(--space-3); border-radius: var(--radius-sm); border: 1px solid var(--color-border-strong);
   background: var(--color-surface);
 }
 .button-primary {
@@ -150,7 +153,7 @@ button { cursor: pointer; }
 .cue-card p { margin: var(--space-1) 0 0; font-size: var(--text-sm); }
 
 .ask-form { display: flex; gap: var(--space-2); }
-.ask-form input { flex: 1; min-height: 44px; padding: 0 var(--space-3); border-radius: var(--radius-sm); border: 1px solid var(--color-border); background: var(--color-surface); }
+.ask-form input { flex: 1; min-height: 44px; padding: 0 var(--space-3); border-radius: var(--radius-sm); border: 1px solid var(--color-border-strong); background: var(--color-surface); }
 .ask-form .button-primary { min-height: 44px; padding: 0 var(--space-4); font-size: var(--text-md); }
 .suggestions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .chip.suggestion { border: 1px solid var(--color-border); min-height: 32px; text-align: left; }
@@ -177,6 +180,7 @@ button { cursor: pointer; }
   .ov-stat-panel, .ov-explainer { width: auto; left: var(--space-2); right: var(--space-2); }
   .overlay-title { font-size: var(--text-lg); }
   .ov-hype-banner .overlay-title { font-size: var(--text-xl); }
+  .player-number { display: none; }
 }
 
 .producer { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4); }

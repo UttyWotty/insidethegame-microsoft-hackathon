@@ -84,7 +84,7 @@ export function ExplainerCard({ cue }: { cue: OverlayCue }) {
 
 export function GoalBanner({ scorer, score, teamColor }: { scorer: string; score: string; teamColor: string }) {
   return (
-    <section className="goal-banner" aria-live="assertive" style={{ "--team-color": teamColor } as CSSProperties}>
+    <section className="goal-banner" aria-hidden="true" style={{ "--team-color": teamColor } as CSSProperties}>
       <span className="goal-word">GOAL</span>
       <span className="goal-detail">{scorer} <span className="num">{score}</span></span>
     </section>
