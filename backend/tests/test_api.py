@@ -74,3 +74,18 @@ def test_built_frontend_is_served_at_root_alongside_the_api(tmp_path) -> None:  
     with _client(str(tmp_path)) as client:
         assert "Inside the Game" in client.get("/").text
         assert client.get("/api/health").json()["status"] == "ok"
+
+
+def test_producer_stream_sends_the_final_summary_then_ends_for_a_finished_match() -> None:
+    with _client() as client:
+        session_id = client.post("/api/matches", json={"home": "brookhaven", "away": "silverlake", "seed": 3}).json()[
+            "session_id"]
+        with client.stream("GET", f"/api/matches/{session_id}/stream", params={"persona": "casual"}) as r:
+            for line in r.iter_lines():
+                if line == "event: end":
+                    break
+        with client.stream("GET", f"/api/matches/{session_id}/producer/stream") as r:
+            assert r.headers["content-type"].startswith("text/event-stream")
+            lines = [line for line in r.iter_lines() if line]
+        assert lines[0] == "event: summary" and lines[-2] == "event: end"
+        assert '"timeline"' in lines[1]

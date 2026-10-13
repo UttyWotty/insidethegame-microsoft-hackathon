@@ -58,6 +58,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Producer console is pushed, not polled: `GET /api/matches/{id}/producer/stream` sends the console state as a
+  server-sent event whenever it changes (sampled every 0.5 s, heartbeats while quiet) and ends when the match
+  finishes. The console subscribes once and falls back to 2-second polling only if the stream fails.
 - Commentary energy: long passes, defence-splitting passes, and long runs are now raised moments, so their lines
   open with a reaction ("Look at that range! ... from 41 metres!") and are spoken with lifted pace and pitch.
   Commentary lines say measurements as words (41 metres, kilometres an hour). Raised and peak lines lift pitch
