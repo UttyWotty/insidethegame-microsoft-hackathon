@@ -30,6 +30,7 @@ from insidegame.domain.match import MatchResult
 from insidegame.highlights.reel import FrameRecord, build_reel
 from insidegame.live.highlight_lines import clip_narrations
 from insidegame.live.pacing import replay_delay_s
+from insidegame.live.studio_view import StudioWindow, studio_payload
 from insidegame.live.producer import AirStatus, ProducerDesk
 from insidegame.live.spoken_lines import find_spoken_line
 from insidegame.orchestration.cues import MomentBroadcast
@@ -132,6 +133,7 @@ class MatchSession:
         self.clock: tuple[int, float] = (1, 0.0)
         self.commentary: deque[dict[str, object]] = deque(maxlen=COMMENTARY_HISTORY)
         self.frames: list[FrameRecord] = []
+        self.played = 0
 
     def describe(self) -> dict[str, object]:
         """Session summary for listings."""
@@ -266,6 +268,11 @@ class MatchSession:
         headline = recap["recap"]["headline"] if isinstance(recap["recap"], dict) else ""
         return {"stage": stage.value, "headline": headline, "clips": [c.to_dict() for c in clips]}
 
+    def studio(self, window: StudioWindow) -> dict[str, object]:
+        """Studio analysis visuals over the events played so far, with the analyst's recommended visual."""
+        return studio_payload(self.result.metadata, self.result.events[:self.played], self.frames, self.desk.records,
+                              tuple(self.recent_moments), window)
+
     def producer_summary(self) -> dict[str, object]:
         """State for the producer console."""
         return self.desk.summary(self.service.analyzer.moments, len(self.service.viewers), self.in_production.keys(),
@@ -333,6 +340,7 @@ class MatchSession:
             interpretation = self.service.interpret(event, upcoming)
             sprint = interpretation.sprint
             self._keep_frame(event, interpretation.positions)
+            self.played = index + 1
             payload = interpretation.update.to_dict() | {
                 "positions": interpretation.positions,
                 "sprint": {"player_id": sprint[0], "speed_kmh": sprint[1]} if sprint else None}

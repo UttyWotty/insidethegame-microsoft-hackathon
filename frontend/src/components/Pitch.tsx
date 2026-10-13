@@ -45,7 +45,7 @@ interface PitchProps {
   children?: ReactNode;
 }
 
-function Markings() {
+export function Markings() {
   const stripeWidth = PITCH_LENGTH / STRIPES;
   return (
     <g>
