@@ -27,6 +27,7 @@ SERVER_INSTRUCTIONS: str = (
 DEFAULT_MOMENTS: int = 5
 MAX_MOMENTS: int = 30
 DEFAULT_PERSONA: str = "analyst"
+MCP_CLIENT_KEY: str = "mcp"  # MCP callers share one creation budget; the endpoint is guarded by MCP_API_KEY
 
 RegistryGetter = Callable[[], SessionRegistry]
 # Every tool is async so it runs on the event loop that owns live sessions, never in a worker thread.
@@ -47,6 +48,7 @@ def build_mcp_server(registry: RegistryGetter) -> MCPServer:
         seed: Annotated[int, Field(description="Simulation seed; the same seed replays the same match.")] = 7,
         speed: Annotated[float, Field(description="Match seconds per real second.")] = DEFAULT_SPEED,
     ) -> dict[str, object]:
+        registry().check_create_rate(MCP_CLIENT_KEY)
         return registry().create(home, away, seed, speed).describe()
 
     @server.tool(description="List live and finished match sessions.")

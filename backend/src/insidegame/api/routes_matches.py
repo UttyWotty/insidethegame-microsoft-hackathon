@@ -20,6 +20,8 @@ from insidegame.live.segments import fixture_segment_profile
 SSE_MEDIA_TYPE: str = "text/event-stream"
 SSE_HEADERS: dict[str, str] = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 HTTP_CREATED: int = 201
+FORWARDED_FOR_HEADER: str = "x-forwarded-for"
+UNKNOWN_CLIENT: str = "unknown"
 
 router = APIRouter(prefix="/matches")
 
@@ -28,10 +30,25 @@ def _registry(request: Request) -> SessionRegistry:
     return request.app.state.registry
 
 
+def client_key(request: Request) -> str:
+    """Identify the caller for rate limiting.
+
+    Behind the Container Apps ingress the client address is the last X-Forwarded-For entry, the one the platform
+    proxy appended; earlier entries are client-supplied and could be forged. Without the header the socket peer
+    address is used, and UNKNOWN_CLIENT when neither is available.
+    """
+    forwarded = request.headers.get(FORWARDED_FOR_HEADER, "")
+    if forwarded.strip():
+        return forwarded.split(",")[-1].strip()
+    return request.client.host if request.client else UNKNOWN_CLIENT
+
+
 @router.post("", status_code=HTTP_CREATED)
 async def create_match(body: CreateMatchRequest, request: Request) -> dict[str, object]:
-    """Simulate a fixture and start its live replay."""
-    session = _registry(request).create(body.home, body.away, body.seed, body.speed)
+    """Simulate a fixture and start its live replay, at most MATCH_CREATE_MAX_PER_MINUTE per client."""
+    registry = _registry(request)
+    registry.check_create_rate(client_key(request))
+    session = registry.create(body.home, body.away, body.seed, body.speed)
     return session.describe()
 
 
