@@ -22,18 +22,21 @@ grounded fallback guarantees the broadcast never goes blank.
 - **Ingest:** a seeded possession-chain simulator generates full 90-minute matches between fictional clubs with
   distinct tactical styles that adapt to the scoreline and fatigue; averages match real top-flight football
   (about 25 shots, 2.9 goals, 80% pass accuracy, and a realistic home advantage), checked by a calibration
-  report against top-flight reference bands. A tracking model adds formation-aware positions for all 22
-  players after every event, and the dataset generator exports events, players, moments, and tracking as JSON
-  Lines with a dataset card.
+  report against top-flight reference bands (10 of 10 metrics within band over 480 matches). A tracking model
+  adds formation-aware positions for all 22 players after every event, with every step capped at the player's
+  pace-based top speed and players starting toward their next action, so movement and sprint speeds stay human;
+  the dataset generator exports events, players, moments, and tracking as JSON Lines with a dataset card.
 - **Interpret:** streaming analytics compute xG, an explainable 0-100 pass difficulty, running player and team
   statistics, rolling momentum, control, and chaos, and detect key moments with importance scores and facts.
 - **Explain:** the Match Analyst agent explains why a moment matters, calling statistics tools for evidence; the
   Lead Commentator writes a broadcast line on top of continuous play-by-play; the Standards Editor fact-checks
-  attribution and outcomes before anything airs.
+  attribution and outcomes before anything airs. Commentary can be spoken aloud, and it reacts: goals, close
+  calls, and bold passes are called with raised energy and cut in over calmer lines.
 - **Render:** each moment becomes timed overlay cues (layout, display time, duration, priority, stats, provenance)
-  rendered over a broadcast-angle pitch with all 22 players, live name tags, shot traces sized by xG, and a goal
-  banner, as a stat panel, lower third, hype banner, player tag, or explainer card. A producer console shows
-  pipeline health, every moment's full broadcast record, and hold-and-release control of AI overlays.
+  rendered over a broadcast-angle pitch with all 22 players, live name tags, sprint speed tags, shot traces sized
+  by xG, and a goal banner, as a stat panel, lower third, hype banner, player tag, or explainer card. A producer
+  console, updated live over server-sent events, shows pipeline health, every moment's full broadcast record, and
+  hold-and-release control of AI overlays.
 - **Personalize:** five personas (Analyst, Casual Fan, Superfan, Player Tracker, Newcomer) with their own voice,
   vocabulary, word budget, statistical focus, relevance rules, and overlay style; any language; favourite club and
   player. Half-time and full-time recaps carry a take written for each persona, and viewers can ask the Match
@@ -71,7 +74,7 @@ in the viewer's language, while staying factually grounded enough for a live pro
   optional producer key.
 - Keyless model access, least-privilege roles, non-root container, optional MCP bearer token.
 - Agent evaluation harness reporting per-agent model, corrected, and fallback rates and latency.
-- About 150 automated backend tests and frontend tests in CI; infrastructure as code.
+- 182 automated backend tests and 39 frontend tests in CI; infrastructure as code.
 
 ## Testing instructions
 

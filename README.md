@@ -25,12 +25,19 @@ flowchart LR
 
 ## Status
 
-- Stage 1 (Ingest source): synthetic match engine implemented and calibrated.
+As of 2026-10-13 (develop at PR #47, release v0.1.0 on main):
+
+- Stage 1 (Ingest): synthetic match engine calibrated against top-flight reference bands (10 of 10 metrics within
+  band over 480 matches, see [docs/CALIBRATION.md](docs/CALIBRATION.md)), with home advantage and speed-limited
+  tracking for all 22 players.
 - Stage 2 (Interpret): streaming analytics implemented (xG, pass difficulty, stats, rhythm, key moments).
-- Stages 3-5 (Explain, Render, Personalize): multi-agent workflow, overlay cues, and recaps implemented.
-- Live API: real-time replay with personalized server-sent event streams implemented.
-- Broadcast frontend: live pitch, five persona overlays, stats, momentum, commentary, recaps, and multiview implemented.
-- Azure deployment: infrastructure as code, container, CI, and keyless Foundry auth ready (`azd up`).
+- Stages 3-5 (Explain, Render, Personalize): seven-agent workflow with fact-checking, overlay cues, persona recaps,
+  and a Match Companion implemented; validated on a local model through the evaluation harness.
+- Live API: real-time replay with personalized server-sent event streams, moment backpressure, and rate limits.
+- Broadcast frontend: live pitch with sprint tags, five persona overlays, stats, momentum, spoken play-by-play
+  commentary that reacts to big moments, recaps, multiview, and a streamed producer console implemented.
+- Azure deployment: infrastructure as code, container, CI, and keyless Foundry and Speech auth ready (`azd up`);
+  not yet deployed or verified against Azure.
 
 ## Synthetic Match Engine
 
@@ -39,25 +46,28 @@ Each team has a tactical style (possession, direct, high press, counter) that ad
 trailing teams chase late, leading teams protect. Outcomes are driven by player attributes, pitch geometry,
 pressure, and fatigue.
 
-Calibrated averages over 100 simulated matches:
+Calibrated averages over 480 simulated matches (every pairing, seeds 1 to 480; full table and reference bands in
+[docs/CALIBRATION.md](docs/CALIBRATION.md), regenerated with `python -m insidegame.datasets.calibrate`):
 
 | Metric | Simulated | Typical top-flight range |
 |---|---|---|
-| Shots per match | 24.4 | 22-28 |
-| Goals per match | 2.82 | 2.5-3.0 |
-| Goals per shot | 0.115 | 0.10-0.12 |
-| Pass accuracy | 80% | 75-88% |
-| Tackles per team | ~21 | 15-22 |
+| Goals per match | 2.84 | 2.5-3.1 |
+| Expected goals per match | 2.98 | 2.4-3.2 |
+| Shots per match | 25.1 | 22-28 |
+| Shots on target | 34.8% | 30-40% |
+| Shot conversion | 11.3% | 9-13% |
+| Pass accuracy | 79.7% | 78-86% |
+| Home wins / draws / away wins | 43.5% / 29.0% / 27.5% | 40-48% / 22-30% / 25-33% |
 
 Event types: `period_start`, `period_end`, `kick_off`, `pass`, `carry`, `shot`, `goal`, `save`, `pressure`,
 `tackle`, `interception`, `foul`, `possession_change`. Coordinates are metres on a 105 x 68 pitch, relative to the
 acting team (attacking toward x = 105).
 
-## Planned Stack
+## Stack
 
 - Microsoft Agent Framework: agents, tools, structured outputs, workflow orchestration, OpenTelemetry
 - Microsoft Foundry: project and model deployment, keyless managed identity access, hosted agent in Foundry
-  Agent Service using the project's MCP server
+  Agent Service using the project's MCP server (provisioned by Bicep; first deployment pending)
 - Azure AI Speech: neural text to speech for spoken commentary on the same AI Services account, keyless via the
   app's managed identity (browser speech is the fallback)
 - Azure Container Apps, Azure Container Registry, Log Analytics, Application Insights
@@ -368,13 +378,13 @@ backend/
     domain/       immutable event, team, and match models
     simulation/   seeded synthetic match engine (stage 1 source)
     analytics/    streaming interpretation: xG, pass quality, stats, rhythm, key moments (stage 2)
-    tracking/     synthetic 22-player positions from the event stream
+    tracking/     synthetic 22-player positions with speed-limited motion and sprint detection
     speech/       neural voice choice and SSML for spoken commentary (pure)
-    commentary/   deterministic play-by-play lines
+    commentary/   deterministic play-by-play lines with intensity for goals and close calls
     agents/       personas, schemas, prompts, grounding, fallbacks, resilient agent steps (stages 3-5)
     orchestration/ producer policy, workflow executors, overlay cues, match service
     live/         real-time replay sessions, viewer segments, pub/sub fan-out
-    api/          FastAPI app, routers, server-sent events, MCP server
+    api/          FastAPI app, routers, server-sent events (viewer and producer streams), MCP server
     adapters/     model client (MLX, Ollama, Foundry, offline), Azure AI Speech client, and telemetry setup
     evaluation/   agent evaluation harness
     datasets/     synthetic dataset tables, dataset card, generator CLI
@@ -383,8 +393,8 @@ backend/
 frontend/
   src/api/        HTTP client and server-sent event hook
   src/state/      pure stream reducer
-  src/lib/        pitch geometry, viewer resolution, team colours
-  src/components/ pitch, overlays, stats, momentum, ticker, recap, multiview
+  src/lib/        pitch geometry, motion timing, spoken commentary planning, viewer resolution, team colours
+  src/components/ pitch, overlays, stats, momentum, ticker, recap, multiview, producer console
 ```
 
 Dependency direction: `api -> live -> orchestration -> agents -> analytics -> domain -> core`, with `simulation -> domain -> core`. Lower layers never import higher ones.

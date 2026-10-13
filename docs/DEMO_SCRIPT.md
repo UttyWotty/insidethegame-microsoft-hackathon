@@ -7,14 +7,15 @@ Record at 30x replay speed so a key moment appears within the first beats.
 # Demo Video Script (1:56)
 
 Setup before recording: deployed app (or local with a Foundry model), seed 7, Kestrel Bay vs Ironvale, 30x speed,
-broadcast camera on. Every chip must show **AI**, not **Template**, before recording. VS Code open with GitHub
+broadcast camera on, Voice on (the commentator speaks from kick-off and lifts for goals and close calls). Every
+chip must show **AI**, not **Template**, before recording. VS Code open with GitHub
 Copilot agent mode and the project's MCP server configured (`.vscode/mcp.json`, see README).
 No real club names, crests, footage, or copyrighted music.
 
 | Time | Screen | Action | Voice-over |
 |---|---|---|---|
 | 0:00-0:08 | Landing screen | Hold on the value proposition | "Football stories don't end with the scoreline. Inside the Game turns raw match events into explainable intelligence, made for every fan." |
-| 0:08-0:22 | Broadcast view, camera angle | Press Watch a demo match; 22 players move, name tags follow the ball, play-by-play scrolls | "A seeded simulator streams football-realistic events and tracking for all 22 players. Our analytics engine turns them into xG, pass difficulty, momentum, and control versus chaos, live." |
+| 0:08-0:22 | Broadcast view, camera angle | Press Watch a demo match; 22 players move, name tags follow the ball, a sprint tag shows a speed, the commentator calls the play | "A seeded simulator streams football-realistic events and tracking for all 22 players, at human speeds. Our analytics engine turns them into xG, pass difficulty, momentum, and control versus chaos, live." |
 | 0:22-0:40 | Analyst stat panel, shot trace | Hover the AI and Fact-checked chips | "At every key moment, seven Microsoft Agent Framework agents on Microsoft Foundry go to work. The Analyst explains why it matters, using tools for evidence. Every number is checked against the match data, and a Standards Editor agent fact-checks the card before it airs." |
 | 0:40-1:00 | All personas view | Slow pan across the five columns at the same moment | "The same moment, five experiences. The Analyst gets the metrics. The Casual Fan gets one clear line. The Superfan celebrates with their club. The Player Tracker follows one player. The Newcomer learns what xG means." |
 | 1:00-1:10 | Broadcast view, language Spanish | Switch language; translated card and commentary appear | "Any market, any language, with names and numbers preserved." |

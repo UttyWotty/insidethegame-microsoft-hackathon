@@ -1,10 +1,14 @@
 <!--
 Open follow-ups and technical debt for Inside the Game, tracked in the repository so nothing is forgotten.
 Resolved items are wrapped in HTML comments rather than deleted, preserving history.
-Ordered by priority within each section; status as of 2026-10-12 (develop at PR #28, release v0.1.0 on main).
+Ordered by priority within each section; status as of 2026-10-13 (develop at PR #48, release v0.1.0 on main).
 -->
 
 # Tech Debt and Follow-ups
+
+Every item that needs neither a model run nor Azure is done. Suggested order for the remaining work: Azure deploy
+and verification (diagnostics, AI chips, neural voice), a Foundry evaluation report, README screenshots and the
+Copilot-through-MCP recording, the demo video, then the submission steps. Fabric is optional polish.
 
 ## Blockers before submitting
 
@@ -66,11 +70,17 @@ Ordered by priority within each section; status as of 2026-10-12 (develop at PR 
 
 ## Submission (deadline 2026-10-27 23:59 PT)
 
-- Retake README screenshots (`docs/images/`): they predate the 22-player broadcast pitch, landing screen, fact-check chips, and producer console; capture them with real AI output.
-- Record the demo video from `docs/DEMO_SCRIPT.md` (under 2 minutes, no copyrighted music); update the script to include the broadcast camera, fact-checker, producer console, and Copilot or Foundry agent via MCP.
+- Retake README screenshots (`docs/images/`): they predate the 22-player broadcast pitch, sprint tags, landing screen, fact-check chips, and producer console; capture them with real AI output.
+- Record the demo video from `docs/DEMO_SCRIPT.md` (under 2 minutes, no copyrighted music, Voice on); dry-run the
+  script first, since seed 7 now has new player names, home advantage, and spoken commentary.
+<!--
+- Update the demo script to include the broadcast camera, fact-checker, producer console, and Copilot or Foundry
+  agent via MCP. Resolved 2026-10-13 in PR #31; spoken commentary and sprint tags added in PR #48.
+-->
 <!--
 - Update `docs/SUBMISSION.md` with the seven agents, tracking, fact-checking, and producer console.
-  Resolved 2026-10-13: submission text and demo script refreshed.
+  Resolved 2026-10-13: submission text and demo script refreshed; spoken commentary, sprint tags, and test counts
+  added in PR #48.
 -->
 - Cut release `v0.2.0` through Git Flow once deployed and validated.
 - Make the GitHub repository public before submitting.

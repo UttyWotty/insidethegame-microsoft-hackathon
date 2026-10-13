@@ -12,6 +12,7 @@ Each section maps a challenge requirement to the component that fulfils it.
 flowchart LR
     subgraph S1[1 Ingest]
         SIM[Seeded match simulator<br/>possession chains, styles, fatigue]
+        TR[Tracking model<br/>22 players, speed-limited]
     end
     subgraph S2[2 Interpret]
         AN[MatchAnalyzer<br/>xG, pass difficulty, stats,<br/>momentum, control vs chaos]
@@ -28,6 +29,8 @@ flowchart LR
         QA[Match Companion<br/>viewer questions]
     end
     SIM -->|events| AN --> KM -->|moments| WF --> PER --> CUE
+    SIM --> TR -->|positions, sprints| UI
+    AN --> PBP[Play-by-play<br/>with intensity] -->|text and voice| UI
     AN -. live stats .-> QA
     CUE -->|SSE per viewer segment| UI[Broadcast UI<br/>pitch, overlays, multiview]
     AN -. tools .-> MCP[MCP server /mcp]
@@ -85,6 +88,14 @@ the source, attempts, and latency of each agent that produced it.
 - Viewers with identical preferences share a segment, so model cost scales with distinct preferences.
 - Late joiners receive the current snapshot, recent cues, recaps, and personalized backfill of recent moments.
 - Slow clients drop their oldest queued messages, never the newest.
+- Moment production has backpressure: at most `PARALLEL_MOMENTS` workflows run per match, later moments queue in
+  order, and non-goal moments that went stale in the queue are skipped and shown as such in the producer console.
+- Each event message carries tracking for all 22 players and the fastest involved sprinter; the tracking model
+  looks a few events ahead so players reach their next action on time without exceeding their top speed.
+- Play-by-play lines carry an intensity (normal, raised, peak) that drives spoken delivery, through Azure AI
+  Speech when configured or browser speech otherwise.
+- The producer console subscribes to its own server-sent event stream, which pushes the console state only when
+  it changes and ends with the match.
 
 ## Azure deployment
 
@@ -93,6 +104,7 @@ flowchart LR
     U[Viewers] --> CA[Azure Container Apps<br/>FastAPI + React, /api, /mcp]
     GH[GitHub Copilot or<br/>Foundry agents] -->|MCP| CA
     CA -->|managed identity, no keys| F[Microsoft Foundry<br/>project + model deployment]
+    CA -->|managed identity, no keys| SP[Azure AI Speech<br/>neural voices]
     CA -->|OpenTelemetry| AI[Application Insights]
     CR[Container Registry] -->|managed identity pull| CA
     GA[GitHub Actions<br/>CI + OIDC deploy] -->|azd up| CA

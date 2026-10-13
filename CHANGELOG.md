@@ -65,6 +65,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Documentation refreshed: README status (as of PR #47, deployment not yet verified), calibration table from the
+  480-match report, "Stack" instead of "Planned Stack", and project structure; architecture diagrams add the
+  tracking model, play-by-play voice, and Azure AI Speech, with live-delivery notes on backpressure, sprints, and
+  the producer stream; submission text and demo script cover spoken commentary and sprint tags with current test
+  counts; `techdebt.md` gains a suggested order for the remaining work.
 - Producer console is pushed, not polled: `GET /api/matches/{id}/producer/stream` sends the console state as a
   server-sent event whenever it changes (sampled every 0.5 s, heartbeats while quiet) and ends when the match
   finishes. The console subscribes once and falls back to 2-second polling only if the stream fails.
