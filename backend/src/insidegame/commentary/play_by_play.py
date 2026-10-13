@@ -3,6 +3,8 @@
 Lines cover kick-offs, period ends, attacks into the final third, long passes, dribbles, tackles, interceptions,
 high pressing, and sustained possession, paced by a minimum gap so the feed stays readable. Goals and close calls
 always get a line, written and flagged with raised or peak intensity so the voice can lift with the moment.
+Shortly after kick-off a scene-setting line introduces both sides' styles, and quiet spells get everyday possession
+lines so the commentator is never silent for long.
 """
 
 from collections import Counter, deque
@@ -24,6 +26,12 @@ HIGH_PRESS_X_M: float = 70.0
 ATTACKING_HALF_X_M: float = 52.5
 SPELL_PASSES: int = 8
 RECENT_LINES: int = 30
+INTRO_AFTER_S: float = 5.0
+FILLER_GAP_FACTOR: float = 1.3
+STYLE_PHRASES: dict[str, str] = {
+    "possession": "like to keep the ball", "direct": "like to go direct", "high_press": "press high up the pitch",
+    "counter": "wait to hit on the counter",
+}
 
 
 @dataclass(frozen=True)
@@ -66,6 +74,7 @@ class PlayByPlay:
     turns: Counter[str] = field(default_factory=Counter)
     recent: deque[str] = field(default_factory=lambda: deque(maxlen=RECENT_LINES))
     last_category: str = ""
+    introduced: bool = False
 
     def __post_init__(self) -> None:
         for team in (self.metadata.home, self.metadata.away):
@@ -134,6 +143,22 @@ class PlayByPlay:
         }.get(e.shot_result or ShotResult.OFF_TARGET)
         return self._line(update, text, "close_call", paced=False, intensity=Intensity.RAISED) if text else None
 
+    def _intro(self, update: AnalysisUpdate) -> CommentaryLine | None:
+        """One scene-setting line just after kick-off, naming both clubs and how they like to play."""
+        e = update.event
+        if self.introduced or e.period != 1 or e.match_second < INTRO_AFTER_S:
+            return None
+        self.introduced = True
+        home, away = self.metadata.home, self.metadata.away
+        text = (f"{home.name} {STYLE_PHRASES.get(home.style.label, 'have their own ideas')}, and {away.name} "
+                f"{STYLE_PHRASES.get(away.style.label, 'have their own ideas')}. Let's see how this one unfolds.")
+        return self._line(update, text, "intro", paced=False)
+
+    def _quiet(self, update: AnalysisUpdate) -> bool:
+        """True when no line has aired for FILLER_GAP_FACTOR times the gap, so an everyday line is welcome."""
+        last = self.last_line_s
+        return last is None or update.event.match_second - last >= FILLER_GAP_FACTOR * self.min_gap_s
+
     def _pass_line(self, update: AnalysisUpdate, player: str, other: str, team: str) -> str | None:
         q = update.pass_quality
         if q is None or update.event.outcome is not Outcome.SUCCESS:
@@ -148,6 +173,12 @@ class PlayByPlay:
                                                 f"{team} probe: {player} finds {other} near the box.",
                                                 f"{player} threads it into {other} on the edge of the area.",
                                                 f"{team} work it forward, {player} to {other}."))
+        if self._quiet(update):
+            return self._choose("possession", (f"{team} keep the ball, {player} to {other}.",
+                                               f"{player} plays it into {other}.",
+                                               f"Patient build-up from {team}.",
+                                               f"{player} looks up and finds {other}.",
+                                               f"{team} probing for an opening."))
         return None
 
     def _flow(self, update: AnalysisUpdate) -> str | None:
@@ -203,6 +234,9 @@ class PlayByPlay:
             return self._goal(update)
         if e.event_type is EventType.SHOT:
             return self._close_call(update)
+        intro = self._intro(update)
+        if intro is not None:
+            return intro
         if e.event_type is EventType.KICK_OFF:
             team = self.teams.get(e.team_id or "", "")
             text = {"first_half": f"Kick-off at {self.metadata.venue}! {team} get us under way.",

@@ -5,8 +5,8 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  MAX_PENDING_SPEECH, deliveryFor, enqueueSpeech, interrupts, isSpeakable, paceForSpeed, pickVoice, serverSpeechRef,
-  unseenLines, watchdogMs,
+  MAX_PENDING_SPEECH, deliveryFor, enqueueSpeech, interrupts, isSpeakable, latestSpeakable, paceForSpeed, pickVoice,
+  serverSpeechRef, unseenLines, watchdogMs,
 } from "./speech";
 import type { Intensity, TickerItem } from "../state/matchState";
 
@@ -104,5 +104,13 @@ describe("excitement", () => {
     expect(deliveryFor("peak", 10).pitch).toBeLessThanOrEqual(1.1);
     expect(interrupts([line("p", "play"), line("g", "goal", "en", "peak")])).toBe(true);
     expect(interrupts([line("x", "play", "en", "raised")])).toBe(false);
+  });
+});
+
+describe("latestSpeakable", () => {
+  it("returns the newest line in the viewer's language so switching voice on speaks at once", () => {
+    const feed = [line("i1", "info"), line("p2", "play"), line("p1", "play")];
+    expect(latestSpeakable(feed, "en")?.id).toBe("p2");
+    expect(latestSpeakable(feed, "es")).toBeNull();
   });
 });

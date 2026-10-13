@@ -8,7 +8,8 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { TickerItem } from "../state/matchState";
 import {
-  deliveryFor, enqueueSpeech, interrupts, isSpeakable, pickVoice, serverSpeechRef, unseenLines, watchdogMs,
+  deliveryFor, enqueueSpeech, interrupts, isSpeakable, latestSpeakable, pickVoice, serverSpeechRef, unseenLines,
+  watchdogMs,
 } from "./speech";
 
 /** Pause after cancelling speech before speaking again; speaking immediately can be silently dropped. */
@@ -74,11 +75,12 @@ export function useSpokenCommentary(feed: TickerItem[], language: string, enable
     player.play().catch(fallBack);
   }, [serverUrl, speakLocally, matchSpeed]);
 
-  // Reset only when voice is toggled, the language changes, or the speech source changes. The feed is read here
-  // only to mark existing lines as seen; its updates are handled by the next effect.
+  // Reset only when voice is toggled, the language changes, or the speech source changes. Earlier lines are marked
+  // as seen, except the newest speakable one, which is spoken at once; feed updates are handled by the next effect.
   useEffect(() => {
     generation.current += 1;
-    seen.current = new Set(feed.map((item) => item.id));
+    const latest = latestSpeakable(feed, language);
+    seen.current = new Set(feed.filter((item) => item !== latest).map((item) => item.id));
     queue.current = [];
     speaking.current = false;
     const stop = () => {

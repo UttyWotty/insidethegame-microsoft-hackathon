@@ -83,3 +83,14 @@ def test_line_gap_keeps_a_steady_viewing_rhythm_across_replay_speeds() -> None:
         return sum(1 for event in result.events if pbp.observe(analyzer.ingest(event)))
 
     assert count(line_gap_for_speed(1.0)) > count(line_gap_for_speed(10.0)) > count(line_gap_for_speed(60.0))
+
+
+def test_real_time_viewing_opens_with_a_scene_setter_and_avoids_long_silences() -> None:
+    result = simulate_match(build_fixture("kestrel_bay", "ironvale", 7))
+    analyzer, pbp = MatchAnalyzer(result.metadata), PlayByPlay(result.metadata, min_gap_s=line_gap_for_speed(1.0))
+    lines = [line for event in result.events if (line := pbp.observe(analyzer.ingest(event)))]
+    intro = [line for line in lines if line.kind == "intro"]
+    assert len(intro) == 1 and intro[0].match_second < 30 and "press high" in intro[0].text
+    first_half = [line.match_second for line in lines if line.period == 1]
+    gaps = sorted(b - a for a, b in zip(first_half, first_half[1:]))
+    assert gaps[len(gaps) // 2] <= 30

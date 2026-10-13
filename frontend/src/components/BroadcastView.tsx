@@ -19,6 +19,24 @@ const HALF_TIME_RECAP_MS = 15000;
 const GOAL_VISIBLE_MS = 4500;
 /** Replay speed assumed for speech pace until the session description arrives (the server default). */
 const DEFAULT_MATCH_SPEED = 10;
+const VOICE_PREFERENCE_KEY = "inside-the-game.voice";
+
+/** Whether the viewer last left voice on; storage can be unavailable (private mode), which reads as off. */
+function savedVoicePreference(): boolean {
+  try {
+    return window.localStorage.getItem(VOICE_PREFERENCE_KEY) === "on";
+  } catch {
+    return false;
+  }
+}
+
+function saveVoicePreference(on: boolean): void {
+  try {
+    window.localStorage.setItem(VOICE_PREFERENCE_KEY, on ? "on" : "off");
+  } catch {
+    // Storage is a convenience only; the toggle still works for this match.
+  }
+}
 const TYPING_ELEMENTS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
 
 /** True while the viewer is typing in a field, when a recap dialog must not take focus away. */
@@ -59,9 +77,12 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   const dots = useMemo(() => playerDots(state.session?.match, state.players, state.lastEvent, viewer.player),
     [state.session, state.players, state.lastEvent, viewer.player]);
   const [seenStages, setSeenStages] = useState<Set<string>>(() => new Set());
-  const [voiceOn, setVoiceOn] = useState(false);
+  const [voiceOn, setVoiceOn] = useState(savedVoicePreference);
   const [neuralVoice, setNeuralVoice] = useState(false);
-  const toggleVoice = useCallback(() => setVoiceOn((on) => !on), []);
+  const toggleVoice = useCallback(() => setVoiceOn((on) => {
+    saveVoicePreference(!on);
+    return !on;
+  }), []);
   useEffect(() => {
     api.speechStatus().then((s) => setNeuralVoice(s.available)).catch(() => setNeuralVoice(false));
   }, []);
