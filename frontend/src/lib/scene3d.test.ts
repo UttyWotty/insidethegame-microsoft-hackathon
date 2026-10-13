@@ -4,7 +4,7 @@
  * All logic is pure.
  */
 import { describe, expect, it } from "vitest";
-import { approach, approachAngle, broadcastCamera, legSwing, STRIDE_ANGLE, CAMERA_PAN_LIMIT, glideAt, heading, pitchToWorld } from "./scene3d";
+import { approach, approachAngle, behindGoalCamera, broadcastCamera, legSwing, STRIDE_ANGLE, CAMERA_PAN_LIMIT, glideAt, heading, pitchToWorld } from "./scene3d";
 
 describe("scene3d", () => {
   it("centres the world on the centre spot", () => {
@@ -17,6 +17,13 @@ describe("scene3d", () => {
     expect(broadcastCamera({ x: 52.5, y: 34 }).target.z).toBe(3);
     expect(broadcastCamera({ x: 105, y: 34 }).position.x).toBe(CAMERA_PAN_LIMIT);
     expect(broadcastCamera(null).position.x).toBe(0);
+  });
+
+  it("puts the replay camera behind the goal the action finished at", () => {
+    const right = behindGoalCamera({ x: 95, y: 40 }, "right");
+    expect(right.position.x).toBe(66.5);
+    expect(right.target).toEqual({ x: 42.5, y: 0, z: 6 });
+    expect(behindGoalCamera(null, "left").position.x).toBe(-66.5);
   });
 
   it("approaches targets smoothly and glides linearly", () => {

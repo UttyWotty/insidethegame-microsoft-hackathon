@@ -28,7 +28,7 @@ from insidegame.core.exceptions import HighlightsNotReadyError, SessionLimitErro
 from insidegame.domain.enums import Intensity
 from insidegame.domain.events import MatchEvent
 from insidegame.domain.match import MatchResult
-from insidegame.highlights.reel import FrameRecord, build_reel
+from insidegame.highlights.reel import FrameRecord, build_reel, replay_frames
 from insidegame.live.highlight_lines import clip_narrations
 from insidegame.live.pacing import replay_delay_s
 from insidegame.live.studio_view import StudioWindow, studio_payload
@@ -284,6 +284,10 @@ class MatchSession:
         clips = build_reel(self.service.analyzer.moments, stage, self.frames, narrations)
         headline = recap["recap"]["headline"] if isinstance(recap["recap"], dict) else ""
         return {"stage": stage.value, "headline": headline, "clips": [c.to_dict() for c in clips]}
+
+    def replay(self, period: int, at: float) -> dict[str, object]:
+        """Stored frames around an action already played, for an instant replay."""
+        return {"period": period, "at": at, "frames": [f.to_dict() for f in replay_frames(self.frames, period, at)]}
 
     def studio(self, window: StudioWindow) -> dict[str, object]:
         """Studio analysis visuals over the events played so far, with the analyst's recommended visual."""

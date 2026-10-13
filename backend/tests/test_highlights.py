@@ -8,12 +8,15 @@ from insidegame.agents.recap_context import RecapStage
 from insidegame.analytics.moments import KeyMoment, MomentKind
 from insidegame.highlights.reel import (
     LEAD_S,
+    REPLAY_LEAD_S,
+    REPLAY_TAIL_S,
     MAX_CLIPS,
     TAIL_S,
     FrameRecord,
     Narration,
     build_reel,
     clip_frames,
+    replay_frames,
     select_moments,
 )
 from insidegame.live.highlight_lines import clip_narrations
@@ -56,3 +59,8 @@ def test_narration_prefers_the_viewer_cue_then_the_desk_then_the_facts() -> None
     assert [c.narration.text for c in reel] == ["Soler breaks the deadlock!", "16' Great save: Zane Soler."]
     assert reel[0].to_dict()["actor"] == "Zane Soler"
     assert reel[0].to_dict()["intensity"] == "peak" and reel[0].to_dict()["frames"][0]["ball"] == [50.0, 34.0]
+
+
+def test_instant_replays_cut_a_short_window_around_the_action() -> None:
+    frames = [_frame(1, 100.0 - REPLAY_LEAD_S - 0.5), _frame(1, 97.0), _frame(1, 100.0 + REPLAY_TAIL_S), _frame(2, 100.0)]
+    assert [(f.period, f.match_second) for f in replay_frames(frames, 1, 100.0)] == [(1, 97.0), (1, 102.5)]

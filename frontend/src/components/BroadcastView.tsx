@@ -3,15 +3,16 @@
  * It subscribes to the viewer's personalized stream and opens the recap dialog when a new recap arrives.
  * Changing persona or language reconnects to a different segment of the same live match.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
 import { useMatchStream } from "../api/useMatchStream";
 import { sprintSpeed } from "../lib/motion";
 import { playerDots } from "../lib/playerDots";
+import { earnsReplay, REPLAY_DELAY_MS } from "../lib/replay";
 import { teamColor } from "../lib/teams";
 import { useNow } from "../lib/useNow";
 import { speechSupported, useSpokenCommentary, type SpeechUrlBuilder } from "../lib/useSpokenCommentary";
-import { activeCue } from "../state/matchState";
+import { activeCue, type ShotTrace } from "../state/matchState";
 import type { HighlightReel, Recap, ViewerSettings } from "../types";
 
 
@@ -51,6 +52,7 @@ import { MomentumChart } from "./MomentumChart";
 import { OverlayLayer } from "./overlays/OverlayLayer";
 import { GoalBanner } from "./overlays/Overlays";
 import { HighlightsPlayer } from "./HighlightsPlayer";
+import { ReplayPlayer } from "./ReplayPlayer";
 import { type BallAnchor } from "./Pitch";
 import { PitchView, type Camera } from "./PitchView";
 import { RecapModal } from "./RecapModal";
@@ -69,6 +71,20 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
     (id) => sprintSpeed(state.sprint, id, now)),
   [state.session, state.players, state.lastEvent, viewer.player, state.sprint, now]);
   const [reelStage, setReelStage] = useState<HighlightReel["stage"] | null>(null);
+  const [autoReplay, setAutoReplay] = useState(true);
+  const [replayShot, setReplayShot] = useState<ShotTrace | null>(null);
+  const lastShot = state.lastShot;
+  const replayTimers = useRef<number[]>([]);
+  // A qualifying shot's replay is not cancelled by later shots; it only waits for any replay already rolling.
+  useEffect(() => {
+    if (!autoReplay || !lastShot || !earnsReplay(lastShot)) return;
+    replayTimers.current.push(window.setTimeout(() => setReplayShot((current) => current ?? lastShot), REPLAY_DELAY_MS));
+  }, [autoReplay, lastShot]);
+  useEffect(() => {
+    const timers = replayTimers.current;
+    if (!autoReplay) timers.splice(0).forEach((id) => window.clearTimeout(id));
+    return () => timers.splice(0).forEach((id) => window.clearTimeout(id));
+  }, [autoReplay]);
   const [seenStages, setSeenStages] = useState<Set<string>>(() => new Set());
   const [voiceOn, setVoiceOn] = useState(savedVoicePreference);
   const [neuralVoice, setNeuralVoice] = useState(false);
@@ -82,7 +98,7 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   const speechUrl = useMemo<SpeechUrlBuilder>(
     () => (neuralVoice ? (ref, segment) => api.speechUrl(sessionId, ref, segment) : null), [neuralVoice, sessionId]);
   const matchSpeed = state.session?.speed ?? DEFAULT_MATCH_SPEED;
-  useSpokenCommentary(state.ticker, viewer.language, voiceOn && !reelStage, matchSpeed, speechUrl);
+  useSpokenCommentary(state.ticker, viewer.language, voiceOn && !reelStage && !replayShot, matchSpeed, speechUrl);
 
   useEffect(() => {
     const fresh = state.recaps.find((r) => !seenStages.has(r.stage));
@@ -111,7 +127,11 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   return (
     <>
       <div className="stage">
-        {reelStage ? (
+        {replayShot && !reelStage ? (
+          <ReplayPlayer key={replayShot.id} sessionId={sessionId} shot={replayShot} match={match} homeColor={homeColor}
+            awayColor={awayColor} camera={camera} voiceOn={voiceOn} language={viewer.language}
+            onDone={() => setReplayShot(null)} />
+        ) : reelStage ? (
           <HighlightsPlayer sessionId={sessionId} stage={reelStage} segment={state.cues[0]?.cue.viewer_id} match={match}
             homeColor={homeColor} awayColor={awayColor} camera={camera} voiceOn={voiceOn} onClose={() => setReelStage(null)} />
         ) : (
@@ -135,6 +155,7 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
               </button>
             ))}
           </div>
+          <button className="chip" aria-pressed={autoReplay} onClick={() => setAutoReplay((on) => !on)}>Auto replays</button>
           {state.ended && <span className="chip">FULL TIME</span>}
           <span className="muted" style={{ fontSize: "var(--text-sm)" }}>{match.venue} - {match.competition}</span>
           {state.recaps.map((r) => (

@@ -2,7 +2,7 @@
 
 At half-time or full-time the reel takes every goal plus the most important other moments up to MAX_CLIPS, in
 match order, and cuts each one a few seconds either side of the moment from the frames recorded during the
-replay. Each clip carries the best available narration: the viewer's own commentary, the produced commentary,
+replay (instant replays use a shorter window around a single action). Each clip carries the best available narration: the viewer's own commentary, the produced commentary,
 or a grounded label built from the moment's facts.
 """
 
@@ -16,6 +16,8 @@ from insidegame.tracking.model import Frame
 MAX_CLIPS: int = 6
 LEAD_S: float = 10.0
 TAIL_S: float = 4.0
+REPLAY_LEAD_S: float = 6.0
+REPLAY_TAIL_S: float = 2.5
 FIRST_HALF: int = 1
 DEFAULT_LANGUAGE: str = "en"
 KIND_TITLES: dict[MomentKind, str] = {
@@ -88,6 +90,12 @@ def clip_frames(frames: Sequence[FrameRecord], moment: KeyMoment) -> list[FrameR
     """Frames from LEAD_S before the moment to TAIL_S after it, in the moment's period."""
     start, end = moment.match_second - LEAD_S, moment.match_second + TAIL_S
     return [f for f in frames if f.period == moment.period and start <= f.match_second <= end]
+
+
+def replay_frames(frames: Sequence[FrameRecord], period: int, at: float) -> list[FrameRecord]:
+    """Frames for an instant replay: REPLAY_LEAD_S before the action to REPLAY_TAIL_S after, in its period."""
+    start, end = at - REPLAY_LEAD_S, at + REPLAY_TAIL_S
+    return [f for f in frames if f.period == period and start <= f.match_second <= end]
 
 
 def fallback_narration(moment: KeyMoment) -> Narration:

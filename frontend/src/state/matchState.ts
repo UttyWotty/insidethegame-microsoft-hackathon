@@ -25,7 +25,11 @@ export type MessageName = "match" | "event" | "snapshot" | "cue" | "commentary" 
 export interface TrailPoint extends Point { side: "home" | "away"; type: string; id: string }
 export interface MomentumPoint { second: number; period: number; momentum: number }
 export interface ReceivedCue { cue: OverlayCue; receivedAt: number }
-export interface ShotTrace { id: string; from: Point; to: Point; xg: number | null; result: string; side: "home" | "away"; at: number }
+export interface ShotTrace {
+  id: string; from: Point; to: Point; xg: number | null; result: string; side: "home" | "away"; at: number;
+  /** Period and match second of the shot, so it can be replayed. */
+  period: number; second: number; shooter: string | null;
+}
 export interface GoalFlash { id: string; scorer: string; side: "home" | "away"; score: string; at: number }
 export interface TickerItem {
   id: string; minute: string; text: string; tone: "commentary" | "goal" | "info" | "play"; language: string;
@@ -100,6 +104,7 @@ function shotTrace(state: MatchState, update: EventUpdate, at: number): ShotTrac
   return {
     id: event.event_id, from: toScreen(event.start, isHome, event.period), to: toScreen(event.end ?? GOAL_MOUTH, isHome, event.period),
     xg: update.xg, result: event.shot_result ?? "", side: isHome ? "home" : "away", at,
+    period: event.period, second: event.match_second, shooter: event.player_id,
   };
 }
 

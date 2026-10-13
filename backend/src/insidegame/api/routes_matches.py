@@ -1,5 +1,5 @@
-"""Match routes: create a live replay, list and inspect sessions, stream a personalized feed, and fetch highlights
-and studio visuals.
+"""Match routes: create a live replay, list and inspect sessions, stream a personalized feed, and fetch highlights,
+instant replays, and studio visuals.
 
 The stream endpoint registers the caller's viewer segment and returns server-sent events.
 Domain errors are translated to HTTP errors by the handlers registered in app.py.
@@ -77,6 +77,16 @@ async def highlights(
 ) -> dict[str, object]:
     """Automated highlights reel: key moments with tracking frames and narration, replayable on the pitch."""
     return _registry(request).get(session_id).highlights(stage, segment)
+
+
+@router.get("/{session_id}/replay")
+async def replay(
+    session_id: str, request: Request,
+    period: int = Query(ge=1, le=2, description="Period of the action to replay."),
+    at: float = Query(ge=0, description="Match second of the action; frames run from shortly before to just after."),
+) -> dict[str, object]:
+    """Instant replay: the tracking frames around an action that has already been played."""
+    return _registry(request).get(session_id).replay(period, at)
 
 
 @router.get("/{session_id}/studio")
