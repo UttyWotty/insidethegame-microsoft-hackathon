@@ -93,6 +93,9 @@ export interface HighlightClip {
   actor: string | null; commentary: string; language: string; intensity: "normal" | "raised" | "peak"; frames: HighlightFrame[];
 }
 
+/** Stored frames around one action, for an instant replay. */
+export interface ReplayFrames { period: number; at: number; frames: HighlightFrame[] }
+
 export interface HighlightReel { stage: "half_time" | "full_time"; headline: string; clips: HighlightClip[] }
 
 export type StudioVisual = "heat_map" | "pressing" | "pass_network" | "space_control";

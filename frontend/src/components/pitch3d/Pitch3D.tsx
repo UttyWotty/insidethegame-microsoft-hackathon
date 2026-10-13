@@ -8,7 +8,7 @@ import * as THREE from "three";
 import type { BallAnchor, PlayerDot } from "../Pitch";
 import { PITCH_LENGTH } from "../../lib/pitch";
 import {
-  approach, approachAngle, broadcastCamera, CAMERA_HALF_LIFE_MS, glideAt, heading, legSwing, pitchToWorld, type Glide,
+  approach, approachAngle, behindGoalCamera, broadcastCamera, CAMERA_HALF_LIFE_MS, glideAt, heading, legSwing, pitchToWorld, type Glide,
 } from "../../lib/scene3d";
 import type { Point } from "../../types";
 import {
@@ -30,6 +30,8 @@ const STRIDE_PER_M = 2.4;
 interface Pitch3DProps {
   ball: Point | null; players: PlayerDot[]; moveMs: number; homeColor: string; awayColor: string; label: string;
   onBallAnchor: (anchor: BallAnchor) => void; children?: ReactNode;
+  /** Replay angle: the camera sits behind this goal instead of on the touchline; null (default) is live. */
+  behindGoal?: "left" | "right" | null;
 }
 
 interface Figure { group: THREE.Group; glide: Glide; facing: number; colorKey: string; phase: number; last: Point }
@@ -65,6 +67,7 @@ function setupScene(mount: HTMLDivElement): SceneState {
   scene.add(ball);
   const camera = new THREE.PerspectiveCamera(FOV, ASPECT, NEAR, FAR);
   const start = broadcastCamera(null);
+  // The camera eases to its target every frame, so a replay angle cuts in smoothly from wherever it starts.
   camera.position.set(start.position.x, start.position.y, start.position.z);
   const aim = new THREE.Vector3(start.target.x, start.target.y, start.target.z);
   camera.lookAt(aim);
@@ -77,13 +80,14 @@ function setupScene(mount: HTMLDivElement): SceneState {
            aim, frame: 0, lastFrame: performance.now(), lastAnchor: 0, observer };
 }
 
-/** Move the camera toward its broadcast position for the ball, smoothly. */
-function steerCamera(state: SceneState, ball: Point, elapsed: number): void {
-  const want = broadcastCamera(ball);
+/** Move the camera toward its live broadcast position, or a replay angle behind a goal, smoothly. */
+function steerCamera(state: SceneState, ball: Point, elapsed: number, behindGoal: "left" | "right" | null): void {
+  const want = behindGoal ? behindGoalCamera(ball, behindGoal) : broadcastCamera(ball);
   const { camera, aim } = state;
-  camera.position.x = approach(camera.position.x, want.position.x, elapsed, CAMERA_HALF_LIFE_MS);
-  aim.set(approach(aim.x, want.target.x, elapsed, CAMERA_HALF_LIFE_MS), 0,
-          approach(aim.z, want.target.z, elapsed, CAMERA_HALF_LIFE_MS));
+  const ease = (from: number, to: number) => approach(from, to, elapsed, CAMERA_HALF_LIFE_MS);
+  camera.position.set(ease(camera.position.x, want.position.x), ease(camera.position.y, want.position.y),
+                      ease(camera.position.z, want.position.z));
+  aim.set(ease(aim.x, want.target.x), 0, ease(aim.z, want.target.z));
   camera.lookAt(aim);
 }
 
@@ -100,6 +104,8 @@ export default function Pitch3D(props: Pitch3DProps) {
   const tagRefs = useRef(new Map<string, HTMLSpanElement>());
   const anchorRef = useRef(props.onBallAnchor);
   anchorRef.current = props.onBallAnchor;
+  const angleRef = useRef(props.behindGoal ?? null);
+  angleRef.current = props.behindGoal ?? null;
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -134,7 +140,7 @@ export default function Pitch3D(props: Pitch3DProps) {
       const ballAt = glideAt(state.ballGlide, now);
       const ballWorld = pitchToWorld(ballAt, state.ball.position.y);
       state.ball.position.set(ballWorld.x, ballWorld.y, ballWorld.z);
-      steerCamera(state, ballAt, elapsed);
+      steerCamera(state, ballAt, elapsed, angleRef.current);
       state.renderer.render(state.scene, state.camera);
       for (const [id, element] of tagRefs.current) {
         const figure = state.figures.get(id);

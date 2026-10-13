@@ -201,6 +201,7 @@ skipped.
 | GET | `/api/matches/{id}/stream?persona=&language=&team=&player=` | Personalized SSE feed |
 | GET | `/api/matches/{id}/producer` | Producer console state: timeline, broadcast records, pipeline health |
 | GET | `/api/matches/{id}/producer/stream` | Server-sent events: the producer console state whenever it changes, then `end` |
+| GET | `/api/matches/{id}/replay?period=&at=` | Instant replay: tracking frames from 6 s before to 2.5 s after an action already played |
 | GET | `/api/matches/{id}/studio?window=` | Studio visuals for `match` or `last_15`: heat, pressing, and pass maps per team, space control, and the analyst's recommended visual |
 | GET | `/api/matches/{id}/highlights?stage=` | Highlights reel for `half_time` or `full_time` (409 until that recap exists): clips with tracking frames and narration |
 | POST | `/api/matches/{id}/producer/hold`, `/producer/release` | Hold AI overlays for approval; release one or all |
@@ -284,6 +285,9 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   cut off calm lines. Pace follows the replay speed (natural at 1x real time), lines rotate through varied wordings
   without near repeats, and the viewer's own system voice (or a natural male commentator voice) is used.
 - **Recaps:** half-time and full-time recaps open in an accessible dialog, led by the viewer's persona take.
+- **Instant replays:** a few seconds after every goal and every big chance (xG 0.25 or more), the action replays
+  in slow motion from another angle (behind the goal in the 3D view, a zoomed crop on the 2D pitch) under a
+  REPLAY bug, with a short commentator line, then returns to live. An Auto replays toggle turns them off.
 - **Studio:** a pundit screen with four analysis visuals on the pitch: space control (each area owned by the
   nearest team, with the players), pass networks, heat maps, and pressing maps, per team, for the whole match or
   the last 15 minutes. By default it follows the Match Analyst: the tactical theme of the newest explanation picks

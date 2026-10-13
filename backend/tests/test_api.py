@@ -104,6 +104,11 @@ def test_highlights_wait_for_the_recap_then_replay_key_moments() -> None:
         assert reel["clips"] and all(clip["frames"] and clip["commentary"] for clip in reel["clips"])
         assert len(reel["clips"][0]["frames"][0]["positions"]) == 22
         assert client.get(f"/api/matches/{session_id}/highlights", params={"stage": "extra"}).status_code == 422
+        goal = next(c for c in reel["clips"] if c["kind"] == "goal")
+        replay = client.get(f"/api/matches/{session_id}/replay",
+                            params={"period": goal["period"], "at": goal["match_second"]}).json()
+        assert replay["frames"] and all(f["period"] == goal["period"] for f in replay["frames"])
+        assert client.get(f"/api/matches/{session_id}/replay", params={"period": 3, "at": 1}).status_code == 422
 
 
 def test_studio_returns_maps_control_and_the_analyst_pick() -> None:

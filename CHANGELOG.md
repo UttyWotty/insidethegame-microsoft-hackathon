@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Instant replays: 3.5 seconds after every goal and every shot of 0.25 xG or more, the broadcast replays the
+  stored frames from 6 seconds before to 2.5 seconds after the shot in slow motion (0.6x) from another angle: a
+  camera behind the goal the action finished at in the 3D view, or a zoomed crop on the 2D pitch. A REPLAY bug
+  wipes in, a caption shows the result, shooter, and xG, the commentator says a short replay line, and live voice
+  pauses until it returns to live (or the viewer skips). Served by `GET /api/matches/{id}/replay?period=&at=`;
+  an Auto replays toggle turns them off.
 - 3D broadcast view: a "3D" camera renders the match with three.js (0.186.1, lazy-loaded into its own chunk, so the
   main bundle is unchanged): striped pitch with markings, goals with nets, raked stands with a crowd, player
   figures in club colours whose legs run with the distance covered and who turn to face their direction of travel,

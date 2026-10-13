@@ -43,6 +43,8 @@ interface PitchProps {
   shot: ShotTrace | null;
   onBallAnchor: (anchor: BallAnchor) => void;
   children?: ReactNode;
+  /** Replay crop as x, y, width, height in metres; null (default) shows the whole pitch. */
+  zoom?: [number, number, number, number] | null;
 }
 
 export function Markings() {
@@ -110,7 +112,7 @@ function Shot({ shot, color }: { shot: ShotTrace; color: string }) {
 }
 
 export function Pitch({ ball, trail, players, moveMs, homeColor, awayColor, label, camera, shot, onBallAnchor,
-                       children }: PitchProps) {
+                       children, zoom = null }: PitchProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const ballRef = useRef<SVGCircleElement>(null);
 
@@ -127,7 +129,8 @@ export function Pitch({ ball, trail, players, moveMs, homeColor, awayColor, labe
   return (
     <div className={`pitch-wrap cam-${camera}`} ref={wrapRef}>
       <svg className="pitch" role="img" aria-label={label}
-        viewBox={`${-RUNOFF_M} ${-RUNOFF_TOP_M} ${PITCH_LENGTH + 2 * RUNOFF_M} ${PITCH_WIDTH + RUNOFF_TOP_M + RUNOFF_M}`}
+        viewBox={zoom ? zoom.join(" ")
+          : `${-RUNOFF_M} ${-RUNOFF_TOP_M} ${PITCH_LENGTH + 2 * RUNOFF_M} ${PITCH_WIDTH + RUNOFF_TOP_M + RUNOFF_M}`}
         style={{ "--move-ms": `${moveMs}ms` } as CSSProperties}>
         <Markings />
         {trail.length > 1 && (

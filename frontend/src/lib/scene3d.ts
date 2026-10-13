@@ -36,6 +36,21 @@ export function broadcastCamera(ball: Point | null): { position: Vec3; target: V
   };
 }
 
+/** Replay camera behind a goal: low, a little to the side, looking up the pitch at the action. */
+export const GOAL_CAMERA_BACK = 14;
+export const GOAL_CAMERA_HEIGHT = 7;
+const GOAL_CAMERA_SIDE = 0.25;
+
+/** Camera position and aim behind the left or right goal, framing the ball. */
+export function behindGoalCamera(ball: Point | null, end: "left" | "right"): { position: Vec3; target: Vec3 } {
+  const world = pitchToWorld(ball ?? { x: PITCH_LENGTH / 2, y: PITCH_WIDTH / 2 });
+  const sign = end === "right" ? 1 : -1;
+  return {
+    position: { x: sign * (PITCH_LENGTH / 2 + GOAL_CAMERA_BACK), y: GOAL_CAMERA_HEIGHT, z: world.z * GOAL_CAMERA_SIDE },
+    target: { x: world.x, y: 0, z: world.z },
+  };
+}
+
 /** Exponential approach of current toward target after elapsedMs with the given half-life. */
 export function approach(current: number, target: number, elapsedMs: number, halfLifeMs: number): number {
   const keep = Math.pow(0.5, Math.max(elapsedMs, 0) / Math.max(halfLifeMs, 1));
