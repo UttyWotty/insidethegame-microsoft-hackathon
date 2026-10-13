@@ -44,6 +44,7 @@ class OverlayCue:
     body: str
     stat_callouts: list[dict[str, str]] = field(default_factory=list)
     commentary: str = ""
+    commentary_language: str = DEFAULT_LANGUAGE
     theme: str = ""
     provenance: dict[str, object] = field(default_factory=dict)
 
@@ -68,9 +69,10 @@ def build_cue(
     commentary: AgentOutcome[Commentary], item: PersonalizedCard, commentary_text: str | None = None,
     commentary_check: FactCheckRecord = SKIPPED_CHECK,
 ) -> OverlayCue:
-    """Assemble the overlay cue for one viewer; commentary_text overrides the line, for example when translated.
+    """Assemble the overlay cue for one viewer; commentary_text overrides the line with its translation.
 
-    Defaults: commentary_text is None (the narrator's line) and commentary_check is SKIPPED_CHECK.
+    Defaults: commentary_text is None (the narrator's English line) and commentary_check is SKIPPED_CHECK. The cue
+    records the commentary's own language, which can differ from the card's when only one translation succeeded.
     """
     profile = item.viewer.viewer.profile
     title, body, callouts, language = _text(item)
@@ -88,7 +90,9 @@ def build_cue(
         viewer_id=item.viewer.viewer.viewer_id, persona=profile.key.value, language=language,
         layout=profile.overlay_style.value, period=moment.period, display_from_s=round(moment.match_second + CUE_DELAY_S, TIME_DECIMALS),
         duration_s=CUE_DURATION_S[profile.overlay_style], priority=moment.importance, title=title, body=body,
-        stat_callouts=callouts, commentary=commentary_text or commentary.value.line, theme=explanation.value.theme.value,
+        stat_callouts=callouts, commentary=commentary_text or commentary.value.line,
+        commentary_language=item.viewer.viewer.language if commentary_text else DEFAULT_LANGUAGE,
+        theme=explanation.value.theme.value,
         provenance=provenance,
     )
 

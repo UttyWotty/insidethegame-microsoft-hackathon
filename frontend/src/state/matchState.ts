@@ -13,6 +13,8 @@ export const MOMENTUM_SAMPLE_S = 30;
 export const MAX_CUES = 40;
 export const MAX_TICKER = 40;
 export const STALE_CUE_MATCH_S = 300;
+/** Play-by-play and event lines are generated in English; moment commentary arrives in the viewer's language. */
+export const FEED_LANGUAGE = "en";
 const TICKER_EVENT_TYPES = new Set(["goal", "save", "shot"]);
 
 export type MessageName = "match" | "event" | "snapshot" | "cue" | "commentary" | "recap" | "end";
@@ -22,7 +24,9 @@ export interface MomentumPoint { second: number; period: number; momentum: numbe
 export interface ReceivedCue { cue: OverlayCue; receivedAt: number }
 export interface ShotTrace { id: string; from: Point; to: Point; xg: number | null; result: string; side: "home" | "away"; at: number }
 export interface GoalFlash { id: string; scorer: string; side: "home" | "away"; score: string; at: number }
-export interface TickerItem { id: string; minute: string; text: string; tone: "commentary" | "goal" | "info" | "play" }
+export interface TickerItem {
+  id: string; minute: string; text: string; tone: "commentary" | "goal" | "info" | "play"; language: string;
+}
 export interface PlayLine { line_id: string; minute: string; text: string; kind: string }
 
 export interface MatchState {
@@ -64,12 +68,15 @@ function eventTicker(state: MatchState, event: MatchEvent): TickerItem | null {
   const name = playerName(state, event.player_id);
   const minute = minuteLabel(event.match_second, event.period);
   if (event.event_type === "goal") {
-    return { id: event.event_id, minute, text: `GOAL - ${name}. ${event.score.home}-${event.score.away}`, tone: "goal" };
+    return { id: event.event_id, minute, text: `GOAL - ${name}. ${event.score.home}-${event.score.away}`, tone: "goal",
+             language: FEED_LANGUAGE };
   }
-  if (event.event_type === "save") return { id: event.event_id, minute, text: `Save by ${name}`, tone: "info" };
+  if (event.event_type === "save") {
+    return { id: event.event_id, minute, text: `Save by ${name}`, tone: "info", language: FEED_LANGUAGE };
+  }
   if (event.shot_result === "goal") return null;
   const result = (event.shot_result ?? "").replace("_", " ");
-  return { id: event.event_id, minute, text: `Shot by ${name} (${result})`, tone: "info" };
+  return { id: event.event_id, minute, text: `Shot by ${name} (${result})`, tone: "info", language: FEED_LANGUAGE };
 }
 
 const GOAL_MOUTH = { x: 105, y: 34 };
@@ -121,7 +128,9 @@ function addTicker(state: MatchState, item: TickerItem): TickerItem[] {
 function applyCue(state: MatchState, cue: OverlayCue, receivedAt: number): MatchState {
   if (state.cues.some((c) => c.cue.cue_id === cue.cue_id)) return state;
   const minute = minuteLabel(cue.display_from_s, cue.period);
-  const commentary: TickerItem = { id: `moment-${cue.moment_id}`, minute, text: cue.commentary, tone: "commentary" };
+  const commentary: TickerItem = {
+    id: `moment-${cue.moment_id}`, minute, text: cue.commentary, tone: "commentary", language: cue.commentary_language,
+  };
   return { ...state, cues: [{ cue, receivedAt }, ...state.cues].slice(0, MAX_CUES), ticker: addTicker(state, commentary) };
 }
 
@@ -141,7 +150,10 @@ export function matchReducer(state: MatchState, action: StreamAction): MatchStat
     case "cue": return applyCue(state, action.data as OverlayCue, action.receivedAt);
     case "commentary": {
       const line = action.data as PlayLine;
-      return { ...state, ticker: addTicker(state, { id: line.line_id, minute: line.minute, text: line.text, tone: "play" }) };
+      const item: TickerItem = {
+        id: line.line_id, minute: line.minute, text: line.text, tone: "play", language: FEED_LANGUAGE,
+      };
+      return { ...state, ticker: addTicker(state, item) };
     }
     case "recap": {
       const recap = action.data as Recap;

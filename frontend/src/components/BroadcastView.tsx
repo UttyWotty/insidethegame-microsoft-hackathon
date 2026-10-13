@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMatchStream } from "../api/useMatchStream";
 import { teamColor } from "../lib/teams";
 import { useNow } from "../lib/useNow";
+import { speechSupported, useSpokenCommentary } from "../lib/useSpokenCommentary";
 import { activeCue } from "../state/matchState";
 import type { MatchEvent, MatchMetadata, Point, Recap, ViewerSettings } from "../types";
 
@@ -49,6 +50,9 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   const dots = useMemo(() => playerDots(state.session?.match, state.players, state.lastEvent, viewer.player),
     [state.session, state.players, state.lastEvent, viewer.player]);
   const [seenStages, setSeenStages] = useState<Set<string>>(() => new Set());
+  const [voiceOn, setVoiceOn] = useState(false);
+  const toggleVoice = useCallback(() => setVoiceOn((on) => !on), []);
+  useSpokenCommentary(state.ticker, viewer.language, voiceOn);
 
   useEffect(() => {
     const fresh = state.recaps.find((r) => !seenStages.has(r.stage));
@@ -101,7 +105,8 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
             </button>
           ))}
         </div>
-        <CommentaryTicker items={state.ticker} />
+        <CommentaryTicker items={state.ticker}
+          voice={speechSupported ? { on: voiceOn, onToggle: toggleVoice } : undefined} />
       </div>
       <aside className="rail">
         <AskPanel sessionId={sessionId} viewer={viewer} />

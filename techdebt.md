@@ -46,7 +46,10 @@ Ordered by priority within each section; status as of 2026-10-12 (develop at PR 
 
 ## Features that raise the chance of winning
 
-- Spoken commentary with Azure AI Speech (text to speech per language) for moment commentary and play-by-play; strongest "multi-language storytelling" and Microsoft-service showcase.
+- Spoken commentary with Azure AI Speech (neural text to speech per language); strongest "multi-language
+  storytelling" and Microsoft-service showcase. Browser speech synthesis already reads commentary (Voice toggle,
+  2026-10-13); remaining: a `/api/speech` adapter on Azure AI Speech with managed identity, a Speech resource in
+  Bicep, and the frontend preferring it when configured (needs the Azure subscription to verify).
 - Microsoft Fabric: load `datasets.generate` output into a Fabric lakehouse and build a small Power BI report; reference it in the submission.
 - Foundry evaluations (groundedness, relevance) on agent outputs, linked from the producer console or docs.
 - GitHub Copilot: record Copilot agent mode in VS Code querying the live match through the MCP server (`.vscode/mcp.json` example in README); also register the Foundry hosted agent and show it in the portal.

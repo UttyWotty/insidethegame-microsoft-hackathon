@@ -30,7 +30,7 @@ const update = (second: number, type = "pass", overrides: Partial<EventUpdate["e
 const cue = (id: string, priority: number, duration = 6): OverlayCue => ({
   cue_id: id, moment_id: id, viewer_id: "v", persona: "casual", language: "en", layout: "lower_third", period: 1,
   display_from_s: 600, duration_s: duration, priority, title: "t", body: "b", stat_callouts: [], commentary: `line ${id}`,
-  theme: "control", provenance: {},
+  commentary_language: "en", theme: "control", provenance: {},
 });
 
 const withSession = matchReducer(initialMatchState, { type: "message", name: "match", data: session, receivedAt: 0 });
@@ -98,6 +98,15 @@ describe("viewer switches and play-by-play", () => {
     state = matchReducer(state, { type: "message", name: "cue", data: { ...cue("seg-b", 0.5), moment_id: "m9" }, receivedAt: 3 });
     expect(state.ticker.filter((t) => t.tone === "play")).toHaveLength(1);
     expect(state.ticker.filter((t) => t.tone === "commentary")).toHaveLength(1);
+  });
+
+  it("labels each feed line with the language its text is in, for spoken commentary", () => {
+    const line = { line_id: "e1-pbp", minute: "2'", text: "Kick-off!", kind: "kick_off" };
+    const spanishCue = { ...cue("seg-es", 0.5), moment_id: "m7", language: "es", commentary_language: "es" };
+    let state = matchReducer(withSession, { type: "message", name: "commentary", data: line, receivedAt: 0 });
+    state = matchReducer(state, { type: "message", name: "cue", data: spanishCue, receivedAt: 1 });
+    expect(state.ticker.find((t) => t.tone === "play")?.language).toBe("en");
+    expect(state.ticker.find((t) => t.tone === "commentary")?.language).toBe("es");
   });
 });
 

@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Spoken commentary: a Voice toggle on the commentary panel reads lines aloud with the browser's speech synthesis,
+  choosing a voice for the viewer's language and speaking only lines in that language, with a two-line queue that
+  drops play-by-play first so speech keeps up. Overlay cues now carry `commentary_language`, so an untranslated
+  line is never read with a foreign voice.
 - Per-client rate limit on starting matches (`MATCH_CREATE_MAX_PER_MINUTE`, default 6): clients are identified by
   the last `X-Forwarded-For` entry (the one the Container Apps proxy appends), so a forged header cannot reset the
   budget; the MCP `start_match` tool shares one budget.
