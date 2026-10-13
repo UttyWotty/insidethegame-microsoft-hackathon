@@ -67,7 +67,7 @@ def test_moments_still_being_produced_are_reported_in_production() -> None:
     session = asyncio.run(scenario())
     moments = session.service.analyzer.moments
     pending = next(m.moment_id for m in moments if m.moment_id not in session.desk.records)
-    timeline = session.desk.summary(moments, 1, {pending})["timeline"]
+    timeline = session.desk.summary(moments, 1, {pending}, ())["timeline"]
     statuses = {t["moment_id"]: t["status"] for t in timeline}  # type: ignore[union-attr]
     assert [moment for moment, status in statuses.items() if status == "in_production"] == [pending]
     assert not session.in_production

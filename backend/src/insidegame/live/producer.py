@@ -1,7 +1,8 @@
 """Producer desk: the human-in-the-loop record of what the agents produced and what went to air.
 
 It keeps one record per broadcast moment (explanation, commentary, every audience's cue with provenance and
-fact-check), can hold AI overlays for approval and release them, and summarises pipeline health for the console.
+fact-check), notes moments skipped as stale under backpressure, can hold AI overlays for approval and release
+them, and summarises pipeline health for the console.
 """
 
 from collections import Counter
@@ -15,6 +16,8 @@ from insidegame.orchestration.cues import MomentBroadcast
 RATE_DECIMALS: int = 3
 CUE_ROLES: tuple[str, ...] = ("explanation", "commentary", "card", "translation")
 IN_PRODUCTION: str = "in_production"
+QUEUED: str = "queued"
+SKIPPED: str = "skipped"
 NOT_AIRED: str = "not_aired"
 
 
@@ -51,6 +54,7 @@ class ProducerDesk:
 
     hold: bool = False
     records: dict[str, BroadcastRecord] = field(default_factory=dict)
+    skipped: set[str] = field(default_factory=set)
 
     def record(self, broadcast: MomentBroadcast) -> BroadcastRecord:
         """Register a produced moment; it is held when the desk is holding, otherwise it airs at once."""
@@ -67,6 +71,10 @@ class ProducerDesk:
         self.records[moment.moment_id] = record
         return record
 
+    def skip(self, moment_id: str) -> None:
+        """Note a moment dropped from the production queue because it went stale before a slot was free."""
+        self.skipped.add(moment_id)
+
     def release(self, moment_id: str | None) -> list[dict[str, object]]:
         """Release one held moment, or every held moment when moment_id is None; returns cues to publish."""
         released: list[dict[str, object]] = []
@@ -76,21 +84,28 @@ class ProducerDesk:
                 released.extend(record.cues)
         return released
 
-    def _status(self, moment_id: str, in_production: Collection[str]) -> str:
+    def _status(self, moment_id: str, in_production: Collection[str], queued: Collection[str]) -> str:
         if moment_id in self.records:
             return self.records[moment_id].status.value
-        return IN_PRODUCTION if moment_id in in_production else NOT_AIRED
+        if moment_id in in_production:
+            return IN_PRODUCTION
+        if moment_id in queued:
+            return QUEUED
+        return SKIPPED if moment_id in self.skipped else NOT_AIRED
 
-    def summary(self, moments: list[KeyMoment], segments: int, in_production: Collection[str]) -> dict[str, object]:
+    def summary(self, moments: list[KeyMoment], segments: int, in_production: Collection[str],
+                queued: Collection[str]) -> dict[str, object]:
         """Timeline of all detected moments, broadcast records, and pipeline health statistics.
 
-        A moment with no record yet is in production while its agents are still working, otherwise not aired.
+        A moment with no record yet is in production while its agents work, queued while it waits for a production
+        slot, skipped when it went stale in the queue, and otherwise not aired (filtered out by the pacing policy).
         """
         timeline = [{"moment_id": m.moment_id, "minute": m.minute_label, "kind": m.kind.value,
-                     "importance": round(m.importance, RATE_DECIMALS), "status": self._status(m.moment_id, in_production)}
-                    for m in moments]
+                     "importance": round(m.importance, RATE_DECIMALS),
+                     "status": self._status(m.moment_id, in_production, queued)} for m in moments]
+        health = pipeline_health(self.records) | {"skipped": len(self.skipped - self.records.keys())}
         return {"hold": self.hold, "segments": segments, "timeline": timeline,
-                "records": [r.to_dict() for r in reversed(self.records.values())], "health": pipeline_health(self.records)}
+                "records": [r.to_dict() for r in reversed(self.records.values())], "health": health}
 
 
 def pipeline_health(records: dict[str, BroadcastRecord]) -> dict[str, object]:

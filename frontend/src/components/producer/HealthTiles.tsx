@@ -1,5 +1,5 @@
 /**
- * Pipeline health tiles for the producer: volume, AI share, fact-check outcomes, latency, and audiences.
+ * Pipeline health tiles for the producer: volume, AI share, fact-check outcomes, latency, backlog, and audiences.
  * Numbers are shown as text first so they read at a glance in a busy control room.
  * Rates come from cue provenance recorded by the multi-agent pipeline.
  */
@@ -23,6 +23,7 @@ export function HealthTiles({ summary }: { summary: ProducerSummary }) {
     { label: "Fact-checks passed", value: String((checks.approved ?? 0) + (checks.revised ?? 0)) },
     { label: "Corrected by editor", value: String(checks.revised ?? 0) },
     { label: "Mean card latency", value: `${(health.mean_card_latency_ms / 1000).toFixed(1)}s` },
+    { label: "Skipped as stale", value: String(health.skipped) },
     { label: "Live audiences", value: String(summary.segments) },
   ];
   return (

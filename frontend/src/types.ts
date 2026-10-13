@@ -98,7 +98,7 @@ export interface BroadcastRecord {
 }
 
 export interface PipelineHealth {
-  moments: number; cues: number; mean_card_latency_ms: number;
+  moments: number; cues: number; mean_card_latency_ms: number; skipped: number;
   source_rates: Record<string, Record<string, number>>; fact_checks: Record<string, number>;
 }
 

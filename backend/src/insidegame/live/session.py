@@ -1,13 +1,15 @@
 """A live match session: replays events in real time and publishes results to subscribers.
 
 Interpretation runs inline so the event feed keeps match pace, while agent workflows and recaps run as background
-tasks that publish when ready. Cues are routed only to subscribers of the segment they were personalized for.
+tasks that publish when ready. Moments wait in order for a limited number of production slots, and non-goal moments
+that go stale while waiting are skipped. Cues are routed only to subscribers of the segment they were personalized for.
 """
 
 import asyncio
 import logging
 from collections import Counter, deque
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import StrEnum
 
@@ -24,7 +26,9 @@ from insidegame.core.exceptions import SessionLimitError
 from insidegame.domain.match import MatchResult
 from insidegame.live.pacing import replay_delay_s
 from insidegame.live.producer import AirStatus, ProducerDesk
+from insidegame.orchestration.cues import MomentBroadcast
 from insidegame.orchestration.messages import MomentJob
+from insidegame.orchestration.producer import is_stale
 from insidegame.orchestration.service import MatchIntelligenceService, degraded_broadcast
 
 logger = logging.getLogger(__name__)
@@ -36,6 +40,7 @@ BACKFILL_MOMENTS: int = 2
 MAX_SEGMENTS: int = 10
 COMMENTARY_HISTORY: int = 40
 MOMENT_HISTORY: int = 30
+DEFAULT_PARALLEL_MOMENTS: int = 2
 
 Sleeper = Callable[[float], Awaitable[None]]
 
@@ -77,6 +82,18 @@ class Subscriber:
     queue: asyncio.Queue[LiveMessage] = field(default_factory=lambda: asyncio.Queue(QUEUE_MAX))
 
 
+@contextmanager
+def _counting(counter: Counter[str], key: str) -> Iterator[None]:
+    """Count key in counter for the duration of the block, removing it when the count returns to zero."""
+    counter[key] += 1
+    try:
+        yield
+    finally:
+        counter[key] -= 1
+        if not counter[key]:
+            del counter[key]
+
+
 def _take_fields(viewer: ViewerContext, take: RecapTake, source: OutputSource) -> dict[str, object]:
     return {"persona": viewer.viewer.persona.value, "take": take.model_dump(mode="json"), "take_source": source.value}
 
@@ -85,8 +102,12 @@ class MatchSession:
     """Owns one replayed match, its pipeline, and its subscribers."""
 
     def __init__(self, session_id: str, result: MatchResult, service: MatchIntelligenceService, speed: float,
-                 sleep: Sleeper = asyncio.sleep) -> None:
-        """Create a session; sleep defaults to asyncio.sleep and is injectable for tests."""
+                 sleep: Sleeper = asyncio.sleep, parallel_moments: int = DEFAULT_PARALLEL_MOMENTS) -> None:
+        """Create a session.
+
+        sleep defaults to asyncio.sleep and is injectable for tests; parallel_moments (default
+        DEFAULT_PARALLEL_MOMENTS = 2) caps how many moments run their agent workflows at once.
+        """
         self.session_id, self.result, self.service, self.speed, self.sleep = session_id, result, service, speed, sleep
         self.status = SessionStatus.PENDING
         self.subscribers: set[Subscriber] = set()
@@ -98,6 +119,9 @@ class MatchSession:
         self.play_by_play = PlayByPlay(result.metadata)
         self.desk = ProducerDesk()
         self.in_production: Counter[str] = Counter()
+        self.queued: Counter[str] = Counter()
+        self.production_slots = asyncio.Semaphore(parallel_moments)
+        self.clock: tuple[int, float] = (1, 0.0)
         self.commentary: deque[dict[str, object]] = deque(maxlen=COMMENTARY_HISTORY)
 
     def describe(self) -> dict[str, object]:
@@ -144,7 +168,7 @@ class MatchSession:
         viewer = self.service.add_viewer(profile)
         delivered = {cue["moment_id"] for cue in self.cue_history.get(profile.viewer_id, ())}
         recent = [c for c in self.recent_moments if is_relevant(c.moment, profile)][-BACKFILL_MOMENTS:]
-        return [self._spawn(self._produce(MomentJob(c, (viewer,))))
+        return [self._spawn(self._produce(MomentJob(c, (viewer,)), skip_if_stale=False))
                 for c in recent if c.moment.moment_id not in delivered]
 
     def unsubscribe(self, subscriber: Subscriber) -> None:
@@ -172,19 +196,32 @@ class MatchSession:
         task.add_done_callback(self.tasks.discard)
         return task
 
-    async def _produce(self, job: MomentJob) -> None:
-        """Produce and publish cues; any unexpected failure degrades to templates instead of losing the moment."""
-        moment_id = job.context.moment.moment_id
-        self.in_production[moment_id] += 1
+    async def _broadcast(self, job: MomentJob) -> MomentBroadcast:
+        """Run the agent workflow; any unexpected failure degrades to templates instead of losing the moment."""
         try:
-            broadcast = await self.service.produce(job)
+            return await self.service.produce(job)
         except Exception:  # noqa: BLE001 - resilience boundary for background work
-            logger.exception("Production failed for %s; publishing degraded cues", moment_id)
-            broadcast = degraded_broadcast(self.result.metadata.match_id, job.context, job)
+            logger.exception("Production failed for %s; publishing degraded cues", job.context.moment.moment_id)
+            return degraded_broadcast(self.result.metadata.match_id, job.context, job)
+
+    async def _produce(self, job: MomentJob, skip_if_stale: bool = True) -> None:
+        """Wait for a production slot, then produce and publish the moment's cues.
+
+        skip_if_stale defaults to True: a non-goal moment that fell behind the match clock while queued is skipped.
+        Backfill for a new viewer passes False, because that viewer explicitly needs those moments.
+        """
+        moment = job.context.moment
+        with _counting(self.queued, moment.moment_id):
+            await self.production_slots.acquire()
+        try:
+            if skip_if_stale and is_stale(moment, *self.clock):
+                logger.info("Skipped stale moment %s in %s", moment.moment_id, self.session_id)
+                self.desk.skip(moment.moment_id)
+                return
+            with _counting(self.in_production, moment.moment_id):
+                broadcast = await self._broadcast(job)
         finally:
-            self.in_production[moment_id] -= 1
-            if not self.in_production[moment_id]:
-                del self.in_production[moment_id]
+            self.production_slots.release()
         record = self.desk.record(broadcast)
         if record.status is AirStatus.HELD:
             return
@@ -208,7 +245,8 @@ class MatchSession:
 
     def producer_summary(self) -> dict[str, object]:
         """State for the producer console."""
-        return self.desk.summary(self.service.analyzer.moments, len(self.service.viewers), self.in_production.keys())
+        return self.desk.summary(self.service.analyzer.moments, len(self.service.viewers), self.in_production.keys(),
+                                 self.queued.keys())
 
     async def _recap(self, stage: RecapStage) -> None:
         """Write the shared recap, then publish it to each viewer segment with that segment's persona take."""
@@ -259,6 +297,7 @@ class MatchSession:
         previous = None
         for index, event in enumerate(self.result.events):
             await self.sleep(replay_delay_s(previous, event, self.speed))
+            self.clock = (event.period, event.match_second)
             interpretation = self.service.interpret(event)
             payload = interpretation.update.to_dict() | {"positions": interpretation.positions}
             self.publish(LiveMessage(MessageType.EVENT, payload))
