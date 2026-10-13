@@ -158,6 +158,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Unrealistic shot locations: 55% of simulated shots came from the byline (some from the corner flag at a
+  near-zero angle) because shot probability ignored the angle and play piled up against the goal line. Shots are
+  now weighted by how square-on the shooter is to goal, wide byline positions produce cutbacks and crosses into the
+  box (completed less often than normal passes) and carries that cut inside, and passes stop short of the byline.
+  Byline shots fell to 1.8%; the calibration report adds shots from inside the box, mean shot distance, and byline
+  shots (all within band), with 11 of 13 metrics within band over 480 matches (home wins 38.8% and draws 32.1% sit
+  just outside). Every seeded match changes, so the demo match is now seed 20 (3-2). A play-by-play wording that
+  was chosen but not aired no longer counts against the no-repeat window.
 - Players and their tags no longer leave the frame near the edges: the pitch has a runoff strip on every side
   (deeper behind the score bug), tags move inward near the touchlines and goal lines, and the broadcast camera
   zooms out slightly so the near touchline fits.

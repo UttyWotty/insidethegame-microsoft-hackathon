@@ -6,7 +6,7 @@ Record at 30x replay speed so a key moment appears within the first beats.
 
 # Demo Video Script (1:56)
 
-Setup before recording: deployed app (or local with a Foundry model), seed 7, Kestrel Bay vs Ironvale, 30x speed,
+Setup before recording: deployed app (or local with a Foundry model), seed 20, Kestrel Bay vs Ironvale (3-2, goals at 12', 23', 43', 44', and 83'), 30x speed,
 broadcast camera on, Voice on (the commentator speaks from kick-off and lifts for goals and close calls). Every
 chip must show **AI**, not **Template**, before recording. VS Code open with GitHub
 Copilot agent mode and the project's MCP server configured (`.vscode/mcp.json`, see README).

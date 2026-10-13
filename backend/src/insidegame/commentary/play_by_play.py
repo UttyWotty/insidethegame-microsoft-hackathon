@@ -107,6 +107,8 @@ class PlayByPlay:
         """Build a line; paced lines (the default) respect min_gap_s, and intensity defaults to NORMAL."""
         event = update.event
         if paced and self.last_line_s is not None and event.match_second - self.last_line_s < self.min_gap_s:
+            if self.recent and self.recent[-1] == text:
+                self.recent.pop()  # the wording did not air, so it must not count against repeats
             return None
         self.last_line_s = event.match_second
         return CommentaryLine(f"{event.event_id}-pbp", event.period, event.match_second,

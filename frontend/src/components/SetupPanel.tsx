@@ -14,7 +14,7 @@ const SPEEDS = [
 ];
 /** Replay speed selected by default: 10x, a full match in about nine minutes. */
 const DEFAULT_SPEED = 10;
-const DEFAULT_SEED = 7;
+const DEFAULT_SEED = 20;
 
 interface SetupProps { clubs: ClubInfo[]; busy: boolean; error: string | null; onStart: (body: CreateMatch) => void }
 

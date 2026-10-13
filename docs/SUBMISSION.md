@@ -22,7 +22,8 @@ grounded fallback guarantees the broadcast never goes blank.
 - **Ingest:** a seeded possession-chain simulator generates full 90-minute matches between fictional clubs with
   distinct tactical styles that adapt to the scoreline and fatigue; averages match real top-flight football
   (about 25 shots, 2.9 goals, 80% pass accuracy, and a realistic home advantage), checked by a calibration
-  report against top-flight reference bands (10 of 10 metrics within band over 480 matches). A tracking model
+  report against top-flight reference bands (11 of 13 metrics within band over 480 matches, including where
+  shots are taken from; results by venue sit just outside their bands). A tracking model
   adds formation-aware positions for all 22 players after every event, with every step capped at the player's
   pace-based top speed and players starting toward their next action, so movement and sprint speeds stay human;
   the dataset generator exports events, players, moments, and tracking as JSON Lines with a dataset card.
@@ -78,7 +79,7 @@ in the viewer's language, while staying factually grounded enough for a live pro
   optional producer key.
 - Keyless model access, least-privilege roles, non-root container, optional MCP bearer token.
 - Agent evaluation harness reporting per-agent model, corrected, and fallback rates and latency.
-- 194 automated backend tests and 52 frontend tests in CI; infrastructure as code.
+- 201 automated backend tests and 67 frontend tests; infrastructure as code.
 
 ## Testing instructions
 

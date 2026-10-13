@@ -1,13 +1,14 @@
 """Pure calibration of a synthetic dataset against approximate top-flight football reference bands.
 
-It computes headline rates (goals, shots, accuracy, conversion, xG agreement, results by venue) from dataset rows
-and flags each against a reference band, so realism is measured rather than claimed. Bands are approximate
+It computes headline rates (goals, shots, accuracy, conversion, xG agreement, results by venue, and where shots are
+taken from) from dataset rows and flags each against a reference band, so realism is measured rather than claimed. Bands are approximate
 typical ranges for top European leagues, intended as sanity checks, not as exact statistics.
 """
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
+from insidegame.core.constants import GOAL_CENTER_Y_M, PITCH_LENGTH_M
 from insidegame.datasets.rows import Row
 
 PERCENT: float = 100.0
@@ -16,6 +17,11 @@ SHOT: str = "shot"
 PASS: str = "pass"
 SUCCESS: str = "success"
 ON_TARGET_RESULTS: frozenset[str] = frozenset({"goal", "saved"})
+AWAY: str = "away"
+BOX_DEPTH_M: float = 16.5
+BOX_HALF_WIDTH_M: float = 20.16
+BYLINE_ZONE_M: float = 3.0
+GOAL_HALF_WIDTH_M: float = 3.66
 
 
 @dataclass(frozen=True)
@@ -37,6 +43,9 @@ BENCHMARKS: tuple[Benchmark, ...] = (
     Benchmark("on_target_pct", "Shots on target (%)", 30.0, 40.0, "blocked shots count as not on target"),
     Benchmark("conversion_pct", "Shot conversion (%)", 9.0, 13.0),
     Benchmark("pass_accuracy_pct", "Pass accuracy (%)", 78.0, 86.0),
+    Benchmark("shots_in_box_pct", "Shots from inside the box (%)", 55.0, 72.0),
+    Benchmark("mean_shot_distance_m", "Mean shot distance (m)", 14.0, 19.0),
+    Benchmark("byline_shot_pct", "Shots from the byline (%)", 0.0, 4.0, "within 3 m of the goal line, outside the goal width"),
     Benchmark("home_win_pct", "Home wins (%)", 40.0, 48.0, "needs a few hundred matches to settle"),
     Benchmark("draw_pct", "Draws (%)", 22.0, 30.0, "needs a few hundred matches to settle"),
     Benchmark("away_win_pct", "Away wins (%)", 25.0, 33.0, "needs a few hundred matches to settle"),
@@ -60,12 +69,24 @@ def _share(part: float, whole: float) -> float:
     return PERCENT * part / whole if whole else 0.0
 
 
+def _shot_spot(event: Row) -> tuple[float, float]:
+    """Distance from the attacked goal line and from the centre line of the goal, for a shot row."""
+    x, y = float(event["start_x"]), float(event["start_y"])  # type: ignore[arg-type]
+    depth = x if event["side"] == AWAY else PITCH_LENGTH_M - x
+    return depth, abs(y - GOAL_CENTER_Y_M)
+
+
 def _metrics(matches: Sequence[Row], events: Iterable[Row]) -> dict[str, float]:
-    shots = on_target = passes = completed = 0
+    shots = on_target = passes = completed = in_box = byline = 0
+    shot_distance = 0.0
     for event in events:
         if event["event_type"] == SHOT:
             shots += 1
             on_target += event["shot_result"] in ON_TARGET_RESULTS
+            depth, lateral = _shot_spot(event)
+            in_box += depth <= BOX_DEPTH_M and lateral <= BOX_HALF_WIDTH_M
+            byline += depth <= BYLINE_ZONE_M and lateral > GOAL_HALF_WIDTH_M
+            shot_distance += (depth ** 2 + lateral ** 2) ** 0.5
         elif event["event_type"] == PASS:
             passes += 1
             completed += event["outcome"] == SUCCESS
@@ -78,6 +99,8 @@ def _metrics(matches: Sequence[Row], events: Iterable[Row]) -> dict[str, float]:
         "goals_per_match": goals / n, "xg_per_match": xg / n, "goals_minus_xg": (goals - xg) / n,
         "shots_per_match": shots / n, "on_target_pct": _share(on_target, shots),
         "conversion_pct": _share(goals, shots), "pass_accuracy_pct": _share(completed, passes),
+        "shots_in_box_pct": _share(in_box, shots), "byline_shot_pct": _share(byline, shots),
+        "mean_shot_distance_m": shot_distance / shots if shots else 0.0,
         "home_win_pct": _share(sum(h > a for h, a in zip(home, away)), n),
         "draw_pct": _share(sum(h == a for h, a in zip(home, away)), n),
         "away_win_pct": _share(sum(h < a for h, a in zip(home, away)), n),
