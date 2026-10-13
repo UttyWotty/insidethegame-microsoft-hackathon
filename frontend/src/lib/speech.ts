@@ -101,6 +101,11 @@ export function serverSpeechRef(item: TickerItem): { ref: string; segment?: stri
   return item.tone === "commentary" ? { ref: item.id, segment: item.segment } : { ref: item.id };
 }
 
+/** The newest line worth speaking right away when voice is switched on, so the viewer hears something at once. */
+export function latestSpeakable(feed: readonly TickerItem[], language: string): TickerItem | null {
+  return feed.find((item) => isSpeakable(item, language)) ?? null;
+}
+
 /** Lines in the feed (newest first) that have not been seen yet, returned oldest first. */
 export function unseenLines(feed: readonly TickerItem[], seen: ReadonlySet<string>): TickerItem[] {
   return feed.filter((item) => !seen.has(item.id)).reverse();

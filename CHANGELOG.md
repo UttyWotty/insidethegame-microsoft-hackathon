@@ -84,6 +84,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Silent opening: the kick-off call was never spoken because Voice started off for every match and the toggle only
+  appears once play has begun, and at real time the next line came about 27 seconds later. Voice now remembers the
+  viewer's choice, switching it on speaks the latest line at once, a scene-setting line on both sides' styles
+  follows kick-off, and quiet spells get everyday possession lines (median gap about 21 seconds at real time,
+  unchanged at 10x).
 - Commentary repetition: play-by-play had two wordings per action, so lines such as "X reads it and intercepts."
   aired up to five times; each action now has four or five wordings in rotation, no exact line repeats within 30
   lines, and the same kind of action is not called twice in a row. Chaotic-spell and momentum moments air at most
