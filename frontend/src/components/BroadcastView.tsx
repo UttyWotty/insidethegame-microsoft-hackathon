@@ -17,6 +17,8 @@ import type { HighlightReel, Recap, ViewerSettings } from "../types";
 
 
 const SHOT_VISIBLE_MS = 4000;
+/** The shot card stays longer than the shot trace so its numbers can be read. */
+const SHOT_CARD_MS = 6500;
 const HALF_TIME_RECAP_MS = 15000;
 const GOAL_VISIBLE_MS = 4500;
 /** Replay speed assumed for speech pace until the session description arrives (the server default). */
@@ -51,6 +53,7 @@ import { CommentaryTicker } from "./CommentaryTicker";
 import { MomentumChart } from "./MomentumChart";
 import { OverlayLayer } from "./overlays/OverlayLayer";
 import { GoalBanner } from "./overlays/Overlays";
+import { ShotCard } from "./overlays/ShotCard";
 import { HighlightsPlayer } from "./HighlightsPlayer";
 import { ReplayPlayer } from "./ReplayPlayer";
 import { type BallAnchor } from "./Pitch";
@@ -122,6 +125,7 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   const active = activeCue(state.cues, now, clock);
   const cueTeamIsAway = active && viewer.team === match.away.team_id;
   const shot = state.lastShot && now - state.lastShot.at < SHOT_VISIBLE_MS ? state.lastShot : null;
+  const cardShot = state.lastShot && now - state.lastShot.at < SHOT_CARD_MS ? state.lastShot : null;
   const goal = state.goalFlash && now - state.goalFlash.at < GOAL_VISIBLE_MS ? state.goalFlash : null;
 
   return (
@@ -138,9 +142,12 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
           <PitchView ball={state.ball} trail={state.trail} players={dots} moveMs={state.moveMs} homeColor={homeColor} awayColor={awayColor}
             camera={camera} shot={shot} onBallAnchor={onBallAnchor} label={`Live pitch: ${match.home.name} versus ${match.away.name}`}>
             <ScoreBug home={match.home} away={match.away} homeColor={homeColor} awayColor={awayColor} lastEvent={state.lastEvent} />
-            <OverlayLayer active={goal ? null : active} anchor={anchor} teamColor={cueTeamIsAway ? awayColor : homeColor} />
+            <OverlayLayer active={goal || cardShot?.card ? null : active} anchor={anchor} teamColor={cueTeamIsAway ? awayColor : homeColor} />
             {goal && <GoalBanner key={goal.id} scorer={goal.scorer} score={goal.score}
               teamColor={goal.side === "home" ? homeColor : awayColor} />}
+            {cardShot?.card && <ShotCard key={cardShot.id} card={cardShot.card}
+              color={cardShot.side === "home" ? homeColor : awayColor}
+              shooter={[...match.home.players, ...match.away.players].find((p) => p.player_id === cardShot.shooter)?.name ?? ""} />}
           </PitchView>
         )}
         <p className="visually-hidden" aria-live="assertive">

@@ -285,6 +285,8 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   cut off calm lines. Pace follows the replay speed (natural at 1x real time), lines rotate through varied wordings
   without near repeats, and the viewer's own system voice (or a natural male commentator voice) is used.
 - **Recaps:** half-time and full-time recaps open in an accessible dialog, led by the viewer's persona take.
+- **Shot card:** right after every shot, a broadcast card shows where it went in the goal mouth and where the
+  keeper dived, with the result, shooter, xG, shot speed, distance, and angle (persona overlays step aside meanwhile).
 - **Instant replays:** a few seconds after every goal and every big chance (xG 0.25 or more), the action replays
   in slow motion from another angle (behind the goal in the 3D view, a zoomed crop on the 2D pitch) under a
   REPLAY bug, with a short commentator line, then returns to live. An Auto replays toggle turns them off.

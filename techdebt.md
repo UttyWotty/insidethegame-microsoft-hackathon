@@ -95,6 +95,10 @@ Copilot-through-MCP recording, the demo video, then the submission steps. Fabric
   moments in order with a small in-flight limit, and skip non-goal moments that are stale by the time a slot frees.
   Resolved 2026-10-13: production slots, stale skipping, and console statuses.
 -->
+- Simulator realism: many shots start on the byline (x 103 to 104 m), some from the corner flag at a near-zero
+  angle, because a carry that reaches the byline ends in a shot instead of a cross or cutback. Calibration still
+  passes, but the shot card and 3D view expose it. Fix in the possession chain (cross or cut back from wide byline
+  positions), then rerun `insidegame.datasets.calibrate`; this changes seeded matches, including the seed 7 demo.
 - `npm audit` reports advisories in vitest's dependencies (tinypool, @vitest/mocker); they affect only the test
   runner, not the shipped bundle. Upgrade to vitest 4 (a breaking change) in its own pull request.
 - Live sessions are in memory, so the app runs a single replica; move session state to a shared store before scaling out.

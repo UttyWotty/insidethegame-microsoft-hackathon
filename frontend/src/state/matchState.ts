@@ -7,7 +7,7 @@
 import { DEFAULT_MOVE_MS, moveDuration, type ReceivedSprint } from "../lib/motion";
 import { ballAfter, minuteLabel, toScreen } from "../lib/pitch";
 import type {
-  EventUpdate, MatchEvent, OverlayCue, Point, Recap, Rhythm, SessionInfo, Snapshot,
+  EventUpdate, MatchEvent, OverlayCue, Point, Recap, Rhythm, SessionInfo, ShotCardInfo, Snapshot,
 } from "../types";
 
 export const TRAIL_LENGTH = 14;
@@ -29,6 +29,8 @@ export interface ShotTrace {
   id: string; from: Point; to: Point; xg: number | null; result: string; side: "home" | "away"; at: number;
   /** Period and match second of the shot, so it can be replayed. */
   period: number; second: number; shooter: string | null;
+  /** Placement, keeper, speed, distance, and angle for the shot card, when the server sent them. */
+  card: ShotCardInfo | null;
 }
 export interface GoalFlash { id: string; scorer: string; side: "home" | "away"; score: string; at: number }
 export interface TickerItem {
@@ -104,7 +106,7 @@ function shotTrace(state: MatchState, update: EventUpdate, at: number): ShotTrac
   return {
     id: event.event_id, from: toScreen(event.start, isHome, event.period), to: toScreen(event.end ?? GOAL_MOUTH, isHome, event.period),
     xg: update.xg, result: event.shot_result ?? "", side: isHome ? "home" : "away", at,
-    period: event.period, second: event.match_second, shooter: event.player_id,
+    period: event.period, second: event.match_second, shooter: event.player_id, card: update.shot ?? null,
   };
 }
 

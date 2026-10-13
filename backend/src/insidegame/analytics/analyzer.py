@@ -1,6 +1,7 @@
 """Streaming facade for pipeline stage two, turning each raw event into interpreted output.
 
-MatchAnalyzer.ingest computes xG and pass quality, updates statistics and rhythm, and detects key moments.
+MatchAnalyzer.ingest computes xG, pass quality, and a broadcast shot card, updates statistics and rhythm, and
+detects key moments.
 snapshot returns the full machine-readable match state for overlays, agents, and APIs.
 """
 
@@ -10,6 +11,7 @@ from insidegame.analytics.detectors import MomentDetector
 from insidegame.analytics.moments import KeyMoment
 from insidegame.analytics.pass_quality import PassQuality, assess_pass
 from insidegame.analytics.rhythm import RhythmReading, RhythmTracker
+from insidegame.analytics.shot_card import ShotCard, shot_card
 from insidegame.analytics.stats import StatsAccumulator
 from insidegame.analytics.xg import expected_goals
 from insidegame.domain.enums import EventType, Side
@@ -21,13 +23,17 @@ POSSESSION_DECIMALS: int = 1
 
 @dataclass(frozen=True)
 class AnalysisUpdate:
-    """Everything stage two derived from a single event."""
+    """Everything stage two derived from a single event.
+
+    Defaults: shot is None except on shot events.
+    """
 
     event: MatchEvent
     xg: float | None
     pass_quality: PassQuality | None
     rhythm: RhythmReading
     moments: tuple[KeyMoment, ...]
+    shot: ShotCard | None = None
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-friendly representation."""
@@ -37,6 +43,7 @@ class AnalysisUpdate:
             "pass_quality": self.pass_quality.to_dict() if self.pass_quality else None,
             "rhythm": self.rhythm.to_dict(),
             "moments": [m.to_dict() for m in self.moments],
+            "shot": self.shot.to_dict() if self.shot else None,
         }
 
 
@@ -68,7 +75,8 @@ class MatchAnalyzer:
         new_moments = tuple(self.detector.detect(event, xg, quality, reading))
         self.moments.extend(new_moments)
         self.last_event, self.last_reading = event, reading
-        return AnalysisUpdate(event, xg, quality, reading, new_moments)
+        card = shot_card(event, xg) if xg is not None else None
+        return AnalysisUpdate(event, xg, quality, reading, new_moments, card)
 
     def _team_block(self, side: Side) -> dict[str, object]:
         team = self.metadata.team(side)
