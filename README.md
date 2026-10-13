@@ -25,9 +25,9 @@ flowchart LR
 
 ## Status
 
-As of 2026-10-13 (develop at PR #47, release v0.1.0 on main):
+As of 2026-10-13 (develop at PR #58, release v0.1.0 on main):
 
-- Stage 1 (Ingest): synthetic match engine calibrated against top-flight reference bands (10 of 10 metrics within
+- Stage 1 (Ingest): synthetic match engine calibrated against top-flight reference bands (11 of 13 metrics within
   band over 480 matches, see [docs/CALIBRATION.md](docs/CALIBRATION.md)), with home advantage and speed-limited
   tracking for all 22 players.
 - Stage 2 (Interpret): streaming analytics implemented (xG, pass difficulty, stats, rhythm, key moments).
@@ -51,13 +51,15 @@ Calibrated averages over 480 simulated matches (every pairing, seeds 1 to 480; f
 
 | Metric | Simulated | Typical top-flight range |
 |---|---|---|
-| Goals per match | 2.84 | 2.5-3.1 |
+| Goals per match | 2.81 | 2.5-3.1 |
 | Expected goals per match | 2.98 | 2.4-3.2 |
-| Shots per match | 25.1 | 22-28 |
-| Shots on target | 34.8% | 30-40% |
-| Shot conversion | 11.3% | 9-13% |
-| Pass accuracy | 79.7% | 78-86% |
-| Home wins / draws / away wins | 43.5% / 29.0% / 27.5% | 40-48% / 22-30% / 25-33% |
+| Shots per match | 27.6 | 22-28 |
+| Shots on target | 33.4% | 30-40% |
+| Shot conversion | 10.2% | 9-13% |
+| Pass accuracy | 79.1% | 78-86% |
+| Shots from inside the box / byline | 70.5% / 1.8% | 55-72% / 0-4% |
+| Mean shot distance | 14.8 m | 14-19 m |
+| Home wins / draws / away wins | 38.8% / 32.1% / 29.2% | 40-48% / 22-30% / 25-33% |
 
 Event types: `period_start`, `period_end`, `kick_off`, `pass`, `carry`, `shot`, `goal`, `save`, `pressure`,
 `tackle`, `interception`, `foul`, `possession_change`. Coordinates are metres on a 105 x 68 pitch, relative to the

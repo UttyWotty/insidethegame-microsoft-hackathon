@@ -13,10 +13,15 @@ MATCHES = [
     {"home_goals": 2, "away_goals": 1, "home_xg": 1.5, "away_xg": 1.0},
     {"home_goals": 1, "away_goals": 1, "home_xg": 1.2, "away_xg": 0.8},
 ]
+SHOT_HOME_BOX = {"side": "home", "start_x": 95.0, "start_y": 34.0}
+SHOT_AWAY_BOX = {"side": "away", "start_x": 10.0, "start_y": 34.0}
+SHOT_LONG = {"side": "home", "start_x": 85.0, "start_y": 34.0}
+SHOT_BYLINE = {"side": "home", "start_x": 103.0, "start_y": 5.0}
 EVENTS = (
-    [{"event_type": "shot", "shot_result": "goal", "outcome": "success"}] * 5
-    + [{"event_type": "shot", "shot_result": "saved", "outcome": "fail"}] * 5
-    + [{"event_type": "shot", "shot_result": "off_target", "outcome": "fail"}] * 30
+    [{"event_type": "shot", "shot_result": "goal", "outcome": "success", **SHOT_HOME_BOX}] * 5
+    + [{"event_type": "shot", "shot_result": "saved", "outcome": "fail", **SHOT_AWAY_BOX}] * 5
+    + [{"event_type": "shot", "shot_result": "off_target", "outcome": "fail", **SHOT_LONG}] * 20
+    + [{"event_type": "shot", "shot_result": "off_target", "outcome": "fail", **SHOT_BYLINE}] * 10
     + [{"event_type": "pass", "shot_result": None, "outcome": "success"}] * 80
     + [{"event_type": "pass", "shot_result": None, "outcome": "fail"}] * 20
 )
@@ -28,6 +33,8 @@ def test_rates_are_computed_exactly_from_rows() -> None:
     assert values["goals_minus_xg"] == 0.25 and values["shots_per_match"] == 20.0
     assert values["on_target_pct"] == 25.0 and values["conversion_pct"] == 12.5
     assert values["pass_accuracy_pct"] == 80.0
+    assert values["shots_in_box_pct"] == 25.0 and values["byline_shot_pct"] == 25.0
+    assert values["mean_shot_distance_m"] == 19.77
     assert (values["home_win_pct"], values["draw_pct"], values["away_win_pct"]) == (50.0, 50.0, 0.0)
 
 

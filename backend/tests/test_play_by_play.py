@@ -67,9 +67,12 @@ def test_close_calls_are_raised_and_ordinary_play_stays_normal() -> None:
 
 
 def test_lines_do_not_repeat_soon_or_stack_the_same_kind_of_action() -> None:
-    texts = [line.text for line in _lines() if line.kind == "play"]
-    for i, text in enumerate(texts):
-        assert text not in texts[max(0, i - RECENT_LINES):i]
+    lines = _lines()
+    feed = [line.text for line in lines]
+    for i, line in enumerate(lines):
+        if line.kind == "play":
+            assert line.text not in feed[max(0, i - RECENT_LINES):i]
+    texts = [line.text for line in lines if line.kind == "play"]
     assert all(a != b for a, b in zip(texts, texts[1:]))
 
 

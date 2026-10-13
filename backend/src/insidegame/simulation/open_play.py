@@ -1,9 +1,11 @@
 """Resolvers for open-play actions: pressure, passes, and carries.
 
 Each resolver samples an outcome, emits the corresponding events, and updates SimState.
-Turnovers hand possession to the defending side with coordinates mirrored into its frame.
+Turnovers hand possession to the defending side with coordinates mirrored into its frame. Near the byline, wide
+of the goal, passes become cutbacks or crosses into the box and carries cut inside, as attackers do in real play.
 """
 
+from insidegame.core.constants import GOAL_CENTER_Y_M
 from insidegame.core.geometry import Point, clamp_to_pitch, distance, mirror
 from insidegame.domain.enums import EventType, Outcome
 from insidegame.domain.teams import TeamStyle
@@ -25,7 +27,7 @@ PASS_FORWARD_DIRECTNESS_M: float = 15.0
 PASS_FORWARD_SD_M: float = 9.0
 PASS_LATERAL_SD_M: float = 13.0
 MIN_PASS_X_M: float = 1.0
-MAX_PASS_X_M: float = 103.0
+MAX_PASS_X_M: float = 99.0
 
 BALL_SPEED_BASE_KMH: float = 25.0
 BALL_SPEED_PER_M_KMH: float = 1.4
@@ -42,7 +44,15 @@ CARRY_LATERAL_SD_M: float = 4.0
 CARRY_SPEED_BASE_MS: float = 4.0
 CARRY_SPEED_PACE_MS: float = 3.0
 CARRY_EXTRA_S: float = 1.0
-CARRY_MAX_X_M: float = 104.0
+CARRY_MAX_X_M: float = 103.0
+
+CROSS_ZONE_X_M: float = 97.0
+CROSS_ZONE_WIDE_M: float = 7.0
+CROSS_TARGET_X_M: tuple[float, float] = (90.0, 101.0)
+CROSS_SUCCESS_FACTOR: float = 0.6
+CROSS_TARGET_Y_SD_M: float = 7.0
+CUT_INSIDE_M: tuple[float, float] = (3.0, 9.0)
+CUT_BACK_M: tuple[float, float] = (0.0, 3.0)
 
 FOUL_PROBABILITY: float = 0.15
 FREE_KICK_DELAY_S: float = 15.0
@@ -61,8 +71,16 @@ def apply_pressure(state: SimState, defending_style: TeamStyle) -> None:
                opponent_id=state.carrier.player_id)
 
 
+def in_cross_zone(ball: Point) -> bool:
+    """True near the byline and wide of the goal, where attackers cross or cut back instead of going forward."""
+    return ball.x >= CROSS_ZONE_X_M and abs(ball.y - GOAL_CENTER_Y_M) > CROSS_ZONE_WIDE_M
+
+
 def _pass_target(state: SimState, style: TeamStyle) -> Point:
     rng = state.rng
+    if in_cross_zone(state.ball):
+        x = rng.uniform(*CROSS_TARGET_X_M)
+        return clamp_to_pitch(Point(x, GOAL_CENTER_Y_M + rng.gauss(0.0, CROSS_TARGET_Y_SD_M)))
     forward = rng.gauss(PASS_FORWARD_BASE_M + PASS_FORWARD_DIRECTNESS_M * style.directness, PASS_FORWARD_SD_M)
     lateral = rng.gauss(0.0, PASS_LATERAL_SD_M)
     target = clamp_to_pitch(Point(state.ball.x + forward, state.ball.y + lateral))
@@ -77,11 +95,14 @@ def _ball_speed(state: SimState, length_m: float) -> float:
 def resolve_pass(state: SimState, style: TeamStyle, defending_style: TeamStyle) -> None:
     """Simulate a pass, completing it or turning possession over via interception."""
     rng, origin, passer = state.rng, state.ball, state.carrier
+    crossing = in_cross_zone(origin)
     target = _pass_target(state, style)
     length = distance(origin, target)
     receiver = pick_receiver(state.attacking_team, passer, target.x, rng)
     p_success = pass_success_probability(length, target.x, passer.attributes, state.under_pressure,
                                          defending_style.pressing, state.clock_s)
+    if crossing:
+        p_success *= CROSS_SUCCESS_FACTOR
     success = rng.random() < p_success
     state.emit(EventType.PASS, state.attacking, passer, origin, end=target,
                outcome=Outcome.SUCCESS if success else Outcome.FAILURE, receiver_id=receiver.player_id,
@@ -100,6 +121,10 @@ def resolve_pass(state: SimState, style: TeamStyle, defending_style: TeamStyle) 
 
 def _carry_end(state: SimState) -> Point:
     rng, pace = state.rng, state.carrier.attributes.pace
+    if in_cross_zone(state.ball):
+        toward_goal = 1.0 if state.ball.y < GOAL_CENTER_Y_M else -1.0
+        return clamp_to_pitch(Point(state.ball.x - rng.uniform(*CUT_BACK_M),
+                                    state.ball.y + toward_goal * rng.uniform(*CUT_INSIDE_M)))
     forward = rng.gauss(CARRY_FORWARD_BASE_M + CARRY_FORWARD_PACE_M * pace, CARRY_FORWARD_SD_M)
     forward = min(max(forward, CARRY_MIN_M), CARRY_MAX_M)
     end = clamp_to_pitch(Point(state.ball.x + forward, state.ball.y + rng.gauss(0.0, CARRY_LATERAL_SD_M)))

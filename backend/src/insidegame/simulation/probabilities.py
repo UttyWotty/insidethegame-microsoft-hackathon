@@ -15,16 +15,17 @@ from insidegame.domain.teams import PlayerAttributes, TeamStyle
 MATCH_SECONDS: int = 2 * PERIOD_SECONDS
 
 MAX_SHOT_DISTANCE_M: float = 35.0
-SHOT_DECAY_M: float = 16.0
-SHOT_BASE_SCALE: float = 0.12
+SHOT_DECAY_M: float = 22.0
+SHOT_BASE_SCALE: float = 0.20
 SHOT_RISK_FLOOR: float = 0.6
 SHOT_RISK_WEIGHT: float = 0.8
+SHOT_OPENNESS_POWER: float = 2.0
 
 CARRY_BASE: float = 0.22
 CARRY_PACE_WEIGHT: float = 0.18
 CARRY_PRESSURE_PENALTY: float = 0.10
 
-PASS_BASE: float = 1.0
+PASS_BASE: float = 1.025
 PASS_LENGTH_PENALTY_PER_M: float = 0.0035
 PASS_PRESSURE_PENALTY: float = 0.10
 PASS_PRESSING_PENALTY: float = 0.06
@@ -49,8 +50,8 @@ FINISHING_WEIGHT: float = 0.6
 FATIGUE_MAX_PENALTY: float = 0.05
 
 NEUTRAL_VENUE: float = 1.0
-HOME_SHOT_FACTOR: float = 1.25
-AWAY_SHOT_FACTOR: float = 0.78
+HOME_SHOT_FACTOR: float = 1.32
+AWAY_SHOT_FACTOR: float = 0.80
 
 CHASE_START_SECOND: float = 60 * 60
 PROTECT_START_SECOND: float = 70 * 60
@@ -108,8 +109,15 @@ def shot_probability(ball: Point, attrs: PlayerAttributes, style: TeamStyle, ven
     d = distance_to_goal(ball)
     if d > MAX_SHOT_DISTANCE_M:
         return 0.0
-    base = SHOT_BASE_SCALE * math.exp(-d / SHOT_DECAY_M) * venue
+    base = SHOT_BASE_SCALE * math.exp(-d / SHOT_DECAY_M) * venue * openness(ball)
     return _bounded(base * (SHOT_RISK_FLOOR + SHOT_RISK_WEIGHT * style.risk) * (0.5 + attrs.finishing))
+
+
+def openness(ball: Point) -> float:
+    """How square-on the shooter is to goal: 1.0 on the goal's centre line at any distance, falling toward 0 at the
+    byline, so players rarely shoot from tight angles while long central shots stay possible."""
+    d = distance_to_goal(ball)
+    return ((PITCH_LENGTH_M - ball.x) / d) ** SHOT_OPENNESS_POWER if d > 0 else 1.0
 
 
 def carry_probability(attrs: PlayerAttributes, under_pressure: bool) -> float:
