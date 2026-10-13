@@ -141,6 +141,17 @@ export interface PipelineHealth {
   source_rates: Record<string, Record<string, number>>; fact_checks: Record<string, number>;
 }
 
+export interface TraceStep {
+  executor_id: string; agent: string; status: "running" | "done" | "failed"; started_ms: number;
+  ended_ms: number | null; note: string;
+}
+/** Live trace of one moment's multi-agent workflow. */
+export interface AgentTraceInfo {
+  moment_id: string; minute: string; kind: string; finished: boolean; elapsed_ms: number; steps: TraceStep[];
+  handoffs: [string, string][];
+}
+
 export interface ProducerSummary {
   hold: boolean; segments: number; timeline: TimelineEntry[]; records: BroadcastRecord[]; health: PipelineHealth;
+  traces: AgentTraceInfo[];
 }

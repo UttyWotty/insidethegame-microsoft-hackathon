@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Live agent trace in the producer console: the moment workflow now runs as an Agent Framework event stream, and
+  executor invoked, completed, and failed events become a per-agent timeline (Intake, Match Analyst, Lead
+  Commentator and Personalization Producer in parallel, Standards Editor, Broadcast Translator) with start and
+  duration, the outcome read from cue provenance (AI or template, attempts, fact-check verdicts, translations), and
+  each agent's handoffs. The newest 12 moments are kept and stream to the console with its state.
 - Studio analysis visuals: a Studio view draws space control (nearest-team ownership of a 21 x 14 grid from the
   latest tracking frame, with the players and a summary of each team's share by third), pass networks (players at
   their average pass position, links of three or more completed passes), heat maps of on-ball actions, and

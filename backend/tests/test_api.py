@@ -119,3 +119,18 @@ def test_studio_returns_maps_control_and_the_analyst_pick() -> None:
         assert studio["teams"]["home"]["network"]["nodes"] and len(studio["teams"]["away"]["heat"]) == 8
         assert 0 < studio["control"]["home_share"] < 100 and studio["analyst"]["theme"]
         assert studio["recommended"] in {"heat_map", "pressing", "pass_network", "space_control"}
+
+
+def test_producer_traces_every_agent_of_a_produced_moment() -> None:
+    with _client() as client:
+        session_id = client.post("/api/matches", json={"home": "kestrel_bay", "away": "ironvale", "seed": 7}).json()[
+            "session_id"]
+        with client.stream("GET", f"/api/matches/{session_id}/stream", params={"persona": "analyst"}) as r:
+            for line in r.iter_lines():
+                if line == "event: end":
+                    break
+        traces = client.get(f"/api/matches/{session_id}/producer").json()["traces"]
+        assert traces and traces[0]["finished"]
+        agents = [step["agent"] for step in traces[0]["steps"]]
+        assert agents[0] == "Intake" and agents[-1] == "Broadcast Translator" and len(agents) == 6
+        assert all(step["status"] == "done" and step["note"] for step in traces[0]["steps"])

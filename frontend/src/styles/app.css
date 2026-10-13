@@ -225,6 +225,17 @@ main:focus { outline: none; }
 .cue-table td { vertical-align: top; padding: var(--space-2); border-bottom: 1px solid var(--color-muted); }
 .cue-table td:first-child { text-transform: capitalize; white-space: nowrap; }
 @media (max-width: 900px) { .producer-grid { grid-template-columns: 1fr; } }
+.trace { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.trace-row { display: grid; grid-template-columns: 190px minmax(120px, 1fr) minmax(0, 1.2fr); gap: var(--space-3); align-items: center; }
+.trace-agent { font-weight: 600; }
+.trace-track { position: relative; height: 14px; border-radius: var(--radius-sm); background: var(--color-muted); overflow: hidden; }
+.trace-bar { position: absolute; top: 0; bottom: 0; border-radius: var(--radius-sm); background: var(--color-accent); transition: width var(--duration-fast) linear; }
+.trace-bar--running { background: var(--color-info); animation: trace-pulse 1.2s ease-in-out infinite; }
+.trace-bar--failed { background: var(--color-danger); }
+.trace-detail { color: var(--color-fg-muted); font-size: var(--text-sm); }
+@keyframes trace-pulse { 50% { opacity: 0.55; } }
+@media (prefers-reduced-motion: reduce) { .trace-bar--running { animation: none; } }
+@media (max-width: 700px) { .trace-row { grid-template-columns: 1fr; gap: var(--space-1); } }
 
 .shot-trace { animation: overlay-in var(--duration-medium) var(--ease-out); }
 .shot-label { font: 700 1.8px var(--font-display); fill: #ffffff; paint-order: stroke; stroke: #0b1220; stroke-width: 0.45px; text-transform: uppercase; }
