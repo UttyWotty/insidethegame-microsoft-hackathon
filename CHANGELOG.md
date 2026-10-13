@@ -76,6 +76,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Found in a browser test: shot and ball speeds showed two decimals ("120.82 km/h") and now show one; the skip
+  link now moves focus into the main region; at phone width, player name tags were about 6 px and are enlarged, the
+  view switcher no longer wraps, and the venue line wraps below the camera toggle instead of beside it.
 - Accessibility review (WCAG 2.2 AA): chip buttons were 22 px tall (now at least 32 px); form control borders were
   1.5:1 (new 3:1 border token); three club colours fell below 3:1 on the pitch stripes (lightened); the view switcher
   claimed tab semantics without arrow-key support (now toggle buttons); overlays and goal banners were inserted as new

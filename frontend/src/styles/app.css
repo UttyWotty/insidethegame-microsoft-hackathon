@@ -21,6 +21,7 @@ button { cursor: pointer; }
 button.chip { min-height: 32px; padding: var(--space-1) var(--space-3); }
 .skip-link { position: absolute; left: var(--space-3); top: -100px; z-index: 1000; padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); background: var(--color-accent); color: var(--color-on-accent); font-weight: 700; }
 .skip-link:focus { top: var(--space-3); }
+main:focus { outline: none; }
 
 .app-header {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
@@ -181,6 +182,8 @@ button.chip { min-height: 32px; padding: var(--space-1) var(--space-3); }
   .overlay-title { font-size: var(--text-lg); }
   .ov-hype-banner .overlay-title { font-size: var(--text-xl); }
   .player-number { display: none; }
+  .player-tag { font-size: 3.2px; }
+  .tab { padding: 0 var(--space-2); white-space: nowrap; font-size: var(--text-sm); }
 }
 
 .producer { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4); }

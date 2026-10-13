@@ -104,7 +104,7 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
         <p className="visually-hidden" aria-live="assertive">
           {state.goalFlash ? `Goal, ${state.goalFlash.scorer}. ${state.goalFlash.score}` : ""}
         </p>
-        <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)", alignItems: "center" }}>
           {status === "open" && !state.ended && <span className="chip chip--live">LIVE</span>}
           <div className="tabs camera-toggle" role="group" aria-label="Camera">
             {(["broadcast", "tactical"] as Camera[]).map((c) => (

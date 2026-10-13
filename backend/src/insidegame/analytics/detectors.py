@@ -48,6 +48,7 @@ PASS_MILESTONES: frozenset[int] = frozenset({75})
 PASS_MILESTONE_IMPORTANCE: float = 0.30
 GOAL_MILESTONES: dict[int, tuple[str, float]] = {2: ("brace", 0.70), 3: ("hat_trick", 0.90)}
 FACT_DECIMALS: int = 2
+SPEED_DECIMALS: int = 1
 
 
 class GameStateChange(StrEnum):
@@ -147,7 +148,7 @@ class MomentDetector:
                                         (event.player_id, event.receiver_id), (event.event_id,), {
                                             "indicator": "long_pass", "passer": self.names[event.player_id],
                                             "receiver": self.names[event.receiver_id], "length_m": quality.length_m,
-                                            "ball_speed_kmh": round(event.ball_speed_kmh or 0.0, FACT_DECIMALS),
+                                            "ball_speed_kmh": round(event.ball_speed_kmh or 0.0, SPEED_DECIMALS),
                                             "threshold_m": LONG_PASS_THRESHOLD_M}))
         if quality.difficulty >= DIFFICULT_PASS_THRESHOLD:
             importance = DIFFICULT_PASS_BASE + (quality.difficulty - DIFFICULT_PASS_THRESHOLD) / DIFFICULT_PASS_SCALE
@@ -172,7 +173,7 @@ class MomentDetector:
         if speed >= SHOT_SPEED_THRESHOLD_KMH:
             moments.append(self._moment(MomentKind.SPEED_THRESHOLD, event, event.team_id, SPEED_IMPORTANCE, (event.player_id,),
                                         (event.event_id,), {"player": self.names[event.player_id],
-                                                            "shot_speed_kmh": round(speed, FACT_DECIMALS),
+                                                            "shot_speed_kmh": round(speed, SPEED_DECIMALS),
                                                             "threshold_kmh": SHOT_SPEED_THRESHOLD_KMH}))
         if xg >= BIG_CHANCE_XG and event.outcome is not Outcome.SUCCESS:
             moments.append(self._moment(MomentKind.BIG_CHANCE_MISSED, event, event.team_id,
@@ -197,7 +198,7 @@ class MomentDetector:
         facts: dict[str, FactValue] = {
             "scorer": self.names[event.player_id],
             "assist": self.names[shot.assist_id] if shot.assist_id else None,
-            "xg": shot.xg, "shot_speed_kmh": round(shot.event.ball_speed_kmh or 0.0, FACT_DECIMALS),
+            "xg": shot.xg, "shot_speed_kmh": round(shot.event.ball_speed_kmh or 0.0, SPEED_DECIMALS),
             "distance_m": round(distance_to_goal(shot.event.start), FACT_DECIMALS) if shot.event.start else None,
             "game_state_change": change.value, "score_home": event.score_home, "score_away": event.score_away,
         }
@@ -230,7 +231,7 @@ class MomentDetector:
                              (event.player_id, shot.event.player_id), (shot.event.event_id, event.event_id),
                              {"goalkeeper": self.names[event.player_id], "shooter": self.names[shot.event.player_id],
                               "xg_prevented": shot.xg,
-                              "shot_speed_kmh": round(shot.event.ball_speed_kmh or 0.0, FACT_DECIMALS)})]
+                              "shot_speed_kmh": round(shot.event.ball_speed_kmh or 0.0, SPEED_DECIMALS)})]
 
     def _cooled_down(self, kind: MomentKind, now: float) -> bool:
         last = self.last_rhythm_moment_s.get(kind)
