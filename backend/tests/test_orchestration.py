@@ -74,9 +74,9 @@ def test_workflow_produces_one_cue_per_viewer(
     assert spanish.provenance["fact_check"]["verdict"] == "approved"
     assert spanish.provenance["commentary_check"]["verdict"] == "approved"
     assert spanish.display_from_s == round(goal_context.moment.match_second + CUE_DELAY_S, TIME_DECIMALS)
-    assert spanish.commentary == SPANISH_LINE
+    assert spanish.commentary == SPANISH_LINE and spanish.commentary_language == SPANISH
     english = next(c for c in broadcast.cues if c.viewer_id == "analyst-1")
-    assert english.commentary == REPLIES["Lead Commentator"]["line"]
+    assert english.commentary == REPLIES["Lead Commentator"]["line"] and english.commentary_language == "en"
 
 
 def test_full_match_runs_end_to_end_with_recaps() -> None:
@@ -104,6 +104,8 @@ def test_broken_model_still_produces_grounded_fallback_output(goal_context: Mome
     assert broadcast.explanation.source is OutputSource.FALLBACK
     assert all(c.provenance["card"]["source"] == OutputSource.FALLBACK.value for c in broadcast.cues)
     assert all(c.body for c in broadcast.cues)
+    spanish = next(c for c in broadcast.cues if c.viewer_id == "fan-es")
+    assert spanish.language == spanish.commentary_language == "en"  # untranslated text is labelled English
 
 
 def test_service_degrades_when_workflow_fails(goal_context: MomentContext) -> None:

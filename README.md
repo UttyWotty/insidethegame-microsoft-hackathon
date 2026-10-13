@@ -246,7 +246,9 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   explainer card. Every overlay shows provenance (AI, corrected, or template, with latency).
 - **Live data rail:** team comparison bars, a diverging momentum chart with a plain-language rhythm label,
   and a commentary ticker mixing continuous play-by-play from kick-off, agent commentary on key moments
-  (translated for non-English viewers), and key events.
+  (translated for non-English viewers), and key events. A **Voice** toggle reads commentary aloud with the
+  browser's speech synthesis in the viewer's language; only lines actually in that language are spoken, and
+  play-by-play is dropped first when lines arrive faster than they can be read.
 - **Recaps:** half-time and full-time recaps open in an accessible dialog, led by the viewer's persona take.
 - **Ask the analyst:** viewers question the Match Companion about the live match and get grounded answers
   in their persona's voice and language, with supporting stats and suggested follow-ups. Without a model, a
