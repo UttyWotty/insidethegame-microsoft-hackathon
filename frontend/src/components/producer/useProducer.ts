@@ -1,13 +1,14 @@
 /**
- * Hook polling the producer console state for a session, with actions to hold and release overlays.
- * Polling keeps the console simple and independent of any viewer segment's stream.
- * Errors, including a missing producer key, are surfaced for display.
+ * Hook following the producer console state for a session, with actions to hold and release overlays.
+ * State is pushed by the server as events whenever it changes; if the stream cannot be used, it falls back to
+ * polling so the console keeps working behind proxies that block streaming. Errors are surfaced for display.
  */
 import { useCallback, useEffect, useState } from "react";
-import { api, ApiError } from "../../api/client";
+import { api, ApiError, producerStreamUrl } from "../../api/client";
 import type { ProducerSummary } from "../../types";
 
-const POLL_MS = 2000;
+/** Polling interval used only when the event stream is unavailable. */
+const FALLBACK_POLL_MS = 2000;
 
 export function useProducer(sessionId: string) {
   const [summary, setSummary] = useState<ProducerSummary | null>(null);
@@ -23,10 +24,25 @@ export function useProducer(sessionId: string) {
   }, [sessionId]);
 
   useEffect(() => {
-    void refresh();
-    const id = window.setInterval(() => void refresh(), POLL_MS);
-    return () => window.clearInterval(id);
-  }, [refresh]);
+    let poll: number | undefined;
+    const fallBack = () => {
+      source.close();
+      if (poll !== undefined) return;
+      void refresh();
+      poll = window.setInterval(() => void refresh(), FALLBACK_POLL_MS);
+    };
+    const source = new EventSource(producerStreamUrl(sessionId));
+    source.addEventListener("summary", (message) => {
+      setSummary(JSON.parse((message as MessageEvent<string>).data) as ProducerSummary);
+      setError(null);
+    });
+    source.addEventListener("end", () => source.close());
+    source.onerror = fallBack;
+    return () => {
+      source.close();
+      window.clearInterval(poll);
+    };
+  }, [sessionId, refresh]);
 
   const hold = useCallback(async (on: boolean) => { await api.hold(sessionId, on); await refresh(); }, [sessionId, refresh]);
   const release = useCallback(async (momentId: string | null) => {

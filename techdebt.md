@@ -97,5 +97,5 @@ Ordered by priority within each section; status as of 2026-10-12 (develop at PR 
 -->
 - Tracking-derived player speeds are unrealistic (teleporting event actors), so speed indicators use modelled shot and ball speeds only; smoothing or a kinematic model would allow real sprint tags.
 - Local MLX runs are slow (10 to 35 seconds per call with one call at a time); try the Qwen 35B A3B MoE model or a concurrency of 2 if local testing matters.
-- The producer console polls every 2 seconds; move it to the event stream if it needs to scale.
+<!-- - The producer console polls every 2 seconds; move it to the event stream if it needs to scale. -->
 - The GitHub CLI's active account on this machine switched to UtkuGulbardak; commands for this repo use `GH_TOKEN=$(gh auth token --user UttyWotty)`.

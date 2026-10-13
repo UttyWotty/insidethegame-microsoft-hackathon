@@ -190,6 +190,7 @@ skipped.
 | GET | `/api/matches`, `/api/matches/{id}` | List sessions; session state, snapshot, and recaps |
 | GET | `/api/matches/{id}/stream?persona=&language=&team=&player=` | Personalized SSE feed |
 | GET | `/api/matches/{id}/producer` | Producer console state: timeline, broadcast records, pipeline health |
+| GET | `/api/matches/{id}/producer/stream` | Server-sent events: the producer console state whenever it changes, then `end` |
 | POST | `/api/matches/{id}/producer/hold`, `/producer/release` | Hold AI overlays for approval; release one or all |
 | GET | `/api/speech/status` | Whether neural speech is configured (configuration only, no service call) |
 | GET | `/api/matches/{id}/speech?ref=&segment=` | MP3 of one commentary line this match produced (never arbitrary text) |

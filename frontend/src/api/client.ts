@@ -53,6 +53,11 @@ export const api = {
     }),
 };
 
+/** URL of the producer console's server-sent event stream for one session. */
+export function producerStreamUrl(sessionId: string): string {
+  return `${API_BASE}/matches/${encodeURIComponent(sessionId)}/producer/stream`;
+}
+
 /** URL of the personalized server-sent event stream for one viewer segment. */
 export function streamUrl(sessionId: string, viewer: ViewerSettings): string {
   const params = new URLSearchParams({ persona: viewer.persona, language: viewer.language });
