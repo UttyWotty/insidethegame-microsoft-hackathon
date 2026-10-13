@@ -262,8 +262,11 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   and never faster than a human: each player's pace sets a top speed of about 30 to 35 km/h, and players start
   running toward their next action so they arrive on time), gliding continuously between events at any replay
   speed. Sprint tags show the speed of the player chasing the ball at 25.2 km/h or more. The ball and a trail of
-  recent actions, live name tags for the players in the action (kept inside the frame at every edge), and a broadcast camera
-  that tilts the pitch like a TV angle (or a flat tactical view). Teams change ends at half-time, and a broadcast
+  recent actions, live name tags for the players in the action (kept inside the frame at every edge), and three
+  cameras: a broadcast camera that tilts the pitch like a TV angle, a flat tactical view, and a 3D broadcast view
+  (three.js, loaded only when chosen) with running player figures in club colours, goals, raked stands with a
+  crowd, floating name and sprint tags, and a touchline camera that pans to follow the ball; highlights replay in
+  the chosen camera too. Teams change ends at half-time, and a broadcast
   score bug shows the added-time clock.
 - **Landing and effects:** a landing screen with a one-click demo match; shot traces with an xG bubble and result,
   and a GOAL banner in the scoring club's colours.
@@ -408,7 +411,7 @@ frontend/
   src/api/        HTTP client and server-sent event hook
   src/state/      pure stream reducer
   src/lib/        pitch geometry, motion timing, spoken commentary planning, viewer resolution, team colours
-  src/components/ pitch, overlays, stats, momentum, ticker, recap, highlights, studio, multiview, producer console
+  src/components/ pitch (SVG and 3D), overlays, stats, momentum, ticker, recap, highlights, studio, multiview, producer console
 ```
 
 Dependency direction: `api -> live -> orchestration -> agents -> analytics -> domain -> core`, with `simulation -> domain -> core`. Lower layers never import higher ones.

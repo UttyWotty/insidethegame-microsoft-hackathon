@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- 3D broadcast view: a "3D" camera renders the match with three.js (0.186.1, lazy-loaded into its own chunk, so the
+  main bundle is unchanged): striped pitch with markings, goals with nets, raked stands with a crowd, player
+  figures in club colours whose legs run with the distance covered and who turn to face their direction of travel,
+  and a touchline camera that pans smoothly to follow the ball. Name and sprint tags float above the players in
+  the action, overlays stay anchored to the ball, highlights replay in 3D, and browsers without WebGL get a notice.
 - Live agent trace in the producer console: the moment workflow now runs as an Agent Framework event stream, and
   executor invoked, completed, and failed events become a per-agent timeline (Intake, Match Analyst, Lead
   Commentator and Personalization Producer in parallel, Standards Editor, Broadcast Translator) with start and
