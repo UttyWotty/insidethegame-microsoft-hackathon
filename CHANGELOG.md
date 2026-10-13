@@ -92,6 +92,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- TypeScript build info (`*.tsbuildinfo`) is ignored and no longer tracked.
 - Speech lagging behind play: queued calm lines older than 4 seconds (raised lines 8 seconds) are skipped, and a
   close call cuts off a calm line in progress, so the commentator no longer describes earlier play over new action.
 - Silent opening: the kick-off call was never spoken because Voice started off for every match and the toggle only
