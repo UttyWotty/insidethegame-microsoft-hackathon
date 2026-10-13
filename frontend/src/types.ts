@@ -80,6 +80,21 @@ export interface Recap {
   recap: { headline: string; summary: string; turning_points: string[]; standout_player: string; tactical_story: string };
 }
 
+/** One stored tracking frame of a highlights clip, positions in the absolute home frame. */
+export interface HighlightFrame {
+  period: number; match_second: number; event_type: string; player_id: string | null; ball: [number, number];
+  positions: TrackingFrame;
+}
+
+/** One replayed key moment of the automated highlights reel. */
+export interface HighlightClip {
+  moment_id: string; kind: string; minute: string; period: number; match_second: number; title: string;
+  /** Main player named in the moment's facts (scorer, shooter, passer), or null. */
+  actor: string | null; commentary: string; language: string; intensity: "normal" | "raised" | "peak"; frames: HighlightFrame[];
+}
+
+export interface HighlightReel { stage: "half_time" | "full_time"; headline: string; clips: HighlightClip[] }
+
 export interface PersonaInfo {
   key: PersonaKey; name: string; audience: string; voice: string; max_words: number; overlay_style: Layout;
 }

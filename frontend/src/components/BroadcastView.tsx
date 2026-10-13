@@ -6,12 +6,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { useMatchStream } from "../api/useMatchStream";
-import { sprintSpeed, type ReceivedSprint } from "../lib/motion";
+import { sprintSpeed } from "../lib/motion";
+import { playerDots } from "../lib/playerDots";
 import { teamColor } from "../lib/teams";
 import { useNow } from "../lib/useNow";
 import { speechSupported, useSpokenCommentary, type SpeechUrlBuilder } from "../lib/useSpokenCommentary";
 import { activeCue } from "../state/matchState";
-import type { MatchEvent, MatchMetadata, Point, Recap, ViewerSettings } from "../types";
+import type { HighlightReel, Recap, ViewerSettings } from "../types";
 
 type Camera = "broadcast" | "tactical";
 
@@ -45,25 +46,13 @@ function isTyping(): boolean {
   return TYPING_ELEMENTS.has(document.activeElement?.tagName ?? "");
 }
 
-function playerDots(match: MatchMetadata | undefined, positions: Record<string, Point>, last: MatchEvent | null,
-                    tracked: string | null, sprint: ReceivedSprint | null, now: number): PlayerDot[] {
-  if (!match) return [];
-  const tagged = new Set([last?.player_id, last?.receiver_id].filter(Boolean));
-  return [match.home, match.away].flatMap((team, i) => team.players
-    .filter((p) => positions[p.player_id])
-    .map((p) => ({
-      id: p.player_id, number: p.shirt_number, shortName: p.name.split(" ").slice(-1)[0],
-      side: i === 0 ? "home" as const : "away" as const, position: positions[p.player_id],
-      goalkeeper: p.position === "GK", tagged: tagged.has(p.player_id), tracked: p.player_id === tracked,
-      tagBelow: p.player_id === last?.receiver_id, sprintKmh: sprintSpeed(sprint, p.player_id, now),
-    })));
-}
 import { AskPanel } from "./AskPanel";
 import { CommentaryTicker } from "./CommentaryTicker";
 import { MomentumChart } from "./MomentumChart";
 import { OverlayLayer } from "./overlays/OverlayLayer";
 import { GoalBanner } from "./overlays/Overlays";
-import { Pitch, type BallAnchor, type PlayerDot } from "./Pitch";
+import { HighlightsPlayer } from "./HighlightsPlayer";
+import { Pitch, type BallAnchor } from "./Pitch";
 import { RecapModal } from "./RecapModal";
 import { ScoreBug } from "./ScoreBug";
 import { StatsPanel } from "./StatsPanel";
@@ -75,9 +64,11 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   const [camera, setCamera] = useState<Camera>("broadcast");
   const [anchor, setAnchor] = useState<BallAnchor>(null);
   const onBallAnchor = useCallback((next: BallAnchor) => setAnchor(next), []);
-  const dots = useMemo(
-    () => playerDots(state.session?.match, state.players, state.lastEvent, viewer.player, state.sprint, now),
-    [state.session, state.players, state.lastEvent, viewer.player, state.sprint, now]);
+  const dots = useMemo(() => playerDots(state.session?.match, state.players,
+    { actor: state.lastEvent?.player_id ?? null, receiver: state.lastEvent?.receiver_id ?? null }, viewer.player,
+    (id) => sprintSpeed(state.sprint, id, now)),
+  [state.session, state.players, state.lastEvent, viewer.player, state.sprint, now]);
+  const [reelStage, setReelStage] = useState<HighlightReel["stage"] | null>(null);
   const [seenStages, setSeenStages] = useState<Set<string>>(() => new Set());
   const [voiceOn, setVoiceOn] = useState(savedVoicePreference);
   const [neuralVoice, setNeuralVoice] = useState(false);
@@ -91,7 +82,7 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   const speechUrl = useMemo<SpeechUrlBuilder>(
     () => (neuralVoice ? (ref, segment) => api.speechUrl(sessionId, ref, segment) : null), [neuralVoice, sessionId]);
   const matchSpeed = state.session?.speed ?? DEFAULT_MATCH_SPEED;
-  useSpokenCommentary(state.ticker, viewer.language, voiceOn, matchSpeed, speechUrl);
+  useSpokenCommentary(state.ticker, viewer.language, voiceOn && !reelStage, matchSpeed, speechUrl);
 
   useEffect(() => {
     const fresh = state.recaps.find((r) => !seenStages.has(r.stage));
@@ -120,13 +111,18 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   return (
     <>
       <div className="stage">
-        <Pitch ball={state.ball} trail={state.trail} players={dots} moveMs={state.moveMs} homeColor={homeColor} awayColor={awayColor}
-          camera={camera} shot={shot} onBallAnchor={onBallAnchor} label={`Live pitch: ${match.home.name} versus ${match.away.name}`}>
-          <ScoreBug home={match.home} away={match.away} homeColor={homeColor} awayColor={awayColor} lastEvent={state.lastEvent} />
-          <OverlayLayer active={goal ? null : active} anchor={anchor} teamColor={cueTeamIsAway ? awayColor : homeColor} />
-          {goal && <GoalBanner key={goal.id} scorer={goal.scorer} score={goal.score}
-            teamColor={goal.side === "home" ? homeColor : awayColor} />}
-        </Pitch>
+        {reelStage ? (
+          <HighlightsPlayer sessionId={sessionId} stage={reelStage} segment={state.cues[0]?.cue.viewer_id} match={match}
+            homeColor={homeColor} awayColor={awayColor} camera={camera} voiceOn={voiceOn} onClose={() => setReelStage(null)} />
+        ) : (
+          <Pitch ball={state.ball} trail={state.trail} players={dots} moveMs={state.moveMs} homeColor={homeColor} awayColor={awayColor}
+            camera={camera} shot={shot} onBallAnchor={onBallAnchor} label={`Live pitch: ${match.home.name} versus ${match.away.name}`}>
+            <ScoreBug home={match.home} away={match.away} homeColor={homeColor} awayColor={awayColor} lastEvent={state.lastEvent} />
+            <OverlayLayer active={goal ? null : active} anchor={anchor} teamColor={cueTeamIsAway ? awayColor : homeColor} />
+            {goal && <GoalBanner key={goal.id} scorer={goal.scorer} score={goal.score}
+              teamColor={goal.side === "home" ? homeColor : awayColor} />}
+          </Pitch>
+        )}
         <p className="visually-hidden" aria-live="assertive">
           {state.goalFlash ? `Goal, ${state.goalFlash.scorer}. ${state.goalFlash.score}` : ""}
         </p>
@@ -146,6 +142,12 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
               {r.stage === "half_time" ? "Half-time recap" : "Full-time recap"}
             </button>
           ))}
+          {state.recaps.map((r) => (
+            <button key={`${r.stage}-reel`} className="chip" aria-pressed={reelStage === r.stage}
+              onClick={() => setReelStage(r.stage)}>
+              {r.stage === "half_time" ? "Half-time highlights" : "Full-time highlights"}
+            </button>
+          ))}
         </div>
         <CommentaryTicker items={state.ticker}
           voice={speechSupported || neuralVoice ? { on: voiceOn, onToggle: toggleVoice } : undefined} />
@@ -156,7 +158,8 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
         <MomentumChart points={state.momentum} rhythm={state.rhythm} homeColor={homeColor} awayColor={awayColor}
           homeName={match.home.short_name} awayName={match.away.short_name} />
       </aside>
-      {openRecap && <RecapModal recap={openRecap} onClose={() => setOpenRecap(null)} />}
+      {openRecap && <RecapModal recap={openRecap} onClose={() => setOpenRecap(null)}
+        onWatch={() => { setReelStage(openRecap.stage); setOpenRecap(null); }} />}
     </>
   );
 }

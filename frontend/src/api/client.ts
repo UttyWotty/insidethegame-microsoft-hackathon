@@ -3,7 +3,9 @@
  * Every call returns typed data or throws ApiError with the server's error detail.
  * The base path is configurable at build time for deployments behind a different host.
  */
-import type { ClubInfo, CompanionReply, PersonaInfo, ProducerSummary, SessionInfo, ViewerSettings } from "../types";
+import type {
+  ClubInfo, CompanionReply, HighlightReel, PersonaInfo, ProducerSummary, SessionInfo, ViewerSettings,
+} from "../types";
 
 export const API_BASE: string = import.meta.env.VITE_API_BASE ?? "/api";
 
@@ -38,6 +40,10 @@ export const api = {
   personas: () => request<PersonaInfo[]>("/personas"),
   languages: () => request<Record<string, string>>("/languages"),
   createMatch: (body: CreateMatch) => request<SessionInfo>("/matches", { method: "POST", body: JSON.stringify(body) }),
+  highlights: (sessionId: string, stage: HighlightReel["stage"], segment?: string) => {
+    const query = new URLSearchParams({ stage, ...(segment ? { segment } : {}) });
+    return request<HighlightReel>(`/matches/${encodeURIComponent(sessionId)}/highlights?${query}`);
+  },
   producer: (sessionId: string) => request<ProducerSummary>(`/matches/${encodeURIComponent(sessionId)}/producer`),
   hold: (sessionId: string, on: boolean) =>
     request<{ hold: boolean }>(`/matches/${encodeURIComponent(sessionId)}/producer/hold`, {

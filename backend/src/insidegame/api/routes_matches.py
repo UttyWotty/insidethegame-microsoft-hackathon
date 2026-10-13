@@ -1,4 +1,4 @@
-"""Match routes: create a live replay, list and inspect sessions, and stream a personalized feed.
+"""Match routes: create a live replay, list and inspect sessions, stream a personalized feed, and fetch highlights.
 
 The stream endpoint registers the caller's viewer segment and returns server-sent events.
 Domain errors are translated to HTTP errors by the handlers registered in app.py.
@@ -10,6 +10,7 @@ from fastapi.responses import StreamingResponse
 from insidegame.agents.personas import DEFAULT_LANGUAGE
 from insidegame.agents.context import build_viewer_context
 from insidegame.agents.question_context import build_question_context
+from insidegame.agents.recap_context import RecapStage
 from insidegame.agents.runner import OutputSource
 from insidegame.agents.steps import answer_question
 from insidegame.api.clients import client_key
@@ -64,6 +65,16 @@ async def stream_match(
     profile = fixture_segment_profile(session.result.metadata, persona, language, team, player)
     subscriber = session.subscribe(profile)
     return StreamingResponse(stream(session, subscriber), media_type=SSE_MEDIA_TYPE, headers=SSE_HEADERS)
+
+
+@router.get("/{session_id}/highlights")
+async def highlights(
+    session_id: str, request: Request,
+    stage: RecapStage = Query(description="half_time or full_time; available once that recap is published."),
+    segment: str | None = Query(default=None, description="Viewer segment id whose commentary narrates the reel."),
+) -> dict[str, object]:
+    """Automated highlights reel: key moments with tracking frames and narration, replayable on the pitch."""
+    return _registry(request).get(session_id).highlights(stage, segment)
 
 
 @router.post("/{session_id}/ask")

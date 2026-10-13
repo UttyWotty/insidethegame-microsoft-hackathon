@@ -6,6 +6,9 @@
  */
 import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { PITCH_LENGTH, PITCH_WIDTH, RUNOFF_M, RUNOFF_TOP_M, tagPlacement } from "../lib/pitch";
+import type { PlayerDot } from "../lib/playerDots";
+
+export type { PlayerDot } from "../lib/playerDots";
 import type { ShotTrace, TrailPoint } from "../state/matchState";
 import type { Point } from "../types";
 
@@ -24,14 +27,6 @@ const XG_BUBBLE_MIN = 1.2;
 const XG_BUBBLE_SCALE = 6;
 const SHOT_RESULTS: Record<string, string> = { goal: "GOAL", saved: "Saved", off_target: "Wide", blocked: "Blocked" };
 
-export interface PlayerDot {
-  id: string; number: number; shortName: string; side: "home" | "away"; position: Point;
-  goalkeeper: boolean; tagged: boolean; tracked: boolean;
-  /** True for the receiver of the latest action, whose tag goes below the dot when there is room. */
-  tagBelow: boolean;
-  /** Speed in km/h while this player is the recent sprinter, otherwise null. */
-  sprintKmh: number | null;
-}
 
 export type BallAnchor = { left: string; top: string } | null;
 

@@ -51,3 +51,7 @@ class SpeechUnavailableError(InsideGameError):
 
 class LineNotFoundError(InsideGameError):
     """Raised when a spoken line is requested that the match session did not produce or no longer holds."""
+
+
+class HighlightsNotReadyError(InsideGameError):
+    """Raised when a highlights reel is requested before the match has reached that recap stage."""

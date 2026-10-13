@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Automated highlights package: the live session keeps every tracking frame, and
+  `GET /api/matches/{id}/highlights?stage=half_time|full_time` (409 until that recap is published) returns a reel
+  of every goal plus the most important other moments (up to six, in match order), each cut from 10 seconds
+  before to 4 seconds after the moment, with the player named in its facts and the best narration available:
+  the viewer segment's own commentary, the produced commentary, or a grounded caption. The broadcast view replays
+  the reel on the pitch at real match pace with a broadcast caption and spoken narration (live voice pauses
+  meanwhile), opened from "Watch highlights" in the recap dialog or the highlights chips, with pause, previous,
+  next, replay, and back to live.
 - Realistic player motion and sprint tags: synthetic tracking caps every step at the player's pace-based top speed
   (27 to 35 km/h, three quarters of it off the ball), and players about to act start running so they arrive on
   time (lookahead of up to 8 match seconds), replacing actors teleporting to the ball. On seed 7, no movement now

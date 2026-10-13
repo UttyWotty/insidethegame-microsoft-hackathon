@@ -24,6 +24,7 @@ from insidegame.api.mcp_auth import BearerTokenGuard
 from insidegame.api.mcp_server import build_mcp_server
 from insidegame.core.exceptions import (
     FixtureError,
+    HighlightsNotReadyError,
     LineNotFoundError,
     PersonaConfigError,
     RateLimitError,
@@ -46,7 +47,7 @@ API_TITLE: str = "Inside the Game API"
 API_VERSION: str = "0.1.0"
 ERROR_STATUS: dict[type[Exception], int] = {
     FixtureError: 400, PersonaConfigError: 400, SessionNotFoundError: 404, SessionLimitError: 429,
-    RateLimitError: 429, LineNotFoundError: 404, SpeechUnavailableError: 503,
+    RateLimitError: 429, LineNotFoundError: 404, SpeechUnavailableError: 503, HighlightsNotReadyError: 409,
 }
 
 
