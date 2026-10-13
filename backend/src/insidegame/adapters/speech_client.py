@@ -16,7 +16,7 @@ from azure.identity import DefaultAzureCredential
 
 from insidegame.core.exceptions import SpeechUnavailableError
 from insidegame.domain.enums import Intensity
-from insidegame.speech.ssml import build_ssml, voice_for
+from insidegame.speech.ssml import REAL_TIME_PACE, build_ssml, voice_for
 
 SPEECH_ENDPOINT: str = os.getenv("SPEECH_ENDPOINT", "")
 AZURE_CLIENT_ID: str = os.getenv("AZURE_CLIENT_ID", "")
@@ -46,18 +46,22 @@ class AzureSpeechClient:
         self.token = token
         self.http = http or httpx.AsyncClient(timeout=SPEECH_TIMEOUT_S)
         self.cache_size = cache_size
-        self.cache: OrderedDict[tuple[str, str, Intensity], bytes] = OrderedDict()
+        self.cache: OrderedDict[tuple[str, str, Intensity, float], bytes] = OrderedDict()
 
-    async def synthesize(self, text: str, language: str, intensity: Intensity = Intensity.NORMAL) -> bytes:
-        """Return MP3 audio for text in language (intensity defaults to NORMAL), cached for repeated lines."""
+    async def synthesize(self, text: str, language: str, intensity: Intensity = Intensity.NORMAL,
+                         pace: float = REAL_TIME_PACE) -> bytes:
+        """Return MP3 audio for text in language, cached for repeated lines.
+
+        Defaults: intensity NORMAL and pace REAL_TIME_PACE (natural speed).
+        """
         voice = voice_for(language)
         if voice is None:
             raise SpeechUnavailableError(f"No neural voice is configured for language {language!r}")
-        key = (voice, text, intensity)
+        key = (voice, text, intensity, pace)
         if key in self.cache:
             self.cache.move_to_end(key)
             return self.cache[key]
-        audio = await self._request(build_ssml(text, voice, intensity))
+        audio = await self._request(build_ssml(text, voice, intensity, pace))
         self.cache[key] = audio
         if len(self.cache) > self.cache_size:
             self.cache.popitem(last=False)

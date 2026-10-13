@@ -2,10 +2,17 @@
  * React hook that reads live commentary aloud in the viewer's language, preferring Azure AI Speech when available.
  * It is the thin I/O adapter around the pure planner in speech.ts: new feed lines are queued and spoken one at a
  * time, as neural audio from the server when it holds the line, otherwise (or on failure) with browser speech.
+ * It waits briefly after cancelling before speaking again and frees the queue if a line never reports its end,
+ * working around browsers that drop or stall utterances.
  */
 import { useCallback, useEffect, useRef } from "react";
 import type { TickerItem } from "../state/matchState";
-import { DELIVERY, enqueueSpeech, interrupts, isSpeakable, pickVoice, serverSpeechRef, unseenLines } from "./speech";
+import {
+  deliveryFor, enqueueSpeech, interrupts, isSpeakable, pickVoice, serverSpeechRef, unseenLines, watchdogMs,
+} from "./speech";
+
+/** Pause after cancelling speech before speaking again; speaking immediately can be silently dropped. */
+const CANCEL_SETTLE_MS = 120;
 
 /** True when this browser can speak on-device. */
 export const speechSupported: boolean =
@@ -14,7 +21,8 @@ export const speechSupported: boolean =
 /** Builds the URL of server-voiced audio for a line, or null when neural speech is not available. */
 export type SpeechUrlBuilder = ((ref: string, segment?: string) => string) | null;
 
-export function useSpokenCommentary(feed: TickerItem[], language: string, enabled: boolean,
+/** Speaks new feed lines; matchSpeed sets the pace, and serverUrl (default null) enables neural audio. */
+export function useSpokenCommentary(feed: TickerItem[], language: string, enabled: boolean, matchSpeed: number,
                                     serverUrl: SpeechUrlBuilder = null): void {
   const seen = useRef(new Set<string>());
   const queue = useRef<TickerItem[]>([]);
@@ -28,23 +36,28 @@ export function useSpokenCommentary(feed: TickerItem[], language: string, enable
     const voice = pickVoice(window.speechSynthesis.getVoices(), language);
     if (voice) utterance.voice = voice;
     utterance.lang = voice?.lang ?? language;
-    utterance.rate = DELIVERY[item.intensity].rate;
-    utterance.pitch = DELIVERY[item.intensity].pitch;
+    const delivery = deliveryFor(item.intensity, matchSpeed);
+    utterance.rate = delivery.rate;
+    utterance.pitch = delivery.pitch;
     utterance.onend = done;
     utterance.onerror = done;
     window.speechSynthesis.speak(utterance);
-  }, [language]);
+  }, [language, matchSpeed]);
 
   const speakNext = useCallback(() => {
     if (speaking.current || !queue.current.length) return;
     const [item, ...rest] = queue.current;
     queue.current = rest;
     const mine = generation.current;
+    let finished = false;
     const done = () => {
-      if (mine !== generation.current) return;
+      window.clearTimeout(watchdog);
+      if (finished || mine !== generation.current) return;
+      finished = true;
       speaking.current = false;
       speakNext();
     };
+    const watchdog = window.setTimeout(done, watchdogMs(item.text, deliveryFor(item.intensity, matchSpeed).rate));
     speaking.current = true;
     const ref = serverUrl ? serverSpeechRef(item) : null;
     if (!serverUrl || !ref) return speakLocally(item, done);
@@ -59,7 +72,7 @@ export function useSpokenCommentary(feed: TickerItem[], language: string, enable
     player.onended = done;
     player.onerror = fallBack;
     player.play().catch(fallBack);
-  }, [serverUrl, speakLocally]);
+  }, [serverUrl, speakLocally, matchSpeed]);
 
   // Reset only when voice is toggled, the language changes, or the speech source changes. The feed is read here
   // only to mark existing lines as seen; its updates are handled by the next effect.
@@ -88,6 +101,9 @@ export function useSpokenCommentary(feed: TickerItem[], language: string, enable
       speaking.current = false;
       audio.current?.pause();
       if (speechSupported) window.speechSynthesis.cancel();
+      queue.current = enqueueSpeech([], speakable);
+      window.setTimeout(speakNext, CANCEL_SETTLE_MS);
+      return;
     }
     queue.current = enqueueSpeech(queue.current, speakable);
     speakNext();

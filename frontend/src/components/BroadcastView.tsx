@@ -17,6 +17,8 @@ type Camera = "broadcast" | "tactical";
 const SHOT_VISIBLE_MS = 4000;
 const HALF_TIME_RECAP_MS = 15000;
 const GOAL_VISIBLE_MS = 4500;
+/** Replay speed assumed for speech pace until the session description arrives (the server default). */
+const DEFAULT_MATCH_SPEED = 10;
 const TYPING_ELEMENTS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
 
 /** True while the viewer is typing in a field, when a recap dialog must not take focus away. */
@@ -65,7 +67,8 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   }, []);
   const speechUrl = useMemo<SpeechUrlBuilder>(
     () => (neuralVoice ? (ref, segment) => api.speechUrl(sessionId, ref, segment) : null), [neuralVoice, sessionId]);
-  useSpokenCommentary(state.ticker, viewer.language, voiceOn, speechUrl);
+  const matchSpeed = state.session?.speed ?? DEFAULT_MATCH_SPEED;
+  useSpokenCommentary(state.ticker, viewer.language, voiceOn, matchSpeed, speechUrl);
 
   useEffect(() => {
     const fresh = state.recaps.find((r) => !seenStages.has(r.stage));

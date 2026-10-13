@@ -6,7 +6,14 @@ Inputs come from a full simulated match.
 """
 
 from insidegame.analytics.analyzer import MatchAnalyzer
-from insidegame.commentary.play_by_play import MIN_GAP_S, PlayByPlay
+from insidegame.commentary.play_by_play import (
+    MAX_MATCH_GAP_S,
+    MIN_GAP_S,
+    MIN_MATCH_GAP_S,
+    RECENT_LINES,
+    PlayByPlay,
+    line_gap_for_speed,
+)
 from insidegame.domain.enums import Intensity
 from insidegame.simulation.engine import simulate_match
 from insidegame.simulation.roster import build_fixture
@@ -56,3 +63,23 @@ def test_close_calls_are_raised_and_ordinary_play_stays_normal() -> None:
     close_calls = [line for line in lines if line.kind == "close_call"]
     assert close_calls and all(line.intensity is Intensity.RAISED for line in close_calls)
     assert all(line.intensity is Intensity.NORMAL for line in lines if line.kind == "play")
+
+
+def test_lines_do_not_repeat_soon_or_stack_the_same_kind_of_action() -> None:
+    texts = [line.text for line in _lines() if line.kind == "play"]
+    for i, text in enumerate(texts):
+        assert text not in texts[max(0, i - RECENT_LINES):i]
+    assert all(a != b for a, b in zip(texts, texts[1:]))
+
+
+def test_line_gap_keeps_a_steady_viewing_rhythm_across_replay_speeds() -> None:
+    assert line_gap_for_speed(10.0) == MIN_GAP_S
+    assert line_gap_for_speed(1.0) == MIN_MATCH_GAP_S
+    assert line_gap_for_speed(600.0) == MAX_MATCH_GAP_S
+    result = simulate_match(build_fixture("kestrel_bay", "ironvale", 7))
+
+    def count(gap: float) -> int:
+        analyzer, pbp = MatchAnalyzer(result.metadata), PlayByPlay(result.metadata, min_gap_s=gap)
+        return sum(1 for event in result.events if pbp.observe(analyzer.ingest(event)))
+
+    assert count(line_gap_for_speed(1.0)) > count(line_gap_for_speed(10.0)) > count(line_gap_for_speed(60.0))
