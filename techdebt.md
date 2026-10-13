@@ -13,22 +13,26 @@ Ordered by priority within each section; status as of 2026-10-12 (develop at PR 
   require the submission to be solely owned by the entrant (rules 4.6 and 4.11). Use a personal machine from now on.
   Resolved 2026-10-12: the owner confirmed this machine is approved for the project.
 -->
-- Agents have never been seen with real AI output in the UI; every chip shows "Template" in offline mode. Validate on
-  a real model (MLX locally, then Foundry) before recording anything.
-  Next run (planned 2026-10-13), local model chosen by the owner: Qwen3.8 27B 6-bit
-  (`ailexleon/Huihui-Qwen3.8-27B-abliterated-mlx-6Bit`) on the existing MLX gateway at `127.0.0.1:8081`
-  (launchd agent `local.mlx-serve-qwen38`; do not start a separate server).
-  1. Confirm no other workload is live: nothing else connected to ports 8080 and 8081
-     (`lsof -nP -iTCP:8081 -sTCP:ESTABLISHED`) and no other MLX job running (on 2026-10-12 an image-generation job in
-     another repo took both gateways down mid-run). Check `curl -s http://127.0.0.1:8081/v1/models` returns the model.
-  2. Evaluate: `MODEL_PROVIDER=mlx MODEL_NAME=ailexleon/Huihui-Qwen3.8-27B-abliterated-mlx-6Bit
-     MODEL_BASE_URL=http://127.0.0.1:8081/v1 MODEL_TIMEOUT_S=240 MODEL_MAX_CONCURRENCY=1
-     .venv/bin/python -m insidegame.evaluation.run --max-moments 3
-     --output docs/evaluations/2026-10-13-mlx-qwen3.8-27b-6bit.json`. The 240-second timeout is needed: warm speed
-     is about 18 tokens/s prefill and 11 tokens/s decode, so the default 45 seconds would time out.
-  3. Run a live match in the UI with the same variables and confirm the chips show model output (not "Template")
-     for analyst, narrator, translator, persona cards, fact-checker, and recaps; note anything that falls back.
-  4. Fix prompt or parsing issues found, commit the report, and update the README "Latest local run" line.
+- Agents have been validated on a real model only through the evaluation harness, not yet in the live UI. Validate
+  the live path (MLX locally, then Foundry) before recording anything.
+  Done 2026-10-13 with Qwen3.8 27B 6-bit on the MLX gateway at `127.0.0.1:8081` (launchd agent
+  `local.mlx-serve-qwen38`; reuse it, never start a separate server): the evaluation over five moment kinds plus
+  the full-time recap was 100% model output for analyst, translator, and recap editor, 92% first-time and 8%
+  corrected for persona cards, with 8 fact-check approvals and 4 revisions
+  (`docs/evaluations/2026-10-13-mlx-qwen3.8-27b-6bit.json`). Fixes found by the run: unique surnames per fixture,
+  commentator verbs, eval coverage of every persona, fact-check issues in the report, and "In production" status
+  in the producer console.
+  Still open:
+  1. Live UI check. The 2026-10-13 attempt (seed 7, speed 20, analyst and Spanish casual viewers) produced no
+     broadcast record in 12 minutes: all 18 detected moments started at once and shared the single local model
+     slot, so none finished, and a `godot` process from another project was saturating the machine at the same
+     time. Retry when the machine is idle (check `ps -Ao pid,%cpu,comm -r | head` as well as `lsof` on 8080/8081)
+     after the backpressure item under Engineering, with one viewer at speed 10 or lower:
+     `MODEL_PROVIDER=mlx MODEL_NAME=ailexleon/Huihui-Qwen3.8-27B-abliterated-mlx-6Bit
+     MODEL_BASE_URL=http://127.0.0.1:8081/v1 MODEL_TIMEOUT_S=240 MODEL_MAX_CONCURRENCY=1 API_PORT=8000
+     .venv/bin/python -m insidegame.main`, then confirm the chips show AI (not Template) and the producer console
+     shows model sources and fact-check verdicts.
+  2. Rerun the evaluation once to read `fact_check_issues` and judge whether the 4 revisions were real catches.
 
 ## Azure go-live (needs a personal Azure subscription)
 
@@ -66,6 +70,9 @@ Ordered by priority within each section; status as of 2026-10-12 (develop at PR 
 
 ## Engineering
 
+- Backpressure for moment production: every detected moment starts its agent workflow at once, so with a slow
+  or rate-limited model they all share the gate and finish late together (seen live on 2026-10-13). Produce
+  moments in order with a small in-flight limit, and skip non-goal moments that are stale by the time a slot frees.
 - Live sessions are in memory, so the app runs a single replica; move session state to a shared store before scaling out.
 - `/api/matches` (match creation) has no per-client rate limit beyond the 20-session cap.
 - Tracking-derived player speeds are unrealistic (teleporting event actors), so speed indicators use modelled shot and ball speeds only; smoothing or a kinematic model would allow real sprint tags.

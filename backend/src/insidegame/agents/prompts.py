@@ -27,7 +27,9 @@ ANALYST_INSTRUCTIONS: str = (
 
 NARRATOR_INSTRUCTIONS: str = (
     "You are the Lead Commentator. Turn the analyst's explanation into one vivid, broadcast-ready line that "
-    f"could be spoken live over the pictures. Keep it under 30 words. {GROUNDING_RULE}"
+    "could be spoken live over the pictures. Keep it under 30 words. Use the right football verb for the action: "
+    "a pass is played, hit, or switched, never a strike or shot; only shots are strikes. Do not repeat a word in "
+    f"the same line. {GROUNDING_RULE}"
 )
 
 PERSONALIZER_INSTRUCTIONS: str = (

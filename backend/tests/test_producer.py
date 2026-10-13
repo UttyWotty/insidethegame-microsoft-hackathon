@@ -17,9 +17,11 @@ from insidegame.orchestration.service import MatchIntelligenceService
 from insidegame.simulation.engine import simulate_match
 from insidegame.simulation.roster import build_fixture
 
+GOALS_SEED = 1  # a seed whose match has goals, so every persona receives cues and some moments do not air
+
 
 def _session() -> MatchSession:
-    result = simulate_match(build_fixture("brookhaven", "silverlake", 3))
+    result = simulate_match(build_fixture("brookhaven", "silverlake", GOALS_SEED))
     return MatchSession("p", result, MatchIntelligenceService(result.metadata, _offline_suite(), OFFLINE_POLICY, ()),
                         SPEED, _instant)
 
@@ -53,6 +55,22 @@ def test_summary_reports_timeline_and_pipeline_health() -> None:
     timeline, health = summary["timeline"], summary["health"]
     assert any(t["status"] == "aired" for t in timeline) and any(t["status"] == "not_aired" for t in timeline)  # type: ignore[union-attr]
     assert health["cues"] > 0 and health["source_rates"]["card"] == {"fallback": 1.0}  # type: ignore[index]
+
+
+def test_moments_still_being_produced_are_reported_in_production() -> None:
+    async def scenario() -> MatchSession:
+        session = _session()
+        viewer = session.subscribe(build_segment_profile("casual"))
+        await asyncio.gather(session.run(), _consume(viewer.queue))
+        return session
+
+    session = asyncio.run(scenario())
+    moments = session.service.analyzer.moments
+    pending = next(m.moment_id for m in moments if m.moment_id not in session.desk.records)
+    timeline = session.desk.summary(moments, 1, {pending})["timeline"]
+    statuses = {t["moment_id"]: t["status"] for t in timeline}  # type: ignore[union-attr]
+    assert [moment for moment, status in statuses.items() if status == "in_production"] == [pending]
+    assert not session.in_production
 
 
 def test_console_api_and_optional_key(monkeypatch: pytest.MonkeyPatch) -> None:

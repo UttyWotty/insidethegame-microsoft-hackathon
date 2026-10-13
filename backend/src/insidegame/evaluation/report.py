@@ -1,7 +1,7 @@
 """Pure summarisation of agent outcomes into an evaluation report.
 
-For each agent role it counts model, corrected, and fallback outputs, latency percentiles, and top rejection reasons.
-Samples of persona cards are included so reviewers can judge tone and differentiation, not just rates.
+For each agent role it counts model, corrected, and fallback outputs, latency percentiles, and top rejection reasons,
+plus the Standards Editor's fact-check verdicts on every cue and its most common issues. Samples of persona cards are included so reviewers can judge tone and differentiation, not just rates.
 """
 
 from collections import Counter
@@ -57,6 +57,8 @@ def _add_outcome(stats: dict[str, RoleStats], role: str, outcome: AgentOutcome) 
 def summarize(broadcasts: Sequence[MomentBroadcast], recaps: Sequence[AgentOutcome[MatchRecap]]) -> dict[str, object]:
     """Build the evaluation report for a run."""
     stats: dict[str, RoleStats] = {}
+    verdicts: Counter[str] = Counter()
+    issues: Counter[str] = Counter()
     for broadcast in broadcasts:
         _add_outcome(stats, "analyst", broadcast.explanation)
         _add_outcome(stats, "narrator", broadcast.commentary)
@@ -65,6 +67,10 @@ def summarize(broadcasts: Sequence[MomentBroadcast], recaps: Sequence[AgentOutco
                 record = cue.provenance.get(role)
                 if isinstance(record, dict):
                     stats.setdefault(role, RoleStats()).add(str(record["source"]), int(record["latency_ms"]))
+            check = cue.provenance.get("fact_check")
+            if isinstance(check, dict):
+                verdicts[str(check["verdict"])] += 1
+                issues.update(str(issue)[:PROBLEM_PREVIEW_CHARS] for issue in check.get("issues", []))
     for recap in recaps:
         _add_outcome(stats, "editor", recap)
     samples = [{
@@ -76,6 +82,8 @@ def summarize(broadcasts: Sequence[MomentBroadcast], recaps: Sequence[AgentOutco
     return {
         "broadcasts": len(broadcasts),
         "roles": {role: s.to_dict() for role, s in stats.items()},
+        "fact_checks": dict(verdicts),
+        "fact_check_issues": issues.most_common(TOP_PROBLEMS),
         "samples": samples,
         "recaps": [r.value.model_dump(mode="json") for r in recaps],
     }

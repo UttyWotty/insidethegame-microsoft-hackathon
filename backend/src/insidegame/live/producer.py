@@ -5,6 +5,7 @@ fact-check), can hold AI overlays for approval and release them, and summarises 
 """
 
 from collections import Counter
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from enum import StrEnum
 
@@ -13,6 +14,8 @@ from insidegame.orchestration.cues import MomentBroadcast
 
 RATE_DECIMALS: int = 3
 CUE_ROLES: tuple[str, ...] = ("explanation", "commentary", "card", "translation")
+IN_PRODUCTION: str = "in_production"
+NOT_AIRED: str = "not_aired"
 
 
 class AirStatus(StrEnum):
@@ -73,11 +76,18 @@ class ProducerDesk:
                 released.extend(record.cues)
         return released
 
-    def summary(self, moments: list[KeyMoment], segments: int) -> dict[str, object]:
-        """Timeline of all detected moments, broadcast records, and pipeline health statistics."""
+    def _status(self, moment_id: str, in_production: Collection[str]) -> str:
+        if moment_id in self.records:
+            return self.records[moment_id].status.value
+        return IN_PRODUCTION if moment_id in in_production else NOT_AIRED
+
+    def summary(self, moments: list[KeyMoment], segments: int, in_production: Collection[str]) -> dict[str, object]:
+        """Timeline of all detected moments, broadcast records, and pipeline health statistics.
+
+        A moment with no record yet is in production while its agents are still working, otherwise not aired.
+        """
         timeline = [{"moment_id": m.moment_id, "minute": m.minute_label, "kind": m.kind.value,
-                     "importance": round(m.importance, RATE_DECIMALS),
-                     "status": self.records[m.moment_id].status.value if m.moment_id in self.records else "not_aired"}
+                     "importance": round(m.importance, RATE_DECIMALS), "status": self._status(m.moment_id, in_production)}
                     for m in moments]
         return {"hold": self.hold, "segments": segments, "timeline": timeline,
                 "records": [r.to_dict() for r in reversed(self.records.values())], "health": pipeline_health(self.records)}

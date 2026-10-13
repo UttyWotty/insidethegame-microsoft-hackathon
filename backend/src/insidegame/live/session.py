@@ -6,7 +6,7 @@ tasks that publish when ready. Cues are routed only to subscribers of the segmen
 
 import asyncio
 import logging
-from collections import deque
+from collections import Counter, deque
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -97,6 +97,7 @@ class MatchSession:
         self.recent_moments: deque[MomentContext] = deque(maxlen=MOMENT_HISTORY)
         self.play_by_play = PlayByPlay(result.metadata)
         self.desk = ProducerDesk()
+        self.in_production: Counter[str] = Counter()
         self.commentary: deque[dict[str, object]] = deque(maxlen=COMMENTARY_HISTORY)
 
     def describe(self) -> dict[str, object]:
@@ -173,11 +174,17 @@ class MatchSession:
 
     async def _produce(self, job: MomentJob) -> None:
         """Produce and publish cues; any unexpected failure degrades to templates instead of losing the moment."""
+        moment_id = job.context.moment.moment_id
+        self.in_production[moment_id] += 1
         try:
             broadcast = await self.service.produce(job)
         except Exception:  # noqa: BLE001 - resilience boundary for background work
-            logger.exception("Production failed for %s; publishing degraded cues", job.context.moment.moment_id)
+            logger.exception("Production failed for %s; publishing degraded cues", moment_id)
             broadcast = degraded_broadcast(self.result.metadata.match_id, job.context, job)
+        finally:
+            self.in_production[moment_id] -= 1
+            if not self.in_production[moment_id]:
+                del self.in_production[moment_id]
         record = self.desk.record(broadcast)
         if record.status is AirStatus.HELD:
             return
@@ -201,7 +208,7 @@ class MatchSession:
 
     def producer_summary(self) -> dict[str, object]:
         """State for the producer console."""
-        return self.desk.summary(self.service.analyzer.moments, len(self.service.viewers))
+        return self.desk.summary(self.service.analyzer.moments, len(self.service.viewers), self.in_production.keys())
 
     async def _recap(self, stage: RecapStage) -> None:
         """Write the shared recap, then publish it to each viewer segment with that segment's persona take."""
