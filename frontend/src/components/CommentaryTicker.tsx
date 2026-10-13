@@ -1,7 +1,8 @@
 /**
  * Live commentary feed mixing agent-written commentary lines with key match events.
  * New items appear at the top and are announced politely to assistive technology; an optional voice toggle reads
- * commentary aloud in the viewer's language. Goals are emphasised with weight and colour, not colour alone.
+ * commentary aloud in the viewer's language. Goals and close calls are emphasised with weight (and goals with
+ * colour), never colour alone.
  */
 import type { TickerItem } from "../state/matchState";
 
@@ -23,7 +24,7 @@ export function CommentaryTicker({ items, voice }: TickerProps) {
           {items.map((item) => (
             <li key={item.id}>
               <span className="minute num">{item.minute}</span>
-              <span className={item.tone}>{item.text}</span>
+              <span className={`${item.tone} intensity-${item.intensity}`}>{item.text}</span>
             </li>
           ))}
         </ol>

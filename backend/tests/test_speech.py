@@ -14,6 +14,7 @@ from test_api import _client
 from insidegame.adapters.speech_client import OUTPUT_FORMAT, SYNTHESIS_PATH, AzureSpeechClient
 from insidegame.api import routes_speech
 from insidegame.core.exceptions import LineNotFoundError, SpeechUnavailableError
+from insidegame.domain.enums import Intensity
 from insidegame.live.spoken_lines import find_spoken_line
 from insidegame.speech.ssml import MAX_SPEECH_CHARS, build_ssml, voice_for
 
@@ -33,13 +34,16 @@ def test_ssml_uses_the_language_voice_and_escapes_and_caps_text() -> None:
     assert 'xml:lang="es-ES"' in ssml and f'name="{voice}"' in ssml
     assert "&lt;now&gt; &amp;" in ssml and "<now>" not in ssml
     assert ssml.count("x") <= MAX_SPEECH_CHARS
+    assert 'rate="+8%" pitch="+0%"' in ssml
+    assert 'rate="+22%" pitch="+15%"' in build_ssml("GOAL!", voice, Intensity.PEAK)
 
 
 def test_only_lines_the_session_produced_can_be_found() -> None:
-    commentary = [{"line_id": "e9-pbp", "text": "Kick-off!"}]
-    cues = {"casual-es-none-none": [{"moment_id": "m3", "commentary": "¡Gol!", "commentary_language": "es"}]}
-    assert find_spoken_line("e9-pbp", None, commentary, cues) == ("Kick-off!", "en")
-    assert find_spoken_line("moment-m3", "casual-es-none-none", commentary, cues) == ("¡Gol!", "es")
+    commentary = [{"line_id": "e9-pbp", "text": "Kick-off!", "intensity": "normal"}]
+    cues = {"casual-es-none-none": [{"moment_id": "m3", "commentary": "¡Gol!", "commentary_language": "es",
+                                     "commentary_intensity": "peak"}]}
+    assert find_spoken_line("e9-pbp", None, commentary, cues) == ("Kick-off!", "en", Intensity.NORMAL)
+    assert find_spoken_line("moment-m3", "casual-es-none-none", commentary, cues) == ("¡Gol!", "es", Intensity.PEAK)
     for ref, segment in (("anything", None), ("moment-m3", "analyst-en-none-none"), ("moment-m4", "casual-es-none-none")):
         with pytest.raises(LineNotFoundError):
             find_spoken_line(ref, segment, commentary, cues)
@@ -76,7 +80,7 @@ class _FakeSpeech:
     def __init__(self) -> None:
         self.calls: list[tuple[str, str]] = []
 
-    async def synthesize(self, text: str, language: str) -> bytes:
+    async def synthesize(self, text: str, language: str, intensity: Intensity) -> bytes:
         self.calls.append((text, language))
         return AUDIO
 

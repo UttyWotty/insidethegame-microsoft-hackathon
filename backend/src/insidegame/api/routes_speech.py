@@ -41,6 +41,6 @@ async def spoken_line(
     limiter = request.app.state.speech_limiter
     if not limiter.allow(client, now):
         raise RateLimitError(f"Too many speech requests; retry in {limiter.retry_after(client, now):.0f}s")
-    text, language = request.app.state.registry.get(session_id).spoken_line(ref, segment)
-    audio = await synthesizer.synthesize(text, language)
+    text, language, intensity = request.app.state.registry.get(session_id).spoken_line(ref, segment)
+    audio = await synthesizer.synthesize(text, language, intensity)
     return Response(audio, media_type=AUDIO_MEDIA_TYPE, headers=AUDIO_HEADERS)

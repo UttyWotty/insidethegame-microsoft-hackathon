@@ -5,7 +5,7 @@
  */
 import { useCallback, useEffect, useRef } from "react";
 import type { TickerItem } from "../state/matchState";
-import { SPEECH_RATE, enqueueSpeech, isSpeakable, pickVoice, serverSpeechRef, unseenLines } from "./speech";
+import { DELIVERY, enqueueSpeech, interrupts, isSpeakable, pickVoice, serverSpeechRef, unseenLines } from "./speech";
 
 /** True when this browser can speak on-device. */
 export const speechSupported: boolean =
@@ -28,7 +28,8 @@ export function useSpokenCommentary(feed: TickerItem[], language: string, enable
     const voice = pickVoice(window.speechSynthesis.getVoices(), language);
     if (voice) utterance.voice = voice;
     utterance.lang = voice?.lang ?? language;
-    utterance.rate = SPEECH_RATE;
+    utterance.rate = DELIVERY[item.intensity].rate;
+    utterance.pitch = DELIVERY[item.intensity].pitch;
     utterance.onend = done;
     utterance.onerror = done;
     window.speechSynthesis.speak(utterance);
@@ -80,7 +81,15 @@ export function useSpokenCommentary(feed: TickerItem[], language: string, enable
     if (!enabled) return;
     const fresh = unseenLines(feed, seen.current);
     fresh.forEach((item) => seen.current.add(item.id));
-    queue.current = enqueueSpeech(queue.current, fresh.filter((item) => isSpeakable(item, language)));
+    const speakable = fresh.filter((item) => isSpeakable(item, language));
+    if (interrupts(speakable)) {
+      generation.current += 1;
+      queue.current = [];
+      speaking.current = false;
+      audio.current?.pause();
+      if (speechSupported) window.speechSynthesis.cancel();
+    }
+    queue.current = enqueueSpeech(queue.current, speakable);
     speakNext();
   }, [feed, enabled, language, speakNext]);
 }

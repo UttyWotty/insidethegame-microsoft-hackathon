@@ -1,14 +1,16 @@
 """Deterministic play-by-play commentary generated from interpreted events.
 
 Lines cover kick-offs, period ends, attacks into the final third, long passes, dribbles, tackles, interceptions,
-high pressing, and sustained possession, paced by a minimum gap so the feed stays readable.
+high pressing, and sustained possession, paced by a minimum gap so the feed stays readable. Goals and close calls
+always get a line, written and flagged with raised or peak intensity so the voice can lift with the moment.
 """
 
 from dataclasses import dataclass, field
 
 from insidegame.analytics.analyzer import AnalysisUpdate
+from insidegame.analytics.detectors import BIG_CHANCE_XG
 from insidegame.core.clock import minute_label
-from insidegame.domain.enums import EventType, Outcome
+from insidegame.domain.enums import EventType, Intensity, Outcome, ShotResult
 from insidegame.domain.match import MatchMetadata
 
 MIN_GAP_S: float = 50.0
@@ -29,10 +31,11 @@ class CommentaryLine:
     minute: str
     text: str
     kind: str
+    intensity: Intensity = Intensity.NORMAL
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-friendly representation."""
-        return dict(self.__dict__)
+        return dict(self.__dict__) | {"intensity": self.intensity.value}
 
 
 def _pick(options: tuple[str, ...], sequence: int) -> str:
@@ -58,13 +61,38 @@ class PlayByPlay:
     def _name(self, player_id: str | None) -> str:
         return self.names.get(player_id or "", "")
 
-    def _line(self, update: AnalysisUpdate, text: str, kind: str, paced: bool = True) -> CommentaryLine | None:
+    def _line(self, update: AnalysisUpdate, text: str, kind: str, paced: bool = True,
+              intensity: Intensity = Intensity.NORMAL) -> CommentaryLine | None:
+        """Build a line; paced lines (the default) respect MIN_GAP_S, and intensity defaults to NORMAL."""
         event = update.event
         if paced and self.last_line_s is not None and event.match_second - self.last_line_s < MIN_GAP_S:
             return None
         self.last_line_s = event.match_second
         return CommentaryLine(f"{event.event_id}-pbp", event.period, event.match_second,
-                              minute_label(event.match_second, event.period), text, kind)
+                              minute_label(event.match_second, event.period), text, kind, intensity)
+
+    def _goal(self, update: AnalysisUpdate) -> CommentaryLine | None:
+        e = update.event
+        player, team = self._name(e.player_id), self.teams.get(e.team_id or "", "")
+        score = f"{e.score_home}-{e.score_away}"
+        text = _pick((f"GOAL! {player} scores for {team}! It's {score}!",
+                      f"It's in! {player} finds the net, and it's {score}!",
+                      f"GOAL! What a moment for {player}! {team} make it {score}!"), e.sequence)
+        return self._line(update, text, "goal", paced=False, intensity=Intensity.PEAK)
+
+    def _close_call(self, update: AnalysisUpdate) -> CommentaryLine | None:
+        e = update.event
+        if e.shot_result is ShotResult.GOAL or (update.xg or 0.0) < BIG_CHANCE_XG:
+            return None
+        player = self._name(e.player_id)
+        text = {
+            ShotResult.SAVED: _pick((f"Huge chance for {player}, and it's saved! What a stop!",
+                                     f"{player} goes for it, and the keeper keeps it out!"), e.sequence),
+            ShotResult.OFF_TARGET: _pick((f"Oh, so close! {player} fires wide from a great position!",
+                                          f"{player} has to score there, but it's just wide!"), e.sequence),
+            ShotResult.BLOCKED: f"{player} pulls the trigger, and it's blocked at the last moment!",
+        }.get(e.shot_result or ShotResult.OFF_TARGET)
+        return self._line(update, text, "close_call", paced=False, intensity=Intensity.RAISED) if text else None
 
     def _flow(self, update: AnalysisUpdate) -> str | None:
         e, q, seq = update.event, update.pass_quality, update.event.sequence
@@ -105,6 +133,9 @@ class PlayByPlay:
             self.restart = "second_half"
         if e.event_type is EventType.GOAL:
             self.restart = "goal"
+            return self._goal(update)
+        if e.event_type is EventType.SHOT:
+            return self._close_call(update)
         if e.event_type is EventType.KICK_OFF:
             team = self.teams.get(e.team_id or "", "")
             text = {"first_half": f"Kick-off at {self.metadata.venue}! {team} get us under way.",

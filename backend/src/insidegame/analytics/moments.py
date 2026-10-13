@@ -9,6 +9,7 @@ from enum import StrEnum
 
 from insidegame.core.clock import minute_label
 from insidegame.core.constants import SECONDS_PER_MINUTE
+from insidegame.domain.enums import Intensity
 
 IMPORTANCE_DECIMALS: int = 3
 
@@ -68,3 +69,15 @@ class KeyMoment:
             "event_ids": list(self.event_ids),
             "facts": dict(self.facts),
         }
+
+
+PEAK_KINDS: frozenset[MomentKind] = frozenset({MomentKind.GOAL, MomentKind.MILESTONE})
+RAISED_KINDS: frozenset[MomentKind] = frozenset({MomentKind.BIG_CHANCE_MISSED, MomentKind.GREAT_SAVE,
+                                                 MomentKind.SPEED_THRESHOLD})
+
+
+def moment_intensity(kind: MomentKind) -> Intensity:
+    """Commentary energy for a moment: peak for goals and milestones, raised for close calls and rockets."""
+    if kind in PEAK_KINDS:
+        return Intensity.PEAK
+    return Intensity.RAISED if kind in RAISED_KINDS else Intensity.NORMAL

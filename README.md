@@ -259,7 +259,8 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   (translated for non-English viewers), and key events. A **Voice** toggle reads commentary aloud in the viewer's
   language: with Azure AI Speech neural voices when the deployment has it, otherwise (or if a request fails) with
   the browser's speech synthesis. Only lines actually in that language are spoken, and play-by-play is dropped
-  first when lines arrive faster than they can be read.
+  first when lines arrive faster than they can be read. The commentator gets excited when it should: every goal and close call
+  gets its own line, and the voice speeds up and lifts its pitch for them, with goals cutting in immediately.
 - **Recaps:** half-time and full-time recaps open in an accessible dialog, led by the viewer's persona take.
 - **Ask the analyst:** viewers question the Match Companion about the live match and get grounded answers
   in their persona's voice and language, with supporting stats and suggested follow-ups. Without a model, a

@@ -138,6 +138,8 @@ main:focus { outline: none; }
 .ticker .goal { color: var(--color-accent); font-weight: 700; }
 .ticker .commentary { font-style: italic; font-weight: 600; }
 .ticker .play { color: var(--color-fg-muted); }
+.ticker .intensity-raised { color: var(--color-fg); font-weight: 700; }
+.ticker .goal.intensity-peak { font-size: var(--text-md); text-transform: uppercase; letter-spacing: 0.01em; }
 
 .modal-backdrop { position: fixed; inset: 0; background: rgba(2, 6, 14, 0.72); display: grid; place-items: center; padding: var(--space-4); z-index: 10; }
 .modal { max-width: 640px; width: 100%; max-height: 90vh; overflow-y: auto; }

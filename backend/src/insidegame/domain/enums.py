@@ -60,3 +60,11 @@ class ShotResult(StrEnum):
     SAVED = "saved"
     OFF_TARGET = "off_target"
     BLOCKED = "blocked"
+
+
+class Intensity(StrEnum):
+    """How excited the commentary should sound: measured play, raised for close calls, peak for goals."""
+
+    NORMAL = "normal"
+    RAISED = "raised"
+    PEAK = "peak"

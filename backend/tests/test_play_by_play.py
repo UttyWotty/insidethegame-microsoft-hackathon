@@ -1,11 +1,13 @@
 """Tests for deterministic play-by-play commentary.
 
-They check that commentary starts at kick-off, is paced, names real players, and marks period changes.
+They check that commentary starts at kick-off, is paced, names real players, marks period changes, and lifts
+its intensity for close calls and goals.
 Inputs come from a full simulated match.
 """
 
 from insidegame.analytics.analyzer import MatchAnalyzer
 from insidegame.commentary.play_by_play import MIN_GAP_S, PlayByPlay
+from insidegame.domain.enums import Intensity
 from insidegame.simulation.engine import simulate_match
 from insidegame.simulation.roster import build_fixture
 
@@ -36,3 +38,21 @@ def test_period_changes_are_called() -> None:
     texts = [line.text for line in _lines()]
     assert any(t.startswith("Half-time:") for t in texts) and any(t.startswith("Full-time:") for t in texts)
     assert any("second half" in t for t in texts)
+
+
+def test_every_goal_gets_a_peak_line_with_the_new_score() -> None:
+    result = simulate_match(build_fixture("kestrel_bay", "ironvale", 7))
+    analyzer, pbp = MatchAnalyzer(result.metadata), PlayByPlay(result.metadata)
+    lines = [line for event in result.events if (line := pbp.observe(analyzer.ingest(event)))]
+    goals = [line for line in lines if line.kind == "goal"]
+    assert len(goals) == result.home_goals + result.away_goals
+    assert all(line.intensity is Intensity.PEAK and "!" in line.text for line in goals)
+    assert f"{result.home_goals}-{result.away_goals}" in goals[-1].text
+    assert all(line.to_dict()["intensity"] == "peak" for line in goals)
+
+
+def test_close_calls_are_raised_and_ordinary_play_stays_normal() -> None:
+    lines = _lines()
+    close_calls = [line for line in lines if line.kind == "close_call"]
+    assert close_calls and all(line.intensity is Intensity.RAISED for line in close_calls)
+    assert all(line.intensity is Intensity.NORMAL for line in lines if line.kind == "play")
