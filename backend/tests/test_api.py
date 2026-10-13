@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 from insidegame.adapters.model_client import ModelProvider, ModelRuntime
 from insidegame.agents.runner import RunPolicy
-from insidegame.api.app import create_app
+from insidegame.api.app import SpeechFactory, create_app
 
 PERSONA_COUNT = 5
 
@@ -20,11 +20,15 @@ async def _instant(seconds: float) -> None:
     await asyncio.sleep(0)
 
 
-def _client(static_dir: str = "") -> TestClient:
+def _no_speech() -> None:
+    return None
+
+
+def _client(static_dir: str = "", speech_factory: SpeechFactory = _no_speech) -> TestClient:
     runtime = ModelRuntime(ModelProvider.OFFLINE,
                            OpenAIChatCompletionClient(model="unused", base_url="http://127.0.0.1:9", api_key="x"),
                            RunPolicy(timeout_s=1.0, max_attempts=0, prompt_suffix=""))
-    return TestClient(create_app(runtime, _instant, static_dir))
+    return TestClient(create_app(runtime, _instant, static_dir, speech_factory))
 
 
 def test_health_and_metadata() -> None:

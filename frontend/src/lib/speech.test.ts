@@ -4,7 +4,7 @@
  * All logic is pure.
  */
 import { describe, expect, it } from "vitest";
-import { MAX_PENDING_SPEECH, enqueueSpeech, isSpeakable, pickVoice, unseenLines } from "./speech";
+import { MAX_PENDING_SPEECH, enqueueSpeech, isSpeakable, pickVoice, serverSpeechRef, unseenLines } from "./speech";
 import type { TickerItem } from "../state/matchState";
 
 function line(id: string, tone: TickerItem["tone"], language = "en"): TickerItem {
@@ -49,5 +49,14 @@ describe("unseenLines", () => {
   it("returns only new lines, oldest first, from a newest-first feed", () => {
     const feed = [line("n3", "play"), line("n2", "play"), line("n1", "play")];
     expect(unseenLines(feed, new Set(["n1"])).map((i) => i.id)).toEqual(["n2", "n3"]);
+  });
+});
+
+describe("serverSpeechRef", () => {
+  it("voices commentary in its receiving segment and play-by-play by id, leaving event lines on-device", () => {
+    expect(serverSpeechRef({ ...line("moment-m3", "commentary", "es"), segment: "casual-es-none-none" }))
+      .toEqual({ ref: "moment-m3", segment: "casual-es-none-none" });
+    expect(serverSpeechRef(line("e9-pbp", "play"))).toEqual({ ref: "e9-pbp" });
+    expect(serverSpeechRef(line("e10", "goal"))).toBeNull();
   });
 });

@@ -26,6 +26,8 @@ export interface ShotTrace { id: string; from: Point; to: Point; xg: number | nu
 export interface GoalFlash { id: string; scorer: string; side: "home" | "away"; score: string; at: number }
 export interface TickerItem {
   id: string; minute: string; text: string; tone: "commentary" | "goal" | "info" | "play"; language: string;
+  /** Viewer segment that received a moment commentary line; the server looks the line up there to voice it. */
+  segment?: string;
 }
 export interface PlayLine { line_id: string; minute: string; text: string; kind: string }
 
@@ -130,6 +132,7 @@ function applyCue(state: MatchState, cue: OverlayCue, receivedAt: number): Match
   const minute = minuteLabel(cue.display_from_s, cue.period);
   const commentary: TickerItem = {
     id: `moment-${cue.moment_id}`, minute, text: cue.commentary, tone: "commentary", language: cue.commentary_language,
+    segment: cue.viewer_id,
   };
   return { ...state, cues: [{ cue, receivedAt }, ...state.cues].slice(0, MAX_CUES), ticker: addTicker(state, commentary) };
 }

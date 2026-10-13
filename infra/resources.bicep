@@ -21,6 +21,7 @@ var roles = {
   acrPull: '7f951dda-4ed3-4680-a7ca-43fe172d538d'
   openAiUser: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
   azureAiUser: '53ca6127-db72-4b80-b1b0-d745d6d5456d'
+  speechUser: 'f2dc8367-1007-4938-bd23-fe263f013447'
 }
 
 resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
@@ -121,6 +122,17 @@ resource appModelAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
+// Neural text to speech for spoken commentary runs on the same AI Services account, keyless via the app identity.
+resource appSpeechAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(foundry.id, identity.id, roles.speechUser)
+  scope: foundry
+  properties: {
+    principalId: identity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.speechUser)
+  }
+}
+
 resource developerModelAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(principalId)) {
   name: guid(foundry.id, principalId, roles.openAiUser)
   scope: foundry
@@ -164,7 +176,7 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
     type: 'UserAssigned'
     userAssignedIdentities: { '${identity.id}': {} }
   }
-  dependsOn: [acrPullAssignment, appModelAccess]
+  dependsOn: [acrPullAssignment, appModelAccess, appSpeechAccess]
   properties: {
     managedEnvironmentId: containerEnv.id
     configuration: {
@@ -195,6 +207,7 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'MODEL_NAME', value: modelDeployment.name }
             { name: 'AZURE_OPENAI_ENDPOINT', value: 'https://${foundry.properties.customSubDomainName}.openai.azure.com/' }
             { name: 'AZURE_CLIENT_ID', value: identity.properties.clientId }
+            { name: 'SPEECH_ENDPOINT', value: 'https://${foundry.properties.customSubDomainName}.cognitiveservices.azure.com/' }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
             { name: 'MODEL_TIMEOUT_S', value: '20' }
             { name: 'MCP_ALLOWED_HOSTS', value: '${webAppName}.${containerEnv.properties.defaultDomain}' }
