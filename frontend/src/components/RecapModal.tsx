@@ -2,7 +2,8 @@
  * Dialog presenting the automated half-time or full-time recap written by the Match Editor agent.
  * It keeps keyboard focus inside while open, closes on Escape, the backdrop, or the close button, and returns focus
  * to where the viewer was.
- * Provenance shows whether the recap came from the model or the grounded template.
+ * Provenance shows whether the recap came from the model or the grounded template, and the viewer can jump
+ * straight into the automated highlights reel for the same stage.
  */
 import { useEffect, useRef } from "react";
 import type { PersonaKey, Recap } from "../types";
@@ -29,7 +30,7 @@ function trapTab(e: KeyboardEvent, dialog: HTMLElement | null): void {
   }
 }
 
-export function RecapModal({ recap, onClose }: { recap: Recap; onClose: () => void }) {
+export function RecapModal({ recap, onClose, onWatch }: { recap: Recap; onClose: () => void; onWatch: () => void }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const latestClose = useRef(onClose);
@@ -66,7 +67,10 @@ export function RecapModal({ recap, onClose }: { recap: Recap; onClose: () => vo
         <div><strong>Turning points</strong><ol>{r.turning_points.map((t) => <li key={t}>{t}</li>)}</ol></div>
         <p><strong>Standout player:</strong> {r.standout_player}</p>
         <p className="muted">{r.tactical_story}</p>
-        <button ref={closeRef} className="button-primary" onClick={onClose}>Back to the match</button>
+        <div className="modal-actions">
+          <button className="button-primary" onClick={onWatch}>Watch highlights</button>
+          <button ref={closeRef} className="tab" onClick={onClose}>Back to the match</button>
+        </div>
       </div>
     </div>
   );

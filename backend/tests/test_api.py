@@ -89,3 +89,18 @@ def test_producer_stream_sends_the_final_summary_then_ends_for_a_finished_match(
             lines = [line for line in r.iter_lines() if line]
         assert lines[0] == "event: summary" and lines[-2] == "event: end"
         assert '"timeline"' in lines[1]
+
+
+def test_highlights_wait_for_the_recap_then_replay_key_moments() -> None:
+    with _client() as client:
+        session_id = client.post("/api/matches", json={"home": "kestrel_bay", "away": "ironvale", "seed": 7}).json()[
+            "session_id"]
+        with client.stream("GET", f"/api/matches/{session_id}/stream", params={"persona": "casual"}) as r:
+            for line in r.iter_lines():
+                if line == "event: end":
+                    break
+        reel = client.get(f"/api/matches/{session_id}/highlights", params={"stage": "full_time"}).json()
+        assert reel["stage"] == "full_time" and reel["headline"].startswith("Full-time")
+        assert reel["clips"] and all(clip["frames"] and clip["commentary"] for clip in reel["clips"])
+        assert len(reel["clips"][0]["frames"][0]["positions"]) == 22
+        assert client.get(f"/api/matches/{session_id}/highlights", params={"stage": "extra"}).status_code == 422

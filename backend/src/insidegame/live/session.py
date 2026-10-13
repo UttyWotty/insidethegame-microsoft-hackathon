@@ -3,6 +3,7 @@
 Interpretation runs inline so the event feed keeps match pace, while agent workflows and recaps run as background
 tasks that publish when ready. Moments wait in order for a limited number of production slots, and non-goal moments
 that go stale while waiting are skipped. Cues are routed only to subscribers of the segment they were personalized for.
+Every tracking frame is kept so half-time and full-time highlights can be replayed.
 """
 
 import asyncio
@@ -22,9 +23,12 @@ from insidegame.agents.schemas import MatchRecap, RecapTake
 from insidegame.agents.runner import OutputSource
 from insidegame.agents.templates import recap_template
 from insidegame.commentary.play_by_play import PlayByPlay, line_gap_for_speed
-from insidegame.core.exceptions import SessionLimitError
+from insidegame.core.exceptions import HighlightsNotReadyError, SessionLimitError
 from insidegame.domain.enums import Intensity
+from insidegame.domain.events import MatchEvent
 from insidegame.domain.match import MatchResult
+from insidegame.highlights.reel import FrameRecord, build_reel
+from insidegame.live.highlight_lines import clip_narrations
 from insidegame.live.pacing import replay_delay_s
 from insidegame.live.producer import AirStatus, ProducerDesk
 from insidegame.live.spoken_lines import find_spoken_line
@@ -32,7 +36,7 @@ from insidegame.orchestration.cues import MomentBroadcast
 from insidegame.orchestration.messages import MomentJob
 from insidegame.orchestration.producer import is_stale
 from insidegame.orchestration.service import MatchIntelligenceService, degraded_broadcast
-from insidegame.tracking.model import LOOKAHEAD_EVENTS
+from insidegame.tracking.model import LOOKAHEAD_EVENTS, Frame
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +48,7 @@ MAX_SEGMENTS: int = 10
 COMMENTARY_HISTORY: int = 40
 MOMENT_HISTORY: int = 30
 DEFAULT_PARALLEL_MOMENTS: int = 2
+BALL_DECIMALS: int = 1
 
 Sleeper = Callable[[float], Awaitable[None]]
 
@@ -126,6 +131,7 @@ class MatchSession:
         self.production_slots = asyncio.Semaphore(parallel_moments)
         self.clock: tuple[int, float] = (1, 0.0)
         self.commentary: deque[dict[str, object]] = deque(maxlen=COMMENTARY_HISTORY)
+        self.frames: list[FrameRecord] = []
 
     def describe(self) -> dict[str, object]:
         """Session summary for listings."""
@@ -250,6 +256,16 @@ class MatchSession:
         """Text, language, and intensity of a commentary line this session produced, for spoken commentary."""
         return find_spoken_line(ref, segment, self.commentary, self.cue_history)
 
+    def highlights(self, stage: RecapStage, segment: str | None) -> dict[str, object]:
+        """The automated highlights reel for a recap stage, narrated for a viewer segment when given."""
+        recap = next((r for r in self.recaps if r["stage"] == stage.value), None)
+        if recap is None:
+            raise HighlightsNotReadyError(f"Highlights for {stage.value} are ready once that recap is published")
+        narrations = clip_narrations(self.cue_history.get(segment or "", ()), self.desk.records)
+        clips = build_reel(self.service.analyzer.moments, stage, self.frames, narrations)
+        headline = recap["recap"]["headline"] if isinstance(recap["recap"], dict) else ""
+        return {"stage": stage.value, "headline": headline, "clips": [c.to_dict() for c in clips]}
+
     def producer_summary(self) -> dict[str, object]:
         """State for the producer console."""
         return self.desk.summary(self.service.analyzer.moments, len(self.service.viewers), self.in_production.keys(),
@@ -300,6 +316,14 @@ class MatchSession:
             self.status = SessionStatus.FINISHED
             self.publish(LiveMessage(MessageType.END, {"session_id": self.session_id}))
 
+    def _keep_frame(self, event: MatchEvent, positions: Frame | None) -> None:
+        """Store the tracking frame for highlights replays."""
+        if positions is None:
+            return
+        ball = self.service.tracking.ball_home_frame
+        self.frames.append(FrameRecord(event.period, event.match_second, event.event_type.value, event.player_id,
+                                       (round(ball.x, BALL_DECIMALS), round(ball.y, BALL_DECIMALS)), positions))
+
     async def _replay(self) -> None:
         previous = None
         for index, event in enumerate(self.result.events):
@@ -308,6 +332,7 @@ class MatchSession:
             upcoming = self.result.events[index + 1:index + 1 + LOOKAHEAD_EVENTS]
             interpretation = self.service.interpret(event, upcoming)
             sprint = interpretation.sprint
+            self._keep_frame(event, interpretation.positions)
             payload = interpretation.update.to_dict() | {
                 "positions": interpretation.positions,
                 "sprint": {"player_id": sprint[0], "speed_kmh": sprint[1]} if sprint else None}
