@@ -38,7 +38,10 @@ LAST_NAMES: tuple[str, ...] = (
     "Aldana", "Brekke", "Castell", "Dorrance", "Eklund", "Farrow", "Galvao", "Hollis", "Iversen",
     "Jarrow", "Kessler", "Lindqvist", "Marlowe", "Novak", "Okafor", "Pereira", "Quarry", "Rasmus",
     "Soler", "Tavish", "Ulloa", "Varga", "Whitlock", "Yilmaz", "Zarco", "Aubrey", "Baptiste",
-    "Corrigan", "Delacroix", "Esposito",
+    "Corrigan", "Delacroix", "Esposito", "Fennimore", "Garrick", "Halloran", "Ingram", "Juarez", "Kovacic",
+    "Lamberti", "Moreau", "Nakamura", "Ostrander", "Pellegrin", "Quintero", "Rocha", "Sorensen", "Thorne",
+    "Uddin", "Valcourt", "Wexley", "Yardley", "Zielinski", "Abernethy", "Bellamy", "Cardoso", "Drummond",
+    "Ferreira", "Gunnarsson",
 )
 
 
@@ -82,20 +85,19 @@ def _draw_attributes(position: Position, rng: random.Random) -> PlayerAttributes
     )
 
 
-def _draw_name(rng: random.Random, taken: set[str]) -> str:
-    while True:
-        name = f"{rng.choice(FIRST_NAMES)} {rng.choice(LAST_NAMES)}"
-        if name not in taken:
-            taken.add(name)
-            return name
+def _draw_name(rng: random.Random, taken_surnames: set[str]) -> str:
+    """Draw a full name whose surname is unique in the fixture, so short names identify one player."""
+    surname = rng.choice([name for name in LAST_NAMES if name not in taken_surnames])
+    taken_surnames.add(surname)
+    return f"{rng.choice(FIRST_NAMES)} {surname}"
 
 
-def build_team(preset: ClubPreset, rng: random.Random, taken_names: set[str]) -> Team:
-    """Generate a starting eleven in a 4-3-3 shape for a club preset."""
+def build_team(preset: ClubPreset, rng: random.Random, taken_surnames: set[str]) -> Team:
+    """Generate a starting eleven in a 4-3-3 shape for a club preset, avoiding surnames already taken."""
     players = tuple(
         Player(
             player_id=f"{preset.short_name.lower()}-{shirt:02d}",
-            name=_draw_name(rng, taken_names),
+            name=_draw_name(rng, taken_surnames),
             shirt_number=shirt,
             position=position,
             attributes=_draw_attributes(position, rng),

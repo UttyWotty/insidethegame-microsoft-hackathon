@@ -318,9 +318,12 @@ live agents and reports, per agent role, the share of outputs accepted from the 
 rejection, or replaced by a fallback, with latency percentiles, top rejection reasons, and persona samples.
 Reports are kept in `docs/evaluations/`.
 
-Latest local run (MLX, gemma-3-12b 4-bit, M1 Max, two moments plus recap): analyst, narrator, and translator
-outputs were 100% model-generated and grounded; persona cards 75% (the rest timed out under local load and fell
-back to grounded templates, as designed).
+Latest local run (2026-10-13, MLX, Qwen3.8 27B 6-bit, five moment kinds including a goal, plus the full-time
+recap; [report](docs/evaluations/2026-10-13-mlx-qwen3.8-27b-6bit.json)): analyst, translator, and recap editor
+outputs were 100% model-generated; persona cards 92% accepted first time and 8% after a grounding retry, none
+fell back; the Standards Editor approved 8 cards and sent 4 back for revision, and replaced one commentary line
+with a grounded template. With one local model call at a time, persona cards queue behind each other (median
+154 seconds per card); a cloud deployment runs them in parallel.
 
 ## Project Structure
 

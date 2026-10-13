@@ -37,6 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Submission text and demo script describe the seven agents, fact-checking, the producer console, tracking, and
   the Copilot-via-MCP segment; the script requires real AI output before recording and uses the exact UI labels.
+- Agent evaluation takes one moment per kind (instead of the first few in time order) so every persona, the
+  translator, and the fact-checker are exercised, and the report tallies fact-check verdicts.
+- The Lead Commentator uses the right verb for the action (passes are not strikes) and avoids repeated words.
 - Continuous play-by-play commentary from kick-off (kick-offs, final-third attacks, long passes, dribbles, tackles,
   interceptions, high pressing, long spells, half-time and full-time), paced at about one line per match minute and
   shared by every viewer.
@@ -53,6 +56,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The producer console showed moments whose agents were still working as "Not aired"; they now show as
+  "In production" until their broadcast record arrives.
+- Player surnames are unique within a fixture (surname pool enlarged to 56), so short names such as "Varga" in
+  agent output always identify one player; seeded rosters and matches differ from earlier releases.
 - The full-time drain could spin forever on finished tasks awaiting removal; it now waits only on unfinished work.
 - A failing background task (agent workflow or recap) could stop a match from ever ending; failures now degrade
   to grounded templates and the end message is always sent.
