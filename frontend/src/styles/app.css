@@ -88,6 +88,7 @@ main:focus { outline: none; }
 .pitch3d-fallback, .pitch3d-loading { padding: var(--space-6); text-align: center; color: var(--color-fg-muted); }
 .pitch-wrap.cam-broadcast .pitch { transform: rotateX(30deg) scale(0.86); }
 .player { transition: transform var(--move-ms, 650ms) linear; }
+.tactics-label { font: 700 1.5px var(--font-display); fill: #ffffff; paint-order: stroke; stroke: #0b1220; stroke-width: 0.4px; }
 .player-speed { font: 700 1.6px var(--font-display); fill: var(--color-warning); paint-order: stroke; stroke: #0b1220; stroke-width: 0.45px; letter-spacing: 0.02em; }
 .player-number { font: 700 1.25px var(--font-display); fill: #0b1220; pointer-events: none; }
 .player-tag { font: 700 1.9px var(--font-display); fill: #ffffff; paint-order: stroke; stroke: #0b1220; stroke-width: 0.45px; letter-spacing: 0.02em; text-transform: uppercase; }

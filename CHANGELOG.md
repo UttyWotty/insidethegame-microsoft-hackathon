@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Live tactics overlay: computed in the browser from the 22 tracked positions (pure `lib/tactics.ts`): the defending
+  side's offside line (second-deepest defender, ends swapping at half-time), its outfield block with depth and
+  width (both teams when nobody has the ball), a pressure ring when opponents are within 5 m of the ball carrier,
+  and arrows to the carrier's three best passing options with a completion chance from length and opponents within
+  2.5 m of the lane, coloured safe, risky, or unlikely. Drawn as SVG on the 2D pitch and as flat strips on the 3D
+  grass; a Tactics toggle (on by default) hides it.
 - Shot card: every shot event now carries a broadcast shot card (`shot` in the event message) with xG, shot speed,
   distance, goal angle, where it crossed the goal line, and the keeper's dive. The simulator decides only the
   outcome, so placement and dive are derived deterministically from the event id with a local random generator,

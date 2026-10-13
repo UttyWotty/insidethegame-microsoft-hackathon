@@ -7,6 +7,8 @@
 import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { PITCH_LENGTH, PITCH_WIDTH, RUNOFF_M, RUNOFF_TOP_M, tagPlacement } from "../lib/pitch";
 import type { PlayerDot } from "../lib/playerDots";
+import type { Tactics } from "../lib/tactics";
+import { TacticsLayer } from "./overlays/TacticsLayer";
 
 export type { PlayerDot } from "../lib/playerDots";
 import type { ShotTrace, TrailPoint } from "../state/matchState";
@@ -45,6 +47,8 @@ interface PitchProps {
   children?: ReactNode;
   /** Replay crop as x, y, width, height in metres; null (default) shows the whole pitch. */
   zoom?: [number, number, number, number] | null;
+  /** Tactical overlay (lines, shapes, pressure, passing options); null (default) draws none. */
+  tactics?: Tactics | null;
 }
 
 export function Markings() {
@@ -112,7 +116,7 @@ function Shot({ shot, color }: { shot: ShotTrace; color: string }) {
 }
 
 export function Pitch({ ball, trail, players, moveMs, homeColor, awayColor, label, camera, shot, onBallAnchor,
-                       children, zoom = null }: PitchProps) {
+                       children, zoom = null, tactics = null }: PitchProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const ballRef = useRef<SVGCircleElement>(null);
 
@@ -145,6 +149,7 @@ export function Pitch({ ball, trail, players, moveMs, homeColor, awayColor, labe
                 fill={color} opacity={opacity} transform={`rotate(45 ${p.x} ${p.y})`} />
             : <circle key={p.id} cx={p.x} cy={p.y} r={TRAIL_RADIUS} fill={color} opacity={opacity} />;
         })}
+        {tactics && <TacticsLayer tactics={tactics} homeColor={homeColor} awayColor={awayColor} />}
         {shot && <Shot shot={shot} color={shot.side === "home" ? homeColor : awayColor} />}
         {players.map((dot) => <Player key={dot.id} dot={dot} color={dot.side === "home" ? homeColor : awayColor} />)}
         {ball && (

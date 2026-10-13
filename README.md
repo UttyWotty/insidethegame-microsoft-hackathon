@@ -285,6 +285,10 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   cut off calm lines. Pace follows the replay speed (natural at 1x real time), lines rotate through varied wordings
   without near repeats, and the viewer's own system voice (or a natural male commentator voice) is used.
 - **Recaps:** half-time and full-time recaps open in an accessible dialog, led by the viewer's persona take.
+- **Tactics overlay:** on the 2D and 3D pitch, the defending block with its depth and width, the offside line
+  (second-deepest defender), a pressure ring when opponents close in on the ball carrier, and arrows to the
+  carrier's three best passing options with a completion chance from distance and opponents near the lane
+  (green, amber, red). A Tactics toggle hides it.
 - **Shot card:** right after every shot, a broadcast card shows where it went in the goal mouth and where the
   keeper dived, with the result, shooter, xG, shot speed, distance, and angle (persona overlays step aside meanwhile).
 - **Instant replays:** a few seconds after every goal and every big chance (xG 0.25 or more), the action replays
