@@ -73,11 +73,12 @@ class KeyMoment:
 
 PEAK_KINDS: frozenset[MomentKind] = frozenset({MomentKind.GOAL, MomentKind.MILESTONE})
 RAISED_KINDS: frozenset[MomentKind] = frozenset({MomentKind.BIG_CHANCE_MISSED, MomentKind.GREAT_SAVE,
-                                                 MomentKind.SPEED_THRESHOLD})
+                                                 MomentKind.SPEED_THRESHOLD, MomentKind.DISTANCE_THRESHOLD,
+                                                 MomentKind.DIFFICULT_PASS})
 
 
 def moment_intensity(kind: MomentKind) -> Intensity:
-    """Commentary energy for a moment: peak for goals and milestones, raised for close calls and rockets."""
+    """Commentary energy for a moment: peak for goals and milestones, raised for close calls, rockets, and bold passes."""
     if kind in PEAK_KINDS:
         return Intensity.PEAK
     return Intensity.RAISED if kind in RAISED_KINDS else Intensity.NORMAL

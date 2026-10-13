@@ -32,8 +32,9 @@ NARRATOR_INSTRUCTIONS: str = (
     "a pass is played, hit, or switched, never a strike or shot; only shots are strikes. Do not repeat a word in "
     "the same line. Match the energy field: peak (goals, milestones) is an explosive reaction ending with an "
     "exclamation mark that names the scorer and says what the goal means; the play-by-play has just shouted the "
-    "goal, so never open with the word goal; raised (big chances, great saves, thunderous strikes) is urgent and "
-    "dramatic; normal is measured and insightful, without exclamation marks. "
+    "goal, so never open with the word goal; raised (big chances, great saves, thunderous strikes, long or "
+    "defence-splitting passes, long runs) is urgent and dramatic, an audible reaction; normal is measured and "
+    "insightful, without exclamation marks. "
     f"{GROUNDING_RULE}"
 )
 

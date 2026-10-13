@@ -6,7 +6,12 @@ Inputs come from a real simulated match.
 
 from insidegame.agents.context import MomentContext, ViewerContext
 from insidegame.agents.personas import PERSONAS, PersonaKey, ViewerProfile
-from insidegame.agents.templates import commentary_template, explanation_template, persona_card_template
+from insidegame.agents.templates import (
+    commentary_template,
+    explanation_template,
+    persona_card_template,
+    spoken_units,
+)
 from insidegame.agents.validation import card_validator, commentary_validator, explanation_validator
 from insidegame.analytics.analyzer import MatchAnalyzer
 from insidegame.analytics.moments import MomentKind, moment_intensity
@@ -96,4 +101,10 @@ def test_commentary_energy_follows_the_moment(
             assert line.endswith("!") and not line.upper().startswith("GOAL")
     assert moment_intensity(MomentKind.GOAL) is Intensity.PEAK
     assert moment_intensity(MomentKind.GREAT_SAVE) is Intensity.RAISED
-    assert moment_intensity(MomentKind.DIFFICULT_PASS) is Intensity.NORMAL
+    assert moment_intensity(MomentKind.DIFFICULT_PASS) is Intensity.RAISED
+    assert moment_intensity(MomentKind.MOMENTUM_SWING) is Intensity.NORMAL
+
+
+def test_commentary_speaks_measurements_and_reacts_to_long_passes() -> None:
+    assert spoken_units("Moreau finds Wexley from 40.5 m") == "Moreau finds Wexley from 41 metres"
+    assert spoken_units("strikes at 112.4 km/h") == "strikes at 112 kilometres an hour"

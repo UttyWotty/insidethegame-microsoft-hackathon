@@ -58,6 +58,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Commentary energy: long passes, defence-splitting passes, and long runs are now raised moments, so their lines
+  open with a reaction ("Look at that range! ... from 41 metres!") and are spoken with lifted pace and pitch.
+  Commentary lines say measurements as words (41 metres, kilometres an hour). Raised and peak lines lift pitch
+  audibly again (raised +12%, peak +22% in browser speech and Azure SSML).
+- Voice choice: the viewer's system voice and male commentator voices are preferred over online and female voices,
+  restoring the on-device voice (Daniel on macOS) that follows pitch and rate reliably.
+- The scene-setting line now airs in the first lull of the first half and is shorter, so it no longer talks over
+  the opening play.
 - Commentary pace follows the replay speed: natural at real time and up to 25% quicker for fast replays (browser and
   Azure voices), and play-by-play spacing keeps about one line per five seconds of viewing time (more often at real
   time, less often at 60x). New 1x (real time) and 3x replay speeds.
@@ -84,6 +92,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Speech lagging behind play: queued calm lines older than 4 seconds (raised lines 8 seconds) are skipped, and a
+  close call cuts off a calm line in progress, so the commentator no longer describes earlier play over new action.
 - Silent opening: the kick-off call was never spoken because Voice started off for every match and the toggle only
   appears once play has begun, and at real time the next line came about 27 seconds later. Voice now remembers the
   viewer's choice, switching it on speaks the latest line at once, a scene-setting line on both sides' styles
