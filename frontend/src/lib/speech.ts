@@ -1,19 +1,24 @@
 /**
  * Pure planning for spoken commentary: which feed lines to speak, which voice to use, and how to keep up.
  * Only lines in the viewer's language are spoken, and the queue stays short so speech never lags far behind play.
- * Play-by-play is dropped before agent commentary and goals when lines arrive faster than they can be spoken.
+ * Calmer lines are dropped first when lines arrive faster than they can be spoken; goals interrupt, and the voice
+ * lifts its pace and pitch for close calls and goals.
  */
-import type { TickerItem } from "../state/matchState";
+import type { Intensity, TickerItem } from "../state/matchState";
 
 /** At most this many lines wait to be spoken; older play-by-play goes first when the queue is full. */
 export const MAX_PENDING_SPEECH = 2;
-/** Slightly brisk delivery, closer to live commentary than the default reading pace. */
-export const SPEECH_RATE = 1.08;
+/** Delivery per intensity: brisk for open play, faster and higher for close calls, fastest and highest for goals. */
+export const DELIVERY: Record<Intensity, { rate: number; pitch: number }> = {
+  normal: { rate: 1.08, pitch: 1.0 },
+  raised: { rate: 1.16, pitch: 1.12 },
+  peak: { rate: 1.24, pitch: 1.25 },
+};
+const INTENSITY_RANK: Record<Intensity, number> = { normal: 0, raised: 1, peak: 2 };
 
 const SPOKEN_TONES: ReadonlySet<TickerItem["tone"]> = new Set(["commentary", "goal", "play"]);
-/** Lines the server holds and can voice with neural speech; event lines such as goals are spoken on-device. */
-const SERVER_TONES: ReadonlySet<TickerItem["tone"]> = new Set(["commentary", "play"]);
-const DROPPABLE_TONE: TickerItem["tone"] = "play";
+/** Lines the server holds and can voice with neural speech: moment commentary and play-by-play, goals included. */
+const SERVER_TONES: ReadonlySet<TickerItem["tone"]> = new Set(["commentary", "goal", "play"]);
 
 /** The voice fields the planner needs, matching the browser's SpeechSynthesisVoice. */
 export interface VoiceOption { name: string; lang: string; localService: boolean; default: boolean }
@@ -34,12 +39,21 @@ export function pickVoice<V extends VoiceOption>(voices: readonly V[], language:
   return [...matching].sort((a, b) => score(b) - score(a))[0] ?? null;
 }
 
-/** Add newly arrived lines (oldest first) to the queue, trimming it to MAX_PENDING_SPEECH. */
+/** Whether a new batch should cut off whatever is being said: a goal does, like a commentator jumping in. */
+export function interrupts(incoming: readonly TickerItem[]): boolean {
+  return incoming.some((item) => item.intensity === "peak");
+}
+
+/**
+ * Add newly arrived lines (oldest first) to the queue, trimming it to MAX_PENDING_SPEECH by dropping the oldest of
+ * the calmest lines first, and play-by-play before agent commentary at the same intensity.
+ */
 export function enqueueSpeech(pending: readonly TickerItem[], incoming: readonly TickerItem[]): TickerItem[] {
   const queue = [...pending, ...incoming];
+  const weight = (item: TickerItem) => INTENSITY_RANK[item.intensity] * 2 + (item.tone === "play" ? 0 : 1);
   while (queue.length > MAX_PENDING_SPEECH) {
-    const droppable = queue.findIndex((item) => item.tone === DROPPABLE_TONE);
-    queue.splice(droppable >= 0 ? droppable : 0, 1);
+    const lowest = Math.min(...queue.map(weight));
+    queue.splice(queue.findIndex((item) => weight(item) === lowest), 1);
   }
   return queue;
 }

@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Excited commentary: play-by-play now calls every goal ("GOAL! ... It's 1-0!") and close calls (big chances saved,
+  wide, or blocked), always on air; every line and cue carries an intensity (normal, raised, peak). The Lead
+  Commentator matches its energy to the moment, and its template adds the punctuation to match. The voice speeds up
+  and lifts its pitch for raised and peak lines (browser speech and Azure SSML prosody), goals interrupt whatever is
+  being said, and the ticker emphasises close calls and goals. The client's duplicate "GOAL -" line is removed.
 - Simulator calibration: `insidegame.datasets.calibrate` compares goals, xG agreement, shots, on-target share,
   conversion, pass accuracy, and result shares with approximate top-flight reference bands and writes
   `docs/CALIBRATION.md` (all 10 within band over 480 matches); every dataset card now includes the same table.

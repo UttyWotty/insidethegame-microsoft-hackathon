@@ -77,6 +77,7 @@ def test_workflow_produces_one_cue_per_viewer(
     assert spanish.commentary == SPANISH_LINE and spanish.commentary_language == SPANISH
     english = next(c for c in broadcast.cues if c.viewer_id == "analyst-1")
     assert english.commentary == REPLIES["Lead Commentator"]["line"] and english.commentary_language == "en"
+    assert all(c.commentary_intensity == "peak" for c in broadcast.cues)  # the fixture moment is a goal
 
 
 def test_full_match_runs_end_to_end_with_recaps() -> None:

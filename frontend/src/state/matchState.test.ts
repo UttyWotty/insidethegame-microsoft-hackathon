@@ -30,7 +30,7 @@ const update = (second: number, type = "pass", overrides: Partial<EventUpdate["e
 const cue = (id: string, priority: number, duration = 6): OverlayCue => ({
   cue_id: id, moment_id: id, viewer_id: "v", persona: "casual", language: "en", layout: "lower_third", period: 1,
   display_from_s: 600, duration_s: duration, priority, title: "t", body: "b", stat_callouts: [], commentary: `line ${id}`,
-  commentary_language: "en", theme: "control", provenance: {},
+  commentary_language: "en", commentary_intensity: "normal", theme: "control", provenance: {},
 });
 
 const withSession = matchReducer(initialMatchState, { type: "message", name: "match", data: session, receivedAt: 0 });
@@ -44,10 +44,12 @@ describe("matchReducer", () => {
     expect(state.momentum).toHaveLength(Math.ceil((39 * 5 + 1) / MOMENTUM_SAMPLE_S));
   });
 
-  it("adds goals to the ticker with the scorer's name", () => {
-    const state = matchReducer(withSession, { type: "message", name: "event", data: update(10, "goal"), receivedAt: 0 });
-    expect(state.ticker[0].text).toBe("GOAL - Ada Striker. 1-0");
-    expect(state.ticker[0].tone).toBe("goal");
+  it("shows the server's excited goal line once, instead of adding its own", () => {
+    let state = matchReducer(withSession, { type: "message", name: "event", data: update(10, "goal"), receivedAt: 0 });
+    expect(state.ticker.filter((t) => t.tone === "goal")).toHaveLength(0);
+    const goal = { line_id: "e10-pbp", minute: "1'", text: "GOAL! Ada Striker scores!", kind: "goal", intensity: "peak" };
+    state = matchReducer(state, { type: "message", name: "commentary", data: goal, receivedAt: 1 });
+    expect(state.ticker[0]).toMatchObject({ tone: "goal", intensity: "peak", text: "GOAL! Ada Striker scores!" });
   });
 
   it("deduplicates cues and recaps", () => {

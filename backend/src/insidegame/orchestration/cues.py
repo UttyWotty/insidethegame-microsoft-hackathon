@@ -10,7 +10,8 @@ from insidegame.agents.personas import OverlayStyle
 from insidegame.agents.runner import AgentOutcome, OutputSource
 from insidegame.agents.context import MomentContext
 from insidegame.agents.schemas import Commentary, Explanation
-from insidegame.analytics.moments import KeyMoment
+from insidegame.analytics.moments import KeyMoment, moment_intensity
+from insidegame.domain.enums import Intensity
 from insidegame.orchestration.messages import SKIPPED_CHECK, FactCheckRecord, PersonalizedCard
 
 CUE_DELAY_S: float = 2.0
@@ -45,6 +46,7 @@ class OverlayCue:
     stat_callouts: list[dict[str, str]] = field(default_factory=list)
     commentary: str = ""
     commentary_language: str = DEFAULT_LANGUAGE
+    commentary_intensity: str = Intensity.NORMAL.value
     theme: str = ""
     provenance: dict[str, object] = field(default_factory=dict)
 
@@ -92,6 +94,7 @@ def build_cue(
         duration_s=CUE_DURATION_S[profile.overlay_style], priority=moment.importance, title=title, body=body,
         stat_callouts=callouts, commentary=commentary_text or commentary.value.line,
         commentary_language=item.viewer.viewer.language if commentary_text else DEFAULT_LANGUAGE,
+        commentary_intensity=moment_intensity(moment.kind).value,
         theme=explanation.value.theme.value,
         provenance=provenance,
     )

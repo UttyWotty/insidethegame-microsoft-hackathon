@@ -9,7 +9,8 @@ from insidegame.agents.personas import PERSONAS, PersonaKey, ViewerProfile
 from insidegame.agents.templates import commentary_template, explanation_template, persona_card_template
 from insidegame.agents.validation import card_validator, commentary_validator, explanation_validator
 from insidegame.analytics.analyzer import MatchAnalyzer
-from insidegame.analytics.moments import MomentKind
+from insidegame.analytics.moments import MomentKind, moment_intensity
+from insidegame.domain.enums import Intensity
 
 MIN_KINDS_COVERED = 5
 
@@ -80,3 +81,21 @@ def test_recap_turning_points_are_important_and_readable(
     minutes = {m.minute_label for m in analyzer.moments if m.importance >= MIN_TURNING_POINT_IMPORTANCE}
     assert all(str(m["minute"]) in minutes for m in context.moments)
     assert not any("_" in point for point in recap_template(context).turning_points)
+
+
+def test_commentary_energy_follows_the_moment(
+    analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
+) -> None:
+    contexts = analysed_match[1]
+    for kind, context in contexts.items():
+        line = commentary_template(context, explanation_template(context)).line
+        intensity = moment_intensity(kind)
+        if intensity is Intensity.PEAK:
+            assert line.startswith("GOAL!") and line.endswith("!")
+        elif intensity is Intensity.RAISED:
+            assert line.endswith("!") and not line.startswith("GOAL!")
+        else:
+            assert line.endswith(".")
+    assert moment_intensity(MomentKind.GOAL) is Intensity.PEAK
+    assert moment_intensity(MomentKind.GREAT_SAVE) is Intensity.RAISED
+    assert moment_intensity(MomentKind.DIFFICULT_PASS) is Intensity.NORMAL

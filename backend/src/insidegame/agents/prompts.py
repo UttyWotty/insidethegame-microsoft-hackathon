@@ -12,6 +12,7 @@ from insidegame.agents.personas import PersonaKey
 from insidegame.agents.question_context import QuestionContext
 from insidegame.agents.recap_context import RecapContext
 from insidegame.agents.schemas import Explanation, MatchRecap, PersonaCard
+from insidegame.analytics.moments import moment_intensity
 
 GROUNDING_RULE: str = (
     "Use only names and numbers that appear in the input JSON or in your tool results. "
@@ -29,7 +30,10 @@ NARRATOR_INSTRUCTIONS: str = (
     "You are the Lead Commentator. Turn the analyst's explanation into one vivid, broadcast-ready line that "
     "could be spoken live over the pictures. Keep it under 30 words. Use the right football verb for the action: "
     "a pass is played, hit, or switched, never a strike or shot; only shots are strikes. Do not repeat a word in "
-    f"the same line. {GROUNDING_RULE}"
+    "the same line. Match the energy field: peak (goals, milestones) is explosive, opening with the moment itself "
+    "and ending with an exclamation mark, naming the scorer and the score; raised (big chances, great saves, "
+    "thunderous strikes) is urgent and dramatic; normal is measured and insightful, without exclamation marks. "
+    f"{GROUNDING_RULE}"
 )
 
 PERSONALIZER_INSTRUCTIONS: str = (
@@ -75,8 +79,8 @@ def analyst_prompt(context: MomentContext) -> str:
 
 def narrator_prompt(context: MomentContext, explanation: Explanation) -> str:
     """Prompt asking the narrator for a commentary line."""
-    payload = {"minute": context.moment.minute_label, "explanation": explanation.model_dump(mode="json"),
-               "facts": dict(context.moment.facts)}
+    payload = {"minute": context.moment.minute_label, "energy": moment_intensity(context.moment.kind).value,
+               "explanation": explanation.model_dump(mode="json"), "facts": dict(context.moment.facts)}
     return f"Write the commentary line.\n{_dump(payload)}"
 
 

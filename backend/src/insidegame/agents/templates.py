@@ -19,7 +19,8 @@ from insidegame.agents.schemas import (
     TacticalTheme,
     TranslatedCard,
 )
-from insidegame.analytics.moments import FactValue, MomentKind
+from insidegame.analytics.moments import FactValue, MomentKind, moment_intensity
+from insidegame.domain.enums import Intensity
 
 GAME_STATE_PHRASES: dict[str, str] = {
     "opener": "breaks the deadlock",
@@ -39,6 +40,7 @@ SUPERFAN_SETBACK_PREFIX: str = "So close! "
 SUPERFAN_RIVAL_PREFIX: str = "Stay strong. "
 SETBACK_KINDS: frozenset[MomentKind] = frozenset({MomentKind.BIG_CHANCE_MISSED})
 MAX_CALLOUTS: int = 3
+PEAK_OPENER: str = "GOAL!"
 
 ExplanationParts = tuple[str, str, list[str], TacticalTheme]
 
@@ -138,8 +140,12 @@ def explanation_template(context: MomentContext) -> Explanation:
 
 
 def commentary_template(context: MomentContext, explanation: Explanation) -> Commentary:
-    """Build a commentary line from the explanation headline."""
-    return Commentary(line=f"{explanation.headline.rstrip('.')}.")
+    """Build a commentary line from the explanation headline, with punctuation matching the moment's energy."""
+    headline = explanation.headline.rstrip(".!")
+    intensity = moment_intensity(context.moment.kind)
+    if intensity is Intensity.PEAK:
+        return Commentary(line=f"{PEAK_OPENER} {headline}!")
+    return Commentary(line=f"{headline}!" if intensity is Intensity.RAISED else f"{headline}.")
 
 
 def _callouts(context: MomentContext) -> list[StatCallout]:

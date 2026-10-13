@@ -23,6 +23,7 @@ from insidegame.agents.runner import OutputSource
 from insidegame.agents.templates import recap_template
 from insidegame.commentary.play_by_play import PlayByPlay
 from insidegame.core.exceptions import SessionLimitError
+from insidegame.domain.enums import Intensity
 from insidegame.domain.match import MatchResult
 from insidegame.live.pacing import replay_delay_s
 from insidegame.live.producer import AirStatus, ProducerDesk
@@ -244,8 +245,8 @@ class MatchSession:
         self._air(cues)
         return len(cues)
 
-    def spoken_line(self, ref: str, segment: str | None) -> tuple[str, str]:
-        """Text and language of a commentary line this session produced, for spoken commentary."""
+    def spoken_line(self, ref: str, segment: str | None) -> tuple[str, str, Intensity]:
+        """Text, language, and intensity of a commentary line this session produced, for spoken commentary."""
         return find_spoken_line(ref, segment, self.commentary, self.cue_history)
 
     def producer_summary(self) -> dict[str, object]:
