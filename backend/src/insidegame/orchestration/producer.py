@@ -2,6 +2,7 @@
 
 It keeps the broadcast readable by enforcing a minimum gap between non-goal overlays and a per-event cap.
 Goals always go to air and do not start the gap, so a brace or hat-trick on the same event still airs.
+It also decides when a queued moment has fallen too far behind the match clock to be worth producing.
 """
 
 from dataclasses import dataclass
@@ -13,6 +14,18 @@ from insidegame.analytics.moments import KeyMoment, MomentKind
 MIN_GAP_S: float = 45.0
 MAX_MOMENTS_PER_EVENT: int = 2
 PRIORITY_KINDS: frozenset[MomentKind] = frozenset({MomentKind.GOAL})
+STALE_MOMENT_MATCH_S: float = 300.0
+
+
+def is_stale(moment: KeyMoment, period: int, match_second: float) -> bool:
+    """True when a non-goal moment is too far behind the match clock to be worth producing.
+
+    It mirrors the frontend's STALE_CUE_MATCH_S rule: overlays from an earlier period or more than
+    STALE_MOMENT_MATCH_S match seconds old are never shown, so their agent work would be wasted. Goals never go stale.
+    """
+    if moment.kind in PRIORITY_KINDS:
+        return False
+    return moment.period != period or match_second - moment.match_second > STALE_MOMENT_MATCH_S
 
 
 @dataclass

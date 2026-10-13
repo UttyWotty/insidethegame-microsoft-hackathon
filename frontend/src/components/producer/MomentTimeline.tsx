@@ -1,15 +1,17 @@
 /**
  * Timeline of every key moment the analytics detected, with importance and whether it went to air.
- * Moments still with the agents show as in production; moments that were not aired stay visible so producers
- * can see what the pacing policy filtered out.
+ * Moments waiting for a production slot show as queued and those with the agents as in production; moments
+ * skipped as stale or not aired stay visible so producers can see what backpressure and pacing filtered out.
  * Selecting a moment opens its full broadcast record.
  */
 import { momentLabel } from "../../lib/labels";
 import type { TimelineEntry } from "../../types";
 
 const STATUS_LABELS: Record<string, string> = {
-  aired: "Aired", held: "Held", released: "Released", in_production: "In production", not_aired: "Not aired",
+  aired: "Aired", held: "Held", released: "Released", in_production: "In production", queued: "Queued",
+  skipped: "Skipped (stale)", not_aired: "Not aired",
 };
+const WITHOUT_RECORD = new Set(["not_aired", "in_production", "queued", "skipped"]);
 const PERCENT = 100;
 
 interface TimelineProps { entries: TimelineEntry[]; selected: string | null; onSelect: (id: string) => void }
@@ -21,7 +23,7 @@ export function MomentTimeline({ entries, selected, onSelect }: TimelineProps) {
       {[...entries].reverse().map((e) => (
         <li key={e.moment_id}>
           <button className="timeline-row" aria-pressed={selected === e.moment_id} onClick={() => onSelect(e.moment_id)}
-            disabled={e.status === "not_aired" || e.status === "in_production"}>
+            disabled={WITHOUT_RECORD.has(e.status)}>
             <span className="minute num">{e.minute}</span>
             <span className="kind">{momentLabel(e.kind)}</span>
             <span className="importance" aria-label={`Importance ${Math.round(e.importance * PERCENT)}`}>

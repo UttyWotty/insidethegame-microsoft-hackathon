@@ -23,6 +23,7 @@ MAX_SESSIONS: int = 20
 SESSION_ID_LENGTH: int = 8
 ASK_MAX_PER_WINDOW: int = int(os.getenv("ASK_MAX_PER_MINUTE", "20"))
 ASK_WINDOW_S: float = 60.0
+PARALLEL_MOMENTS: int = int(os.getenv("PARALLEL_MOMENTS", "2"))
 
 
 class SessionRegistry:
@@ -51,7 +52,7 @@ class SessionRegistry:
         service = MatchIntelligenceService(result.metadata, self.suite, self.policy, viewers=())
         session_id = f"{result.metadata.match_id}-{uuid.uuid4().hex[:SESSION_ID_LENGTH]}"
         bounded_speed = min(max(speed, MIN_SPEED), MAX_SPEED)
-        session = MatchSession(session_id, result, service, bounded_speed, self.sleep)
+        session = MatchSession(session_id, result, service, bounded_speed, self.sleep, PARALLEL_MOMENTS)
         self.sessions[session_id] = session
         self.runners[session_id] = asyncio.create_task(session.run())
         return session

@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Backpressure for moment production: moments queue in order for `PARALLEL_MOMENTS` production slots (default 2),
+  non-goal moments that fall more than five match minutes behind while queued are skipped, and the producer console
+  shows Queued and Skipped (stale) moments plus a skipped count. Previously every moment started at once, so with a
+  slow model they all finished late together.
 - Dataset export writes `tracking.jsonl`: ball and all 22 player positions every fifth event, in the same absolute
   home frame as the events; the dataset card documents it, and the two-match sample in `data/sample/` is refreshed.
 - Landing screen with the value proposition, four differentiators, and a one-click demo match.

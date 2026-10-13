@@ -168,7 +168,10 @@ intake -> analyst -> +-> narrator -------+-> fact-checker -> assembler -> overla
 
 A FastAPI service replays simulated matches in real time and streams personalized intelligence over
 server-sent events. Interpretation runs inline at match pace; agent workflows and recaps run as background
-tasks and publish when ready, so the event feed never waits for a model.
+tasks and publish when ready, so the event feed never waits for a model. Under a slow or rate-limited model,
+moments queue in order for a few production slots (`PARALLEL_MOMENTS`); a non-goal moment that falls more than five
+match minutes behind the clock while queued is skipped, since its overlay would no longer be shown. Goals are never
+skipped.
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -250,7 +253,8 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   deterministic engine still answers common questions from live statistics in the persona's voice.
 - **Multiview:** the same live match through all five personas side by side.
 - **Producer console:** the broadcaster's control room. Pipeline health (AI share, fact-check outcomes, latency,
-  live audiences), a timeline of every detected moment (aired, held, released, or not aired), and each moment's
+  skipped backlog, live audiences), a timeline of every detected moment (queued, in production, aired, held,
+  released, skipped as stale, or not aired), and each moment's
   full broadcast record: the analyst's reasoning, the commentary, and every audience's overlay with source and
   fact-check verdict. A producer can hold AI overlays for approval and release them per moment or all at once.
 - Switching persona or language mid-match backfills the most recent relevant moments for the new segment.
@@ -305,6 +309,7 @@ Model configuration (environment variables, all optional):
 | `MCP_API_KEY` | empty | Bearer token required by `/mcp`; empty leaves it open |
 | `SHUTDOWN_GRACE_S` | `5` | Seconds open streams may delay shutdown |
 | `PRODUCER_KEY` | empty | Required in `X-Producer-Key` for producer routes when set |
+| `PARALLEL_MOMENTS` | `2` | Moments per match whose agent workflows run at once; later moments queue in order |
 | `ASK_MAX_PER_MINUTE` | `20` | Questions per match per minute for `/ask` and the MCP companion tool (429 beyond) |
 | `MCP_ALLOWED_HOSTS` | `127.0.0.1:*,localhost:*,testserver` | Host headers accepted by `/mcp` (DNS rebinding protection) |
 | `FRONTEND_ORIGINS` | `http://localhost:5199` | Comma-separated CORS origins |

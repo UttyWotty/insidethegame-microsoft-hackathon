@@ -27,7 +27,7 @@ Ordered by priority within each section; status as of 2026-10-12 (develop at PR 
      broadcast record in 12 minutes: all 18 detected moments started at once and shared the single local model
      slot, so none finished, and a `godot` process from another project was saturating the machine at the same
      time. Retry when the machine is idle (check `ps -Ao pid,%cpu,comm -r | head` as well as `lsof` on 8080/8081)
-     after the backpressure item under Engineering, with one viewer at speed 10 or lower:
+     now that moment production has backpressure, with one viewer at speed 10 or lower:
      `MODEL_PROVIDER=mlx MODEL_NAME=ailexleon/Huihui-Qwen3.8-27B-abliterated-mlx-6Bit
      MODEL_BASE_URL=http://127.0.0.1:8081/v1 MODEL_TIMEOUT_S=240 MODEL_MAX_CONCURRENCY=1 API_PORT=8000
      .venv/bin/python -m insidegame.main`, then confirm the chips show AI (not Template) and the producer console
@@ -70,9 +70,12 @@ Ordered by priority within each section; status as of 2026-10-12 (develop at PR 
 
 ## Engineering
 
+<!--
 - Backpressure for moment production: every detected moment starts its agent workflow at once, so with a slow
   or rate-limited model they all share the gate and finish late together (seen live on 2026-10-13). Produce
   moments in order with a small in-flight limit, and skip non-goal moments that are stale by the time a slot frees.
+  Resolved 2026-10-13: production slots, stale skipping, and console statuses.
+-->
 - Live sessions are in memory, so the app runs a single replica; move session state to a shared store before scaling out.
 - `/api/matches` (match creation) has no per-client rate limit beyond the 20-session cap.
 - Tracking-derived player speeds are unrealistic (teleporting event actors), so speed indicators use modelled shot and ball speeds only; smoothing or a kinematic model would allow real sprint tags.
