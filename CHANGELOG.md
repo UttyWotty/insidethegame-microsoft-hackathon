@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Simulator calibration: `insidegame.datasets.calibrate` compares goals, xG agreement, shots, on-target share,
   conversion, pass accuracy, and result shares with approximate top-flight reference bands and writes
-  `docs/CALIBRATION.md` (9 of 10 within band over 480 matches); every dataset card now includes the same table.
+  `docs/CALIBRATION.md` (all 10 within band over 480 matches); every dataset card now includes the same table.
 - Azure AI Speech for spoken commentary: `/api/matches/{id}/speech` returns MP3 from a neural voice per language,
   only for lines the match produced (looked up by reference, never arbitrary text), cached and rate-limited per
   client; keyless via the app's managed identity with the Cognitive Services Speech User role on the existing AI
@@ -76,6 +76,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Shots on target ran above the reference band (40%) because too many unscored, unblocked shots were saved; the
+  save share is now 32%, giving about 35% on target.
 - The producer console showed moments whose agents were still working as "Not aired"; they now show as
   "In production" until their broadcast record arrives.
 - Player surnames are unique within a fixture (surname pool enlarged to 56), so short names such as "Varga" in
