@@ -76,7 +76,7 @@ export function App() {
         </div>
       )}
       {view === "broadcast" || !session || !match ? (
-        <main id="main" className="layout">
+        <main id="main" tabIndex={-1} className="layout">
           <div className="stack controls">
             <SetupPanel clubs={clubs} busy={busy} error={error} onStart={start} />
             <ViewerControls aiOnline={health?.model_provider !== "offline"} personas={personas} languages={languages} match={match} viewer={viewer} onChange={setRawViewer} />
@@ -86,7 +86,7 @@ export function App() {
             : <Landing busy={busy} onDemo={start} />}
         </main>
       ) : view === "multiview" ? (
-        <main id="main"><MultiView sessionId={session.session_id} personas={personas} language={viewer.language} match={match} /></main>
+        <main id="main" tabIndex={-1}><MultiView sessionId={session.session_id} personas={personas} language={viewer.language} match={match} /></main>
       ) : (
         <ProducerConsole sessionId={session.session_id} match={match} language={viewer.language} />
       )}
