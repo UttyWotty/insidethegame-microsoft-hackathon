@@ -9,6 +9,7 @@ import { useMatchStream } from "../api/useMatchStream";
 import { sprintSpeed } from "../lib/motion";
 import { playerDots } from "../lib/playerDots";
 import { earnsReplay, REPLAY_DELAY_MS } from "../lib/replay";
+import { analyseFrame, carrierAfter } from "../lib/tactics";
 import { teamColor } from "../lib/teams";
 import { useNow } from "../lib/useNow";
 import { speechSupported, useSpokenCommentary, type SpeechUrlBuilder } from "../lib/useSpokenCommentary";
@@ -75,6 +76,10 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   [state.session, state.players, state.lastEvent, viewer.player, state.sprint, now]);
   const [reelStage, setReelStage] = useState<HighlightReel["stage"] | null>(null);
   const [autoReplay, setAutoReplay] = useState(true);
+  const [showTactics, setShowTactics] = useState(true);
+  const tactics = useMemo(() => (showTactics && state.lastEvent
+    ? analyseFrame(dots, carrierAfter(state.lastEvent), state.lastEvent.period) : null),
+  [showTactics, dots, state.lastEvent]);
   const [replayShot, setReplayShot] = useState<ShotTrace | null>(null);
   const lastShot = state.lastShot;
   const replayTimers = useRef<number[]>([]);
@@ -140,7 +145,8 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
             homeColor={homeColor} awayColor={awayColor} camera={camera} voiceOn={voiceOn} onClose={() => setReelStage(null)} />
         ) : (
           <PitchView ball={state.ball} trail={state.trail} players={dots} moveMs={state.moveMs} homeColor={homeColor} awayColor={awayColor}
-            camera={camera} shot={shot} onBallAnchor={onBallAnchor} label={`Live pitch: ${match.home.name} versus ${match.away.name}`}>
+            camera={camera} shot={shot} onBallAnchor={onBallAnchor} tactics={tactics}
+            label={`Live pitch: ${match.home.name} versus ${match.away.name}`}>
             <ScoreBug home={match.home} away={match.away} homeColor={homeColor} awayColor={awayColor} lastEvent={state.lastEvent} />
             <OverlayLayer active={goal || cardShot?.card ? null : active} anchor={anchor} teamColor={cueTeamIsAway ? awayColor : homeColor} />
             {goal && <GoalBanner key={goal.id} scorer={goal.scorer} score={goal.score}
@@ -162,6 +168,7 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
               </button>
             ))}
           </div>
+          <button className="chip" aria-pressed={showTactics} onClick={() => setShowTactics((on) => !on)}>Tactics</button>
           <button className="chip" aria-pressed={autoReplay} onClick={() => setAutoReplay((on) => !on)}>Auto replays</button>
           {state.ended && <span className="chip">FULL TIME</span>}
           <span className="muted" style={{ fontSize: "var(--text-sm)" }}>{match.venue} - {match.competition}</span>

@@ -14,6 +14,8 @@ import type { Point } from "../../types";
 import {
   buildBall, buildGoal, buildPitch, buildPlayer, buildStands, disposeTree, LEFT_LEG, RIGHT_LEG, TAG_HEIGHT,
 } from "./sceneObjects";
+import { buildTactics } from "./tacticsObjects";
+import type { Tactics } from "../../lib/tactics";
 
 const FOV = 34;
 const NEAR = 0.5;
@@ -32,6 +34,8 @@ interface Pitch3DProps {
   onBallAnchor: (anchor: BallAnchor) => void; children?: ReactNode;
   /** Replay angle: the camera sits behind this goal instead of on the touchline; null (default) is live. */
   behindGoal?: "left" | "right" | null;
+  /** Tactical overlay drawn on the grass; null (default) draws none. */
+  tactics?: Tactics | null;
 }
 
 interface Figure { group: THREE.Group; glide: Glide; facing: number; colorKey: string; phase: number; last: Point }
@@ -39,7 +43,7 @@ interface Figure { group: THREE.Group; glide: Glide; facing: number; colorKey: s
 interface SceneState {
   renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; ball: THREE.Mesh;
   ballGlide: Glide; figures: Map<string, Figure>; aim: THREE.Vector3; frame: number; lastFrame: number;
-  lastAnchor: number; observer: ResizeObserver;
+  lastAnchor: number; observer: ResizeObserver; tactics: THREE.Group | null;
 }
 
 function stillGlide(point: Point): Glide {
@@ -77,7 +81,7 @@ function setupScene(mount: HTMLDivElement): SceneState {
   });
   observer.observe(mount);
   return { renderer, scene, camera, ball, ballGlide: stillGlide({ x: PITCH_LENGTH / 2, y: 34 }), figures: new Map(),
-           aim, frame: 0, lastFrame: performance.now(), lastAnchor: 0, observer };
+           aim, frame: 0, lastFrame: performance.now(), lastAnchor: 0, observer, tactics: null };
 }
 
 /** Move the camera toward its live broadcast position, or a replay angle behind a goal, smoothly. */
@@ -199,6 +203,21 @@ export default function Pitch3D(props: Pitch3DProps) {
     }
     if (ball) state.ballGlide = { from: glideAt(state.ballGlide, now), to: ball, startedAt: now, durationMs: moveMs };
   }, [players, ball, moveMs, homeColor, awayColor]);
+
+  const { tactics = null } = props;
+  useEffect(() => {
+    const state = stateRef.current;
+    if (!state) return;
+    if (state.tactics) {
+      state.scene.remove(state.tactics);
+      disposeTree(state.tactics);
+      state.tactics = null;
+    }
+    if (tactics) {
+      state.tactics = buildTactics(tactics, homeColor, awayColor);
+      state.scene.add(state.tactics);
+    }
+  }, [tactics, homeColor, awayColor]);
 
   const tagged = players.filter((p) => p.tagged || p.tracked || p.sprintKmh !== null);
   return (
