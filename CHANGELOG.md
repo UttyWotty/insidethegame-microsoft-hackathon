@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Shot card: every shot event now carries a broadcast shot card (`shot` in the event message) with xG, shot speed,
+  distance, goal angle, where it crossed the goal line, and the keeper's dive. The simulator decides only the
+  outcome, so placement and dive are derived deterministically from the event id with a local random generator,
+  consistent with the result (goals beat the keeper in the frame, saves meet the keeper, misses go wide on the
+  traced side or over); seeded matches are unchanged. The broadcast shows it as a goal-mouth card for 6.5 seconds,
+  with persona overlays stepping aside.
 - Instant replays: 3.5 seconds after every goal and every shot of 0.25 xG or more, the broadcast replays the
   stored frames from 6 seconds before to 2.5 seconds after the shot in slow motion (0.6x) from another angle: a
   camera behind the goal the action finished at in the 3D view, or a zoomed crop on the 2D pitch. A REPLAY bug

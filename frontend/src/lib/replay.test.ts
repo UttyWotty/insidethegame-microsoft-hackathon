@@ -10,7 +10,7 @@ import type { HighlightFrame } from "../types";
 
 const shot = (result: string, xg: number | null): ShotTrace => ({
   id: "e1", from: { x: 90, y: 30 }, to: { x: 105, y: 34 }, xg, result, side: "home", at: 0, period: 1, second: 600,
-  shooter: "h9",
+  shooter: "h9", card: null,
 });
 const frame = (x: number, period = 1): HighlightFrame =>
   ({ period, match_second: 0, event_type: "shot", player_id: null, ball: [x, 34], positions: [] });
