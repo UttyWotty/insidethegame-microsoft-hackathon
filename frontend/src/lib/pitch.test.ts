@@ -4,7 +4,7 @@
  * All functions under test are pure.
  */
 import { describe, expect, it } from "vitest";
-import { ballAfter, formatClock, minuteLabel, needsMirror, toScreen } from "./pitch";
+import { ballAfter, formatClock, minuteLabel, needsMirror, tagPlacement, toScreen } from "./pitch";
 import type { MatchEvent } from "../types";
 
 const event = (overrides: Partial<MatchEvent>): MatchEvent => ({
@@ -42,5 +42,16 @@ describe("minuteLabel", () => {
     expect(minuteLabel(2836, 1)).toBe("45+3'");
     expect(minuteLabel(2700, 2)).toBe("46'");
     expect(minuteLabel(5420, 2)).toBe("90+1'");
+  });
+});
+
+describe("tagPlacement", () => {
+  it("keeps tags inside the frame near every edge", () => {
+    expect(tagPlacement({ x: 50, y: 30 }, false)).toEqual({ below: false, anchor: "middle" });
+    expect(tagPlacement({ x: 50, y: 2 }, false)).toEqual({ below: true, anchor: "middle" });
+    expect(tagPlacement({ x: 50, y: 30 }, true).below).toBe(true);
+    expect(tagPlacement({ x: 50, y: 66 }, true).below).toBe(false);
+    expect(tagPlacement({ x: 1, y: 30 }, false).anchor).toBe("start");
+    expect(tagPlacement({ x: 104, y: 30 }, false).anchor).toBe("end");
   });
 });

@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Realistic player motion and sprint tags: synthetic tracking caps every step at the player's pace-based top speed
+  (27 to 35 km/h, three quarters of it off the ball), and players about to act start running so they arrive on
+  time (lookahead of up to 8 match seconds), replacing actors teleporting to the ball. On seed 7, no movement now
+  exceeds 34 km/h (9% exceeded 36 km/h before), the player on the ball is within 3.4 m of it 90% of the time,
+  and players cover about 11.7 km. Live events carry the fastest involved player at 25.2 km/h or more, shown as
+  an amber speed tag on the pitch, and the tracking export adds `sprint_player_id` and `sprint_kmh`. Players
+  glide over the real time between events, so motion is continuous at any replay speed.
 - Excited commentary: play-by-play now calls every goal ("GOAL! ... It's 1-0!") and close calls (big chances saved,
   wide, or blocked), always on air; every line and cue carries an intensity (normal, raised, peak). The Lead
   Commentator matches its energy to the moment, and its template adds the punctuation to match. The voice speeds up
@@ -95,6 +102,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Players and their tags no longer leave the frame near the edges: the pitch has a runoff strip on every side
+  (deeper behind the score bug), tags move inward near the touchlines and goal lines, and the broadcast camera
+  zooms out slightly so the near touchline fits.
 - TypeScript build info (`*.tsbuildinfo`) is ignored and no longer tracked.
 - Speech lagging behind play: queued calm lines older than 4 seconds (raised lines 8 seconds) are skipped, and a
   close call cuts off a calm line in progress, so the commentator no longer describes earlier play over new action.

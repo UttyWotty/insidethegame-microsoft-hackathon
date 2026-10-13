@@ -1,10 +1,11 @@
 /**
  * SVG pitch rendering the synthetic match: markings, all 22 tracked players, the ball, and a trail of recent actions.
- * Players involved in the latest action get live name tags, and the broadcast camera tilts the pitch like a TV angle.
+ * Players glide between tracking frames over the real time between events, players involved in the latest action
+ * get live name tags, a sprinting player shows their speed, and the broadcast camera tilts the pitch like a TV angle.
  * The ball's on-screen position is reported to the parent so overlays can anchor to it in either camera mode.
  */
-import { useLayoutEffect, useRef, type ReactNode } from "react";
-import { PITCH_LENGTH, PITCH_WIDTH } from "../lib/pitch";
+import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { PITCH_LENGTH, PITCH_WIDTH, RUNOFF_M, RUNOFF_TOP_M, tagPlacement } from "../lib/pitch";
 import type { ShotTrace, TrailPoint } from "../state/matchState";
 import type { Point } from "../types";
 
@@ -14,6 +15,10 @@ const TRAIL_RADIUS = 0.5;
 const SHOT_SIZE = 1.3;
 const PLAYER_RADIUS = 1.5;
 const TAG_OFFSET = 2.6;
+const SPEED_OFFSET = 4.6;
+const BELOW_EXTRA = 1.2;
+/** Sideways shift of a tag anchored at its start or end, so it begins beside the dot rather than at its centre. */
+const ANCHOR_SHIFT: Record<"start" | "middle" | "end", number> = { start: -PLAYER_RADIUS, middle: 0, end: PLAYER_RADIUS };
 const PERCENT = 100;
 const XG_BUBBLE_MIN = 1.2;
 const XG_BUBBLE_SCALE = 6;
@@ -21,7 +26,11 @@ const SHOT_RESULTS: Record<string, string> = { goal: "GOAL", saved: "Saved", off
 
 export interface PlayerDot {
   id: string; number: number; shortName: string; side: "home" | "away"; position: Point;
-  goalkeeper: boolean; tagged: boolean; tracked: boolean; tagBelow: boolean;
+  goalkeeper: boolean; tagged: boolean; tracked: boolean;
+  /** True for the receiver of the latest action, whose tag goes below the dot when there is room. */
+  tagBelow: boolean;
+  /** Speed in km/h while this player is the recent sprinter, otherwise null. */
+  sprintKmh: number | null;
 }
 
 export type BallAnchor = { left: string; top: string } | null;
@@ -30,6 +39,8 @@ interface PitchProps {
   ball: Point | null;
   trail: TrailPoint[];
   players: PlayerDot[];
+  /** Milliseconds players take to glide to their latest positions. */
+  moveMs: number;
   homeColor: string;
   awayColor: string;
   label: string;
@@ -43,6 +54,9 @@ function Markings() {
   const stripeWidth = PITCH_LENGTH / STRIPES;
   return (
     <g>
+      <rect x={-RUNOFF_M} y={-RUNOFF_TOP_M} width={PITCH_LENGTH + 2 * RUNOFF_M}
+        height={PITCH_WIDTH + RUNOFF_TOP_M + RUNOFF_M}
+        fill="var(--color-pitch-runoff)" />
       {Array.from({ length: STRIPES }, (_, i) => (
         <rect key={i} x={i * stripeWidth} y={0} width={stripeWidth} height={PITCH_WIDTH}
           fill={i % 2 ? "var(--color-pitch-stripe)" : "var(--color-pitch)"} />
@@ -62,14 +76,23 @@ function Markings() {
 
 function Player({ dot, color }: { dot: PlayerDot; color: string }) {
   const fill = dot.goalkeeper ? "#facc15" : color;
+  const place = tagPlacement(dot.position, dot.tagBelow);
+  const tagX = ANCHOR_SHIFT[place.anchor];
   return (
     <g className="player" style={{ transform: `translate(${dot.position.x}px, ${dot.position.y}px)` }}>
       {dot.tracked && <circle r={PLAYER_RADIUS + 0.9} fill="none" stroke="#ffffff" strokeWidth={0.35} strokeDasharray="0.8 0.5" />}
       <circle r={PLAYER_RADIUS} fill={fill} stroke="#0b1220" strokeWidth={0.3} />
       <text className="player-number" textAnchor="middle" dominantBaseline="central">{dot.number}</text>
-      {(dot.tagged || dot.tracked) && (
-        <text className="player-tag" y={dot.tagBelow ? TAG_OFFSET + 1.2 : -TAG_OFFSET} textAnchor="middle">
+      {(dot.tagged || dot.tracked || dot.sprintKmh !== null) && (
+        <text className="player-tag" x={tagX} y={place.below ? TAG_OFFSET + BELOW_EXTRA : -TAG_OFFSET}
+          textAnchor={place.anchor}>
           {dot.shortName}
+        </text>
+      )}
+      {dot.sprintKmh !== null && (
+        <text className="player-speed" x={tagX} y={place.below ? SPEED_OFFSET + BELOW_EXTRA : -SPEED_OFFSET}
+          textAnchor={place.anchor}>
+          {`${dot.sprintKmh.toFixed(1)} km/h`}
         </text>
       )}
     </g>
@@ -91,7 +114,8 @@ function Shot({ shot, color }: { shot: ShotTrace; color: string }) {
   );
 }
 
-export function Pitch({ ball, trail, players, homeColor, awayColor, label, camera, shot, onBallAnchor, children }: PitchProps) {
+export function Pitch({ ball, trail, players, moveMs, homeColor, awayColor, label, camera, shot, onBallAnchor,
+                       children }: PitchProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const ballRef = useRef<SVGCircleElement>(null);
 
@@ -107,7 +131,9 @@ export function Pitch({ ball, trail, players, homeColor, awayColor, label, camer
 
   return (
     <div className={`pitch-wrap cam-${camera}`} ref={wrapRef}>
-      <svg className="pitch" viewBox={`0 0 ${PITCH_LENGTH} ${PITCH_WIDTH}`} role="img" aria-label={label}>
+      <svg className="pitch" role="img" aria-label={label}
+        viewBox={`${-RUNOFF_M} ${-RUNOFF_TOP_M} ${PITCH_LENGTH + 2 * RUNOFF_M} ${PITCH_WIDTH + RUNOFF_TOP_M + RUNOFF_M}`}
+        style={{ "--move-ms": `${moveMs}ms` } as CSSProperties}>
         <Markings />
         {trail.length > 1 && (
           <polyline fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth={0.22}

@@ -79,7 +79,7 @@ JSON Lines tables across every fixture pairing:
 | `events.jsonl` | Every event with absolute coordinates, xG, pass difficulty, momentum, rhythm state, triggered moments |
 | `players.jsonl` | Per-player match statistics |
 | `moments.jsonl` | Labelled key moments with importance and facts |
-| `tracking.jsonl` | Ball and all 22 player positions in the absolute home frame, sampled every fifth event |
+| `tracking.jsonl` | Ball, all 22 player positions in the absolute home frame, and any sprinter, sampled every fifth event |
 | `README.md` | Generated dataset card: parameters, schema, statistics, intended uses, limitations |
 
 Realism is measured, not claimed: `python -m insidegame.datasets.calibrate --matches 480` compares goals, xG,
@@ -246,8 +246,11 @@ deployed (the Bicep template does this automatically).
 
 React + TypeScript (Vite, no UI library) broadcast interface:
 
-- **Live pitch:** all 22 players from synthetic tracking (formation-aware, reacting to the ball and phase of play),
-  the ball and a trail of recent actions, live name tags for the players in the action, and a broadcast camera
+- **Live pitch:** all 22 players from synthetic tracking (formation-aware, reacting to the ball and phase of play,
+  and never faster than a human: each player's pace sets a top speed of about 30 to 35 km/h, and players start
+  running toward their next action so they arrive on time), gliding continuously between events at any replay
+  speed. Sprint tags show the speed of the player chasing the ball at 25.2 km/h or more. The ball and a trail of
+  recent actions, live name tags for the players in the action (kept inside the frame at every edge), and a broadcast camera
   that tilts the pitch like a TV angle (or a flat tactical view). Teams change ends at half-time, and a broadcast
   score bug shows the added-time clock.
 - **Landing and effects:** a landing screen with a one-click demo match; shot traces with an xG bubble and result,

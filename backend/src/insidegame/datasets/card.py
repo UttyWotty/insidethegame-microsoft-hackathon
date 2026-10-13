@@ -45,7 +45,7 @@ Inside the Game analytics engine. Every file is JSON Lines.
 | `events.jsonl` | {counts['events']} | Every event with absolute coordinates, xG, pass difficulty, momentum, rhythm state |
 | `players.jsonl` | {counts['players']} | Per-player match statistics |
 | `moments.jsonl` | {counts['moments']} | Labelled key moments with importance and supporting facts |
-| `tracking.jsonl` | {counts['tracking']} | Ball and all 22 player positions after every {DEFAULT_SAMPLE_EVERY}th event |
+| `tracking.jsonl` | {counts['tracking']} | Ball, all 22 player positions, and any sprinter after every {DEFAULT_SAMPLE_EVERY}th event |
 
 ## Headline statistics
 
@@ -65,7 +65,10 @@ Result shares are noisy below a few hundred matches.
 Metres on a 105 x 68 pitch. `start_x`/`end_x` are absolute: the home side attacks toward x = 105 for the whole
 match (no end swap), so heatmaps and models need no per-team normalisation. Tracking rows use the same frame:
 `players` is a list of `[player_id, x, y]`, and positions come from a formation-aware model (teams push up and
-spread in possession, compact and shift toward the ball out of it) rather than physical motion capture.
+spread in possession, compact and shift toward the ball out of it) rather than physical motion capture. Every
+step is capped at the player's pace-based top speed (about 30 to 35 km/h, three quarters of it off the ball), and
+players about to act start running so they arrive on time; `sprint_player_id` and `sprint_kmh` name the fastest
+player on or toward the ball at 25.2 km/h or more.
 
 ## Intended uses
 
@@ -74,7 +77,7 @@ success, moment detection), and testing broadcast graphics or agent pipelines wi
 
 ## Limitations
 
-Synthetic data calibrated to typical top-flight averages; tracking is event-sampled and modelled (not
-continuous, so it is unsuitable for speed or sprint analysis), and there is no set-piece detail beyond
+Synthetic data calibrated to typical top-flight averages; tracking is event-sampled and modelled (speeds are
+bounded to human limits but sampled at event times, not continuously), and there is no set-piece detail beyond
 kick-offs and restarts, no substitutions, and no cards. Do not use it to draw conclusions about real players or clubs.
 """

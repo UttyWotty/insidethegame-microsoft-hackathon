@@ -30,7 +30,7 @@ from insidegame.orchestration.cues import MomentBroadcast, build_cue
 from insidegame.orchestration.messages import MomentJob, PersonalizedCard
 from insidegame.orchestration.producer import ProducerPolicy
 from insidegame.orchestration.workflow import build_moment_workflow
-from insidegame.tracking.model import Frame, TrackingModel
+from insidegame.tracking.model import Frame, Sprint, TrackingModel
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ class Interpretation:
     """Fast, synchronous result of interpreting one event.
 
     Defaults: recap_stage is None except on period-end events; contexts is empty when no moment was detected;
-    positions is None only when built without tracking.
+    positions is None only when built without tracking; sprint is None unless an involved player is sprinting.
     contexts holds one prompt context per new key moment, whether or not any viewer received it.
     """
 
@@ -87,6 +87,7 @@ class Interpretation:
     recap_stage: RecapStage | None = None
     contexts: tuple[MomentContext, ...] = ()
     positions: Frame | None = None
+    sprint: Sprint | None = None
 
 
 class MatchIntelligenceService:
@@ -114,8 +115,11 @@ class MatchIntelligenceService:
         """Stop personalizing for a viewer segment."""
         self.viewers.pop(viewer_id, None)
 
-    def interpret(self, event: MatchEvent) -> Interpretation:
-        """Interpret an event and decide which moments to send to the agents, without awaiting them."""
+    def interpret(self, event: MatchEvent, upcoming: Sequence[MatchEvent] = ()) -> Interpretation:
+        """Interpret an event and decide which moments to send to the agents, without awaiting them.
+
+        upcoming (default empty) lists the next events so tracked players can start toward their next action.
+        """
         update = self.analyzer.ingest(event)
         jobs = tuple(MomentJob(build_moment_context(moment, self.analyzer, _tracked_players(audience)), audience)
                      for moment, audience in self.producer.select(update.moments, tuple(self.viewers.values())))
@@ -123,7 +127,8 @@ class MatchIntelligenceService:
         if event.event_type is EventType.PERIOD_END:
             stage = RecapStage.HALF_TIME if event.period == PERIODS[0] else RecapStage.FULL_TIME
         contexts = tuple(build_moment_context(moment, self.analyzer) for moment in update.moments)
-        return Interpretation(update, jobs, stage, contexts, self.tracking.frame(event))
+        positions = self.tracking.frame(event, upcoming)
+        return Interpretation(update, jobs, stage, contexts, positions, self.tracking.sprint)
 
     async def produce(self, job: MomentJob) -> MomentBroadcast:
         """Run the multi-agent workflow for one job, degrading to templates if the workflow fails."""

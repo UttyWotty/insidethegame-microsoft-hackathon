@@ -1,8 +1,10 @@
 /**
  * Pure reducer folding server-sent stream messages into the UI's match state.
- * It tracks the ball and recent trail, sampled momentum, received overlay cues, a commentary ticker, and recaps.
+ * It tracks the ball and recent trail, player positions with their glide time and the latest sprinter, sampled
+ * momentum, received overlay cues, a commentary ticker, and recaps.
  * Wall-clock time arrives inside actions so the reducer stays deterministic and testable.
  */
+import { DEFAULT_MOVE_MS, moveDuration, type ReceivedSprint } from "../lib/motion";
 import { ballAfter, minuteLabel, toScreen } from "../lib/pitch";
 import type {
   EventUpdate, MatchEvent, OverlayCue, Point, Recap, Rhythm, SessionInfo, Snapshot,
@@ -41,6 +43,11 @@ export interface MatchState {
   lastEvent: MatchEvent | null;
   ball: Point | null;
   players: Record<string, Point>;
+  /** Milliseconds players take to glide to their latest positions: the real gap between the last two events. */
+  moveMs: number;
+  /** Wall-clock time the last event arrived, or null before the first. */
+  lastEventAt: number | null;
+  sprint: ReceivedSprint | null;
   trail: TrailPoint[];
   rhythm: Rhythm | null;
   momentum: MomentumPoint[];
@@ -58,7 +65,8 @@ export type StreamAction =
   | { type: "switch-viewer" };
 
 export const initialMatchState: MatchState = {
-  session: null, snapshot: null, lastEvent: null, ball: null, players: {}, trail: [], rhythm: null, momentum: [], cues: [],
+  session: null, snapshot: null, lastEvent: null, ball: null, players: {}, moveMs: DEFAULT_MOVE_MS, lastEventAt: null,
+  sprint: null, trail: [], rhythm: null, momentum: [], cues: [],
   ticker: [], recaps: [], ended: false, lastShot: null, goalFlash: null,
 };
 
@@ -120,7 +128,9 @@ function applyEvent(state: MatchState, update: EventUpdate, at: number): MatchSt
   const players = update.positions
     ? Object.fromEntries(update.positions.map(([id, x, y]) => [id, toScreen({ x, y }, true, event.period)]))
     : state.players;
-  return { ...state, lastEvent: event, ball, players, trail, rhythm: update.rhythm, momentum, ticker,
+  const sprint = update.sprint ? { ...update.sprint, at } : state.sprint;
+  return { ...state, lastEvent: event, ball, players, moveMs: moveDuration(state.lastEventAt, at), lastEventAt: at, sprint,
+           trail, rhythm: update.rhythm, momentum, ticker,
            lastShot: shotTrace(state, update, at), goalFlash: goalFlash(state, event, at) };
 }
 

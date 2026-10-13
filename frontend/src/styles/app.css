@@ -76,12 +76,13 @@ main:focus { outline: none; }
 
 .stage { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .pitch-wrap { position: relative; border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--color-border); }
-.pitch { display: block; width: 100%; height: auto; background: var(--color-pitch); }
+.pitch { display: block; width: 100%; height: auto; background: var(--color-pitch-runoff); }
 .overlay-layer { position: absolute; inset: 0; pointer-events: none; }
 .pitch-wrap { perspective: 1400px; background: radial-gradient(ellipse at center, #10331f 0%, #07140c 100%); }
 .pitch-wrap .pitch { transition: transform var(--duration-medium) var(--ease-out); transform-origin: 50% 55%; }
-.pitch-wrap.cam-broadcast .pitch { transform: rotateX(30deg) scale(0.9); }
-.player { transition: transform 650ms cubic-bezier(0.33, 1, 0.68, 1); }
+.pitch-wrap.cam-broadcast .pitch { transform: rotateX(30deg) scale(0.86); }
+.player { transition: transform var(--move-ms, 650ms) linear; }
+.player-speed { font: 700 1.6px var(--font-display); fill: var(--color-warning); paint-order: stroke; stroke: #0b1220; stroke-width: 0.45px; letter-spacing: 0.02em; }
 .player-number { font: 700 1.25px var(--font-display); fill: #0b1220; pointer-events: none; }
 .player-tag { font: 700 1.9px var(--font-display); fill: #ffffff; paint-order: stroke; stroke: #0b1220; stroke-width: 0.45px; letter-spacing: 0.02em; text-transform: uppercase; }
 .ball { transition: cx 450ms ease-out, cy 450ms ease-out; filter: drop-shadow(0 0 0.6px rgba(255,255,255,0.9)); }
