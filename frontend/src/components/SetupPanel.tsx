@@ -7,7 +7,13 @@ import { useState } from "react";
 import type { ClubInfo } from "../types";
 import type { CreateMatch } from "../api/client";
 
-const SPEEDS = [{ value: 10, label: "10x (9 min match)" }, { value: 30, label: "30x (3 min match)" }, { value: 60, label: "60x (90 s match)" }];
+const SPEEDS = [
+  { value: 1, label: "1x (real time)" }, { value: 3, label: "3x (30 min match)" },
+  { value: 10, label: "10x (9 min match)" }, { value: 30, label: "30x (3 min match)" },
+  { value: 60, label: "60x (90 s match)" },
+];
+/** Replay speed selected by default: 10x, a full match in about nine minutes. */
+const DEFAULT_SPEED = 10;
 const DEFAULT_SEED = 7;
 
 interface SetupProps { clubs: ClubInfo[]; busy: boolean; error: string | null; onStart: (body: CreateMatch) => void }
@@ -16,7 +22,7 @@ export function SetupPanel({ clubs, busy, error, onStart }: SetupProps) {
   const [home, setHome] = useState("kestrel_bay");
   const [away, setAway] = useState("ironvale");
   const [seed, setSeed] = useState(DEFAULT_SEED);
-  const [speed, setSpeed] = useState(SPEEDS[0].value);
+  const [speed, setSpeed] = useState(DEFAULT_SPEED);
   return (
     <form className="panel stack" onSubmit={(e) => { e.preventDefault(); onStart({ home, away, seed, speed }); }}>
       <h2 className="display">New match</h2>

@@ -12,6 +12,7 @@ from fastapi.responses import Response
 
 from insidegame.api.clients import client_key
 from insidegame.core.exceptions import RateLimitError, SpeechUnavailableError
+from insidegame.speech.ssml import pace_for_speed
 
 SPEECH_MAX_PER_WINDOW: int = int(os.getenv("SPEECH_MAX_PER_MINUTE", "40"))
 SPEECH_WINDOW_S: float = 60.0
@@ -41,6 +42,7 @@ async def spoken_line(
     limiter = request.app.state.speech_limiter
     if not limiter.allow(client, now):
         raise RateLimitError(f"Too many speech requests; retry in {limiter.retry_after(client, now):.0f}s")
-    text, language, intensity = request.app.state.registry.get(session_id).spoken_line(ref, segment)
-    audio = await synthesizer.synthesize(text, language, intensity)
+    session = request.app.state.registry.get(session_id)
+    text, language, intensity = session.spoken_line(ref, segment)
+    audio = await synthesizer.synthesize(text, language, intensity, pace_for_speed(session.speed))
     return Response(audio, media_type=AUDIO_MEDIA_TYPE, headers=AUDIO_HEADERS)

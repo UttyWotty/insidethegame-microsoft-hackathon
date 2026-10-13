@@ -58,6 +58,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Commentary pace follows the replay speed: natural at real time and up to 25% quicker for fast replays (browser and
+  Azure voices), and play-by-play spacing keeps about one line per five seconds of viewing time (more often at real
+  time, less often at 60x). New 1x (real time) and 3x replay speeds.
 - Home advantage in the simulator: home sides take more shots and away sides fewer (shot-volume factors 1.25 and
   0.78), moving results from about 33/35/32 to 43/29/28 home/draw/away; seeded matches differ from earlier builds.
 - Submission text and demo script describe the seven agents, fact-checking, the producer console, tracking, and
@@ -81,6 +84,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Commentary repetition: play-by-play had two wordings per action, so lines such as "X reads it and intercepts."
+  aired up to five times; each action now has four or five wordings in rotation, no exact line repeats within 30
+  lines, and the same kind of action is not called twice in a row. Chaotic-spell and momentum moments air at most
+  once per half (they aired up to three times with identical wording) and their headlines, like big chances and
+  saves, now vary.
+- Goals were shouted twice ("GOAL!" from play-by-play, then "GOAL! ..." from the commentator); the commentator now
+  reacts without repeating it.
+- Robotic voice: the browser voice could fall back to macOS novelty or legacy voices and used a strong pitch lift;
+  natural voices (enhanced or neural, then Google's) are preferred with the British locale for English, novelty
+  voices are never chosen, and excitement now mostly lifts pace. A short settle after cancelling and a watchdog
+  stop goal calls from being silently dropped or the queue from stalling.
 - Found in a browser test: shot and ball speeds showed two decimals ("120.82 km/h") and now show one; the skip
   link now moves focus into the main region; at phone width, player name tags were about 6 px and are enlarged, the
   view switcher no longer wraps, and the venue line wraps below the camera toggle instead of beside it.

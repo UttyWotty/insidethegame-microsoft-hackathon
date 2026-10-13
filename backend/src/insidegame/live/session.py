@@ -21,7 +21,7 @@ from insidegame.agents.recap_takes import template_take
 from insidegame.agents.schemas import MatchRecap, RecapTake
 from insidegame.agents.runner import OutputSource
 from insidegame.agents.templates import recap_template
-from insidegame.commentary.play_by_play import PlayByPlay
+from insidegame.commentary.play_by_play import PlayByPlay, line_gap_for_speed
 from insidegame.core.exceptions import SessionLimitError
 from insidegame.domain.enums import Intensity
 from insidegame.domain.match import MatchResult
@@ -118,7 +118,7 @@ class MatchSession:
         self.recap_sources: list[tuple[RecapContext, MatchRecap]] = []
         self.tasks: set[asyncio.Task[None]] = set()
         self.recent_moments: deque[MomentContext] = deque(maxlen=MOMENT_HISTORY)
-        self.play_by_play = PlayByPlay(result.metadata)
+        self.play_by_play = PlayByPlay(result.metadata, min_gap_s=line_gap_for_speed(speed))
         self.desk = ProducerDesk()
         self.in_production: Counter[str] = Counter()
         self.queued: Counter[str] = Counter()

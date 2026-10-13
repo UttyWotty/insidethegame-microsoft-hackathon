@@ -4,8 +4,10 @@
  * All logic is pure.
  */
 import { describe, expect, it } from "vitest";
-import { DELIVERY, MAX_PENDING_SPEECH, enqueueSpeech, interrupts, isSpeakable, pickVoice, serverSpeechRef, unseenLines }
-  from "./speech";
+import {
+  MAX_PENDING_SPEECH, deliveryFor, enqueueSpeech, interrupts, isSpeakable, paceForSpeed, pickVoice, serverSpeechRef,
+  unseenLines, watchdogMs,
+} from "./speech";
 import type { Intensity, TickerItem } from "../state/matchState";
 
 function line(id: string, tone: TickerItem["tone"], language = "en", intensity: Intensity = "normal"): TickerItem {
@@ -24,10 +26,26 @@ describe("isSpeakable", () => {
   });
 });
 
+describe("natural voices", () => {
+  it("prefers enhanced or neural voices, then online voices, over the basic system default", () => {
+    const voices = [voice("Samantha", "en-US", true, true), voice("Google UK English Male", "en-GB"),
+                    voice("Daniel (Enhanced)", "en-GB", true)];
+    expect(pickVoice(voices, "en")?.name).toBe("Daniel (Enhanced)");
+    expect(pickVoice(voices.slice(0, 2), "en")?.name).toBe("Google UK English Male");
+  });
+
+  it("never picks novelty voices and prefers the British locale for English broadcasts", () => {
+    const voices = [voice("Bubbles", "en-US", true, true), voice("Zarvox", "en-US", true), voice("Daniel", "en-GB", true),
+                    voice("Google US English", "en-US"), voice("Google UK English Male", "en-GB")];
+    expect(pickVoice(voices, "en")?.name).toBe("Google UK English Male");
+    expect(pickVoice(voices.slice(0, 3), "en")?.name).toBe("Daniel");
+  });
+});
+
 describe("pickVoice", () => {
-  it("prefers a matching default voice, then an on-device one, and returns null without a match", () => {
+  it("prefers the broadcast locale, then the default voice, and returns null without a match", () => {
     const voices = [voice("Remote ES", "es-ES"), voice("Local ES", "es-MX", true), voice("Default EN", "en-US", true, true)];
-    expect(pickVoice(voices, "es")?.name).toBe("Local ES");
+    expect(pickVoice(voices, "es")?.name).toBe("Remote ES");
     expect(pickVoice(voices, "en")?.name).toBe("Default EN");
     expect(pickVoice(voices, "ja")).toBeNull();
   });
@@ -65,10 +83,25 @@ describe("serverSpeechRef", () => {
   });
 });
 
+describe("pace", () => {
+  it("speaks naturally at real time and quicker for faster replays, within a cap", () => {
+    expect(paceForSpeed(1)).toBe(1);
+    expect(paceForSpeed(10)).toBeCloseTo(1.1);
+    expect(paceForSpeed(600)).toBe(1.25);
+    expect(deliveryFor("normal", 1)).toEqual({ rate: 1, pitch: 1 });
+  });
+
+  it("gives the watchdog longer for longer and slower lines", () => {
+    expect(watchdogMs("x".repeat(140), 1)).toBeGreaterThan(watchdogMs("x".repeat(14), 1));
+    expect(watchdogMs("x".repeat(140), 1)).toBeGreaterThan(watchdogMs("x".repeat(140), 1.25));
+  });
+});
+
 describe("excitement", () => {
   it("lifts pace and pitch with intensity and lets only goals interrupt", () => {
-    expect(DELIVERY.peak.rate).toBeGreaterThan(DELIVERY.raised.rate);
-    expect(DELIVERY.raised.pitch).toBeGreaterThan(DELIVERY.normal.pitch);
+    expect(deliveryFor("peak", 10).rate).toBeGreaterThan(deliveryFor("raised", 10).rate);
+    expect(deliveryFor("raised", 10).pitch).toBeGreaterThan(deliveryFor("normal", 10).pitch);
+    expect(deliveryFor("peak", 10).pitch).toBeLessThanOrEqual(1.1);
     expect(interrupts([line("p", "play"), line("g", "goal", "en", "peak")])).toBe(true);
     expect(interrupts([line("x", "play", "en", "raised")])).toBe(false);
   });

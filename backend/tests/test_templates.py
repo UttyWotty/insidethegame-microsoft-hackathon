@@ -90,12 +90,10 @@ def test_commentary_energy_follows_the_moment(
     for kind, context in contexts.items():
         line = commentary_template(context, explanation_template(context)).line
         intensity = moment_intensity(kind)
-        if intensity is Intensity.PEAK:
-            assert line.startswith("GOAL!") and line.endswith("!")
-        elif intensity is Intensity.RAISED:
-            assert line.endswith("!") and not line.startswith("GOAL!")
-        else:
+        if intensity is Intensity.NORMAL:
             assert line.endswith(".")
+        else:  # excited, and goals react instead of repeating the play-by-play's "GOAL!"
+            assert line.endswith("!") and not line.upper().startswith("GOAL")
     assert moment_intensity(MomentKind.GOAL) is Intensity.PEAK
     assert moment_intensity(MomentKind.GREAT_SAVE) is Intensity.RAISED
     assert moment_intensity(MomentKind.DIFFICULT_PASS) is Intensity.NORMAL

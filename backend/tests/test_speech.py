@@ -16,7 +16,7 @@ from insidegame.api import routes_speech
 from insidegame.core.exceptions import LineNotFoundError, SpeechUnavailableError
 from insidegame.domain.enums import Intensity
 from insidegame.live.spoken_lines import find_spoken_line
-from insidegame.speech.ssml import MAX_SPEECH_CHARS, build_ssml, voice_for
+from insidegame.speech.ssml import MAX_SPEECH_CHARS, build_ssml, pace_for_speed, voice_for
 
 ENDPOINT = "https://ais-test.cognitiveservices.azure.com/"
 AUDIO = b"ID3-fake-mp3"
@@ -34,9 +34,14 @@ def test_ssml_uses_the_language_voice_and_escapes_and_caps_text() -> None:
     assert 'xml:lang="es-ES"' in ssml and f'name="{voice}"' in ssml
     assert "&lt;now&gt; &amp;" in ssml and "<now>" not in ssml
     assert ssml.count("x") <= MAX_SPEECH_CHARS
-    assert 'rate="+8%" pitch="+0%"' in ssml
-    assert 'rate="+22%" pitch="+15%"' in build_ssml("GOAL!", voice, Intensity.PEAK)
+    assert 'rate="+0%" pitch="+0%"' in ssml
+    assert 'rate="+23%" pitch="+6%"' in build_ssml("GOAL!", voice, Intensity.PEAK, pace_for_speed(10.0))
 
+
+def test_pace_is_natural_at_real_time_and_quicker_for_fast_replays() -> None:
+    assert pace_for_speed(1.0) == 1.0 and pace_for_speed(0.5) == 1.0
+    assert pace_for_speed(10.0) == pytest.approx(1.1)
+    assert pace_for_speed(600.0) == 1.25
 
 def test_only_lines_the_session_produced_can_be_found() -> None:
     commentary = [{"line_id": "e9-pbp", "text": "Kick-off!", "intensity": "normal"}]
@@ -79,9 +84,11 @@ def test_adapter_failures_and_unsupported_languages_raise_speech_unavailable() -
 class _FakeSpeech:
     def __init__(self) -> None:
         self.calls: list[tuple[str, str]] = []
+        self.paces: list[float] = []
 
-    async def synthesize(self, text: str, language: str, intensity: Intensity) -> bytes:
+    async def synthesize(self, text: str, language: str, intensity: Intensity, pace: float) -> bytes:
         self.calls.append((text, language))
+        self.paces.append(pace)
         return AUDIO
 
 
@@ -105,6 +112,7 @@ def test_speech_routes_voice_match_lines_and_report_availability() -> None:
         audio = client.get(f"/api/matches/{session_id}/speech", params={"ref": line_id})
         assert audio.status_code == HTTP_OK and audio.content == AUDIO
         assert audio.headers["content-type"] == "audio/mpeg" and fake.calls[0][1] == "en"
+        assert fake.paces[0] == pytest.approx(pace_for_speed(10.0))  # matches start at the default 10x speed
         assert client.get(f"/api/matches/{session_id}/speech", params={"ref": "invented"}).status_code == HTTP_NOT_FOUND
 
 

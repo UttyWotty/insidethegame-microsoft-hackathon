@@ -4,6 +4,7 @@ Templates build every agent schema directly from moment facts, so they are alway
 They guarantee the broadcast never shows an empty overlay, even with no model available.
 """
 
+import zlib
 from collections.abc import Callable
 
 from insidegame.agents.context import MomentContext, ViewerContext
@@ -40,13 +41,17 @@ SUPERFAN_SETBACK_PREFIX: str = "So close! "
 SUPERFAN_RIVAL_PREFIX: str = "Stay strong. "
 SETBACK_KINDS: frozenset[MomentKind] = frozenset({MomentKind.BIG_CHANCE_MISSED})
 MAX_CALLOUTS: int = 3
-PEAK_OPENER: str = "GOAL!"
 
 ExplanationParts = tuple[str, str, list[str], TacticalTheme]
 
 
 def _f(facts: dict[str, FactValue], key: str) -> str:
     return str(facts.get(key, ""))
+
+
+def _vary(options: tuple[str, ...], c: MomentContext) -> str:
+    """Pick a wording deterministically from the moment id, so repeated moment kinds do not read identically."""
+    return options[zlib.crc32(c.moment.moment_id.encode()) % len(options)]
 
 
 def _goal(c: MomentContext) -> ExplanationParts:
@@ -60,14 +65,18 @@ def _goal(c: MomentContext) -> ExplanationParts:
 
 def _big_chance(c: MomentContext) -> ExplanationParts:
     f = c.moment.facts
-    return (f"Big chance missed by {_f(f, 'player')}",
+    player = _f(f, "player")
+    return (_vary((f"Big chance missed by {player}", f"{player} should have scored there",
+                   f"A golden chance goes begging for {player}", f"{player} cannot believe that stayed out"), c),
             f"A chance worth {_f(f, 'xg')} xG went begging. Chances of this quality usually change the scoreline.",
             [f"xG {_f(f, 'xg')}", f"Distance {_f(f, 'distance_m')} m"], TacticalTheme.MISSED_OPPORTUNITY)
 
 
 def _great_save(c: MomentContext) -> ExplanationParts:
     f = c.moment.facts
-    return (f"{_f(f, 'goalkeeper')} denies {_f(f, 'shooter')}",
+    keeper, shooter = _f(f, "goalkeeper"), _f(f, "shooter")
+    return (_vary((f"{keeper} denies {shooter}", f"What a stop from {keeper}", f"{keeper} keeps {shooter} out",
+                   f"{keeper} comes to the rescue"), c),
             f"The save prevented {_f(f, 'xg_prevented')} expected goals. It keeps the score at "
             f"{c.score_home}-{c.score_away}.", [f"xG prevented {_f(f, 'xg_prevented')}"], TacticalTheme.GOALKEEPING)
 
@@ -104,14 +113,17 @@ def _difficult_pass(c: MomentContext) -> ExplanationParts:
 
 def _momentum(c: MomentContext) -> ExplanationParts:
     f = c.moment.facts
-    return (f"Momentum swings to {c.team_name}",
+    team = c.team_name
+    return (_vary((f"Momentum swings to {team}", f"{team} take control", f"The tide turns towards {team}",
+                   f"{team} are on top now"), c),
             f"{c.team_name} now own the last few minutes of threat. The balance of the match has tipped.",
             [f"Momentum {_f(f, 'momentum')}"], TacticalTheme.PRESSURE_SHIFT)
 
 
 def _chaos(c: MomentContext) -> ExplanationParts:
     f = c.moment.facts
-    return ("The match turns chaotic",
+    return (_vary(("The match turns chaotic", "End to end, and nobody can keep the ball", "It is frantic out there",
+                   "A wild spell of broken play"), c),
             f"Possession is changing hands {_f(f, 'turnovers_per_minute')} times per minute. "
             "Neither side can settle, which favours quick transitions over patient build-up.",
             [f"Turnovers per minute {_f(f, 'turnovers_per_minute')}"], TacticalTheme.CHAOS)
@@ -140,12 +152,14 @@ def explanation_template(context: MomentContext) -> Explanation:
 
 
 def commentary_template(context: MomentContext, explanation: Explanation) -> Commentary:
-    """Build a commentary line from the explanation headline, with punctuation matching the moment's energy."""
+    """Build a commentary line from the explanation headline, with punctuation matching the moment's energy.
+
+    Goals are already shouted by the play-by-play, so the moment line reacts ("... breaks the deadlock!") rather
+    than repeating "GOAL!".
+    """
     headline = explanation.headline.rstrip(".!")
-    intensity = moment_intensity(context.moment.kind)
-    if intensity is Intensity.PEAK:
-        return Commentary(line=f"{PEAK_OPENER} {headline}!")
-    return Commentary(line=f"{headline}!" if intensity is Intensity.RAISED else f"{headline}.")
+    excited = moment_intensity(context.moment.kind) is not Intensity.NORMAL
+    return Commentary(line=f"{headline}!" if excited else f"{headline}.")
 
 
 def _callouts(context: MomentContext) -> list[StatCallout]:
