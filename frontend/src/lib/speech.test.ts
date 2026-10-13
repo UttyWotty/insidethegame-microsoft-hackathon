@@ -5,8 +5,8 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  MAX_PENDING_SPEECH, deliveryFor, enqueueSpeech, interrupts, isSpeakable, latestSpeakable, paceForSpeed, pickVoice,
-  serverSpeechRef, unseenLines, watchdogMs,
+  MAX_PENDING_SPEECH, deliveryFor, enqueueSpeech, interrupts, isSpeakable, isStale, latestSpeakable, paceForSpeed,
+  pickVoice, serverSpeechRef, unseenLines, watchdogMs,
 } from "./speech";
 import type { Intensity, TickerItem } from "../state/matchState";
 
@@ -26,19 +26,18 @@ describe("isSpeakable", () => {
   });
 });
 
-describe("natural voices", () => {
-  it("prefers enhanced or neural voices, then online voices, over the basic system default", () => {
-    const voices = [voice("Samantha", "en-US", true, true), voice("Google UK English Male", "en-GB"),
-                    voice("Daniel (Enhanced)", "en-GB", true)];
-    expect(pickVoice(voices, "en")?.name).toBe("Daniel (Enhanced)");
-    expect(pickVoice(voices.slice(0, 2), "en")?.name).toBe("Google UK English Male");
+describe("commentator voice", () => {
+  it("prefers enhanced voices, then the system default, then male voices over online and female ones", () => {
+    const voices = [voice("Samantha", "en-US", true), voice("Google UK English Female", "en-GB"),
+                    voice("Google UK English Male", "en-GB"), voice("Daniel", "en-GB", true, true)];
+    expect(pickVoice(voices, "en")?.name).toBe("Daniel");
+    expect(pickVoice(voices.slice(0, 3), "en")?.name).toBe("Google UK English Male");
+    expect(pickVoice([...voices, voice("Daniel (Enhanced)", "en-GB", true)], "en")?.name).toBe("Daniel (Enhanced)");
   });
 
-  it("never picks novelty voices and prefers the British locale for English broadcasts", () => {
-    const voices = [voice("Bubbles", "en-US", true, true), voice("Zarvox", "en-US", true), voice("Daniel", "en-GB", true),
-                    voice("Google US English", "en-US"), voice("Google UK English Male", "en-GB")];
-    expect(pickVoice(voices, "en")?.name).toBe("Google UK English Male");
-    expect(pickVoice(voices.slice(0, 3), "en")?.name).toBe("Daniel");
+  it("never picks novelty voices, even when one is the system default", () => {
+    const voices = [voice("Bubbles", "en-US", true, true), voice("Zarvox", "en-US", true), voice("Daniel", "en-GB", true)];
+    expect(pickVoice(voices, "en")?.name).toBe("Daniel");
   });
 });
 
@@ -98,12 +97,25 @@ describe("pace", () => {
 });
 
 describe("excitement", () => {
-  it("lifts pace and pitch with intensity and lets only goals interrupt", () => {
+  it("lifts pace and pitch audibly with intensity", () => {
     expect(deliveryFor("peak", 10).rate).toBeGreaterThan(deliveryFor("raised", 10).rate);
-    expect(deliveryFor("raised", 10).pitch).toBeGreaterThan(deliveryFor("normal", 10).pitch);
-    expect(deliveryFor("peak", 10).pitch).toBeLessThanOrEqual(1.1);
-    expect(interrupts([line("p", "play"), line("g", "goal", "en", "peak")])).toBe(true);
+    expect(deliveryFor("raised", 1).pitch).toBeGreaterThanOrEqual(1.1);
+    expect(deliveryFor("peak", 1).pitch).toBeGreaterThan(deliveryFor("raised", 1).pitch);
+  });
+
+  it("lets goals interrupt anything and close calls interrupt only calm lines", () => {
+    expect(interrupts([line("p", "play"), line("g", "goal", "en", "peak")], "raised")).toBe(true);
+    expect(interrupts([line("x", "play", "en", "raised")], "normal")).toBe(true);
+    expect(interrupts([line("x", "play", "en", "raised")], "raised")).toBe(false);
     expect(interrupts([line("x", "play", "en", "raised")])).toBe(false);
+    expect(interrupts([line("p", "play")], "normal")).toBe(false);
+  });
+
+  it("skips calm lines that waited too long but always says the goal", () => {
+    expect(isStale("normal", 5000)).toBe(true);
+    expect(isStale("normal", 1000)).toBe(false);
+    expect(isStale("raised", 5000)).toBe(false);
+    expect(isStale("peak", 60000)).toBe(false);
   });
 });
 

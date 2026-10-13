@@ -1,9 +1,10 @@
 /**
  * Pure planning for spoken commentary: which feed lines to speak, which voice to use, and how to keep up.
  * Only lines in the viewer's language are spoken, and the queue stays short so speech never lags far behind play.
- * Calmer lines are dropped first when lines arrive faster than they can be spoken; goals interrupt. Pace follows the
- * replay speed (natural at real time) and lifts for close calls and goals, with only a slight pitch change so the
- * voice stays natural; the most natural-sounding installed voice is preferred.
+ * Calmer lines are dropped first when lines arrive faster than they can be spoken, lines that waited too long are
+ * skipped, goals interrupt anything, and close calls interrupt calm lines. Pace follows the replay speed (natural at
+ * real time) and both pace and pitch lift audibly for close calls and goals. The viewer's own system voice is
+ * preferred, then a natural-sounding male commentator voice; novelty voices are never chosen.
  */
 import type { Intensity, TickerItem } from "../state/matchState";
 
@@ -13,10 +14,14 @@ export const MAX_PENDING_SPEECH = 2;
 const REAL_TIME_PACE = 1.0;
 const PACE_PER_DECADE = 0.1;
 const MAX_PACE = 1.25;
-const INTENSITY_PACE: Record<Intensity, number> = { normal: 1.0, raised: 1.06, peak: 1.12 };
-const INTENSITY_PITCH: Record<Intensity, number> = { normal: 1.0, raised: 1.03, peak: 1.06 };
-const NATURAL_VOICE = /natural|neural|enhanced|premium|siri/i;
-const ONLINE_VOICE = /google|microsoft/i;
+const INTENSITY_PACE: Record<Intensity, number> = { normal: 1.0, raised: 1.08, peak: 1.15 };
+const INTENSITY_PITCH: Record<Intensity, number> = { normal: 1.0, raised: 1.12, peak: 1.22 };
+const NATURAL_VOICE = /natural|neural|enhanced|premium/i;
+/** Commentator-style male voices across platforms; the broadcast persona is a male play-by-play voice. */
+const MALE_VOICE =
+  /\bmale\b|\b(daniel|arthur|oliver|george|ryan|thomas|aaron|alex|tom|rishi|guy|jorge|diego|luca|martin)\b/i;
+const FEMALE_VOICE = /female|samantha|karen|moira|tessa|serena|kate|susan|zira|aria|jenny|sonia|libby|victoria/i;
+const VOICE_SCORE = { natural: 8, systemDefault: 4, male: 3, locale: 1.5, local: 1, female: -3, robotic: -20 };
 /** macOS novelty and legacy voices that sound robotic or comic; never chosen while anything else is available. */
 const ROBOTIC_VOICE = new RegExp("^(albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|"
   + "trinoids|whisper|wobble|zarvox|junior|ralph|fred|kathy|eddy|flo|reed|rocko|sandy|shelley|grandma|grandpa)\\b", "i");
@@ -62,23 +67,37 @@ export function deliveryFor(intensity: Intensity, speed: number): { rate: number
 }
 
 /**
- * The most natural voice for a language: high-quality voices (natural, neural, enhanced, premium) first, then
- * online voices such as Google's, then the broadcast locale, the system default, and on-device voices; novelty
- * and legacy voices come last.
+ * The commentator voice for a language: enhanced or neural voices first, then the viewer's system default, then
+ * male voices, the broadcast locale, and on-device voices (which follow pitch and rate reliably, unlike online
+ * voices); female-named voices rank lower and novelty voices are never chosen while anything else exists.
  */
 export function pickVoice<V extends VoiceOption>(voices: readonly V[], language: string): V | null {
   const base = baseLanguage(language);
   const matching = voices.filter((v) => baseLanguage(v.lang) === base);
   const preferred = PREFERRED_LOCALE[base];
-  const score = (v: V) => (NATURAL_VOICE.test(v.name) ? 8 : 0) + (ONLINE_VOICE.test(v.name) ? 4 : 0)
-    + (v.lang.toLowerCase().replace("_", "-") === preferred ? 1.5 : 0) + (v.default ? 1 : 0) + (v.localService ? 0.5 : 0)
-    - (ROBOTIC_VOICE.test(v.name) ? 20 : 0);
+  const score = (v: V) => (NATURAL_VOICE.test(v.name) ? VOICE_SCORE.natural : 0)
+    + (v.default ? VOICE_SCORE.systemDefault : 0) + (MALE_VOICE.test(v.name) ? VOICE_SCORE.male : 0)
+    + (v.lang.toLowerCase().replace("_", "-") === preferred ? VOICE_SCORE.locale : 0)
+    + (v.localService ? VOICE_SCORE.local : 0) + (FEMALE_VOICE.test(v.name) ? VOICE_SCORE.female : 0)
+    + (ROBOTIC_VOICE.test(v.name) ? VOICE_SCORE.robotic : 0);
   return [...matching].sort((a, b) => score(b) - score(a))[0] ?? null;
 }
 
-/** Whether a new batch should cut off whatever is being said: a goal does, like a commentator jumping in. */
-export function interrupts(incoming: readonly TickerItem[]): boolean {
-  return incoming.some((item) => item.intensity === "peak");
+/**
+ * Whether a new batch should cut off what is being said: a goal always does, like a commentator jumping in, and a
+ * close call does when the current line (null when silent) is a calm one.
+ */
+export function interrupts(incoming: readonly TickerItem[], current: Intensity | null = null): boolean {
+  const top = Math.max(...incoming.map((item) => INTENSITY_RANK[item.intensity]), -1);
+  return top === INTENSITY_RANK.peak || (top === INTENSITY_RANK.raised && current === "normal");
+}
+
+/** How long a queued line may wait before it is out of date: calm lines go stale fast, goals never do. */
+export const STALE_AFTER_MS: Record<Intensity, number> = { normal: 4000, raised: 8000, peak: Infinity };
+
+/** Whether a line that has waited waitedMs is too late to be worth saying. */
+export function isStale(intensity: Intensity, waitedMs: number): boolean {
+  return waitedMs > STALE_AFTER_MS[intensity];
 }
 
 /**

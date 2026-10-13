@@ -2,7 +2,7 @@
 
 Voices are chosen for a broadcast delivery in each market the app suggests; unsupported languages have no voice,
 so callers can fall back to on-device speech. Pace follows the replay speed (natural at real time, quicker when the
-match is sped up) and lifts with the line's intensity, mostly through pace so the voice stays natural. Text is
+match is sped up) and lifts audibly with the line's intensity, in both pace and pitch. Text is
 XML-escaped and truncated so no input can break the markup.
 """
 
@@ -21,8 +21,8 @@ REAL_TIME_PACE: float = 1.0
 PACE_PER_DECADE: float = 0.1
 MAX_PACE: float = 1.25
 PERCENT: float = 100.0
-INTENSITY_PACE: dict[Intensity, float] = {Intensity.NORMAL: 1.0, Intensity.RAISED: 1.06, Intensity.PEAK: 1.12}
-INTENSITY_PITCH: dict[Intensity, str] = {Intensity.NORMAL: "+0%", Intensity.RAISED: "+3%", Intensity.PEAK: "+6%"}
+INTENSITY_PACE: dict[Intensity, float] = {Intensity.NORMAL: 1.0, Intensity.RAISED: 1.08, Intensity.PEAK: 1.15}
+INTENSITY_PITCH: dict[Intensity, str] = {Intensity.NORMAL: "+0%", Intensity.RAISED: "+12%", Intensity.PEAK: "+22%"}
 
 
 def pace_for_speed(speed: float) -> float:

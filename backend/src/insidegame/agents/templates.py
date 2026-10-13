@@ -4,6 +4,7 @@ Templates build every agent schema directly from moment facts, so they are alway
 They guarantee the broadcast never shows an empty overlay, even with no model available.
 """
 
+import re
 import zlib
 from collections.abc import Callable
 
@@ -41,6 +42,15 @@ SUPERFAN_SETBACK_PREFIX: str = "So close! "
 SUPERFAN_RIVAL_PREFIX: str = "Stay strong. "
 SETBACK_KINDS: frozenset[MomentKind] = frozenset({MomentKind.BIG_CHANCE_MISSED})
 MAX_CALLOUTS: int = 3
+EXCITED_OPENERS: dict[MomentKind, tuple[str, ...]] = {
+    MomentKind.DISTANCE_THRESHOLD: ("What a ball!", "Look at that range!", "Oh, that is glorious!", "Superb!"),
+    MomentKind.DIFFICULT_PASS: ("Oh, that is clever!", "What vision!", "Wonderful pass!", "Oh, lovely!"),
+    MomentKind.SPEED_THRESHOLD: ("What a hit!", "Absolutely hammered!", "Oh, that was struck!", "Thunderous!"),
+}
+CARRY_OPENERS: tuple[str, ...] = ("What a run!", "Still going!", "Look at this!")
+HALF: float = 0.5
+SPOKEN_METRES = re.compile(r"(\d+(?:\.\d+)?) m\b")
+SPOKEN_SPEED = re.compile(r"(\d+(?:\.\d+)?) km/h")
 
 ExplanationParts = tuple[str, str, list[str], TacticalTheme]
 
@@ -151,15 +161,36 @@ def explanation_template(context: MomentContext) -> Explanation:
     return Explanation(headline=headline, why_it_matters=why, evidence=evidence, theme=theme)
 
 
+def _whole(number: str) -> int:
+    """Round half up, as people do when saying a measurement aloud."""
+    return int(float(number) + HALF)
+
+
+def spoken_units(text: str) -> str:
+    """Write measurements the way a commentator says them: whole metres and kilometres an hour."""
+    text = SPOKEN_METRES.sub(lambda m: f"{_whole(m.group(1))} metres", text)
+    return SPOKEN_SPEED.sub(lambda m: f"{_whole(m.group(1))} kilometres an hour", text)
+
+
+def _opener(context: MomentContext) -> str:
+    """An exclamation that opens a raised line, so bold passes, runs, and rockets get an audible reaction."""
+    kind = context.moment.kind
+    if kind is MomentKind.DISTANCE_THRESHOLD and context.moment.facts.get("indicator") != "long_pass":
+        return _vary(CARRY_OPENERS, context) + " "
+    options = EXCITED_OPENERS.get(kind)
+    return _vary(options, context) + " " if options else ""
+
+
 def commentary_template(context: MomentContext, explanation: Explanation) -> Commentary:
-    """Build a commentary line from the explanation headline, with punctuation matching the moment's energy.
+    """Build a commentary line from the explanation headline, with punctuation and openers matching its energy.
 
     Goals are already shouted by the play-by-play, so the moment line reacts ("... breaks the deadlock!") rather
-    than repeating "GOAL!".
+    than repeating "GOAL!". Measurements are written as spoken words because the line is read aloud.
     """
-    headline = explanation.headline.rstrip(".!")
-    excited = moment_intensity(context.moment.kind) is not Intensity.NORMAL
-    return Commentary(line=f"{headline}!" if excited else f"{headline}.")
+    headline = spoken_units(explanation.headline.rstrip(".!"))
+    if moment_intensity(context.moment.kind) is Intensity.NORMAL:
+        return Commentary(line=f"{headline}.")
+    return Commentary(line=f"{_opener(context)}{headline}!")
 
 
 def _callouts(context: MomentContext) -> list[StatCallout]:

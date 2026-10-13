@@ -3,8 +3,8 @@
 Lines cover kick-offs, period ends, attacks into the final third, long passes, dribbles, tackles, interceptions,
 high pressing, and sustained possession, paced by a minimum gap so the feed stays readable. Goals and close calls
 always get a line, written and flagged with raised or peak intensity so the voice can lift with the moment.
-Shortly after kick-off a scene-setting line introduces both sides' styles, and quiet spells get everyday possession
-lines so the commentator is never silent for long.
+In the first lull after kick-off a short scene-setting line introduces both sides' styles, so it never talks over
+the opening play, and later quiet spells get everyday possession lines so the commentator is never silent for long.
 """
 
 from collections import Counter, deque
@@ -26,7 +26,6 @@ HIGH_PRESS_X_M: float = 70.0
 ATTACKING_HALF_X_M: float = 52.5
 SPELL_PASSES: int = 8
 RECENT_LINES: int = 30
-INTRO_AFTER_S: float = 5.0
 FILLER_GAP_FACTOR: float = 1.3
 STYLE_PHRASES: dict[str, str] = {
     "possession": "like to keep the ball", "direct": "like to go direct", "high_press": "press high up the pitch",
@@ -144,15 +143,15 @@ class PlayByPlay:
         return self._line(update, text, "close_call", paced=False, intensity=Intensity.RAISED) if text else None
 
     def _intro(self, update: AnalysisUpdate) -> CommentaryLine | None:
-        """One scene-setting line just after kick-off, naming both clubs and how they like to play."""
+        """One short scene-setting line in the first lull of the first half, naming both clubs' styles."""
         e = update.event
-        if self.introduced or e.period != 1 or e.match_second < INTRO_AFTER_S:
+        if self.introduced or self.last_line_s is None or e.period != 1 or not self._quiet(update):
             return None
         self.introduced = True
         home, away = self.metadata.home, self.metadata.away
-        text = (f"{home.name} {STYLE_PHRASES.get(home.style.label, 'have their own ideas')}, and {away.name} "
-                f"{STYLE_PHRASES.get(away.style.label, 'have their own ideas')}. Let's see how this one unfolds.")
-        return self._line(update, text, "intro", paced=False)
+        text = (f"{home.name} {STYLE_PHRASES.get(home.style.label, 'have their own ideas')}, "
+                f"{away.name} {STYLE_PHRASES.get(away.style.label, 'have their own ideas')}.")
+        return self._line(update, text, "intro")
 
     def _quiet(self, update: AnalysisUpdate) -> bool:
         """True when no line has aired for FILLER_GAP_FACTOR times the gap, so an everyday line is welcome."""
@@ -164,7 +163,7 @@ class PlayByPlay:
         if q is None or update.event.outcome is not Outcome.SUCCESS:
             return None
         if q.length_m >= LONG_PASS_M:
-            return self._choose("long_pass", (f"{player} switches play with a {q.length_m:.0f} m pass to {other}.",
+            return self._choose("long_pass", (f"{player} switches play with a {q.length_m:.0f}-metre pass to {other}.",
                                               f"Big diagonal from {player}, and {other} brings it down.",
                                               f"{player} goes long, and {other} controls it beautifully.",
                                               f"Lovely range from {player} to find {other}."))

@@ -35,7 +35,7 @@ def test_ssml_uses_the_language_voice_and_escapes_and_caps_text() -> None:
     assert "&lt;now&gt; &amp;" in ssml and "<now>" not in ssml
     assert ssml.count("x") <= MAX_SPEECH_CHARS
     assert 'rate="+0%" pitch="+0%"' in ssml
-    assert 'rate="+23%" pitch="+6%"' in build_ssml("GOAL!", voice, Intensity.PEAK, pace_for_speed(10.0))
+    assert 'rate="+26%" pitch="+22%"' in build_ssml("GOAL!", voice, Intensity.PEAK, pace_for_speed(10.0))
 
 
 def test_pace_is_natural_at_real_time_and_quicker_for_fast_replays() -> None:
