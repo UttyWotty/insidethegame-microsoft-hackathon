@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Studio analysis visuals: a Studio view draws space control (nearest-team ownership of a 21 x 14 grid from the
+  latest tracking frame, with the players and a summary of each team's share by third), pass networks (players at
+  their average pass position, links of three or more completed passes), heat maps of on-ball actions, and
+  pressing maps of pressures, tackles, and interceptions, per team, for the whole match or the last 15 minutes.
+  "Follow the Analyst" (on by default) lets the Match Analyst's latest tactical theme pick the visual, shown
+  beside its explanation with an AI or Template chip. Served by `GET /api/matches/{id}/studio?window=`.
 - Automated highlights package: the live session keeps every tracking frame, and
   `GET /api/matches/{id}/highlights?stage=half_time|full_time` (409 until that recap is published) returns a reel
   of every goal plus the most important other moments (up to six, in match order), each cut from 10 seconds

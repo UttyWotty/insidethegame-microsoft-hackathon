@@ -4,7 +4,7 @@
  * The base path is configurable at build time for deployments behind a different host.
  */
 import type {
-  ClubInfo, CompanionReply, HighlightReel, PersonaInfo, ProducerSummary, SessionInfo, ViewerSettings,
+  ClubInfo, CompanionReply, HighlightReel, PersonaInfo, ProducerSummary, SessionInfo, StudioPayload, ViewerSettings,
 } from "../types";
 
 export const API_BASE: string = import.meta.env.VITE_API_BASE ?? "/api";
@@ -44,6 +44,8 @@ export const api = {
     const query = new URLSearchParams({ stage, ...(segment ? { segment } : {}) });
     return request<HighlightReel>(`/matches/${encodeURIComponent(sessionId)}/highlights?${query}`);
   },
+  studio: (sessionId: string, window: StudioPayload["window"]) =>
+    request<StudioPayload>(`/matches/${encodeURIComponent(sessionId)}/studio?window=${window}`),
   producer: (sessionId: string) => request<ProducerSummary>(`/matches/${encodeURIComponent(sessionId)}/producer`),
   hold: (sessionId: string, on: boolean) =>
     request<{ hold: boolean }>(`/matches/${encodeURIComponent(sessionId)}/producer/hold`, {

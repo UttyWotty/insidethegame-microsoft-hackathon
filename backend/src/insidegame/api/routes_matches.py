@@ -1,4 +1,5 @@
-"""Match routes: create a live replay, list and inspect sessions, stream a personalized feed, and fetch highlights.
+"""Match routes: create a live replay, list and inspect sessions, stream a personalized feed, and fetch highlights
+and studio visuals.
 
 The stream endpoint registers the caller's viewer segment and returns server-sent events.
 Domain errors are translated to HTTP errors by the handlers registered in app.py.
@@ -18,6 +19,7 @@ from insidegame.api.models import AskRequest, CreateMatchRequest
 from insidegame.api.sse import stream
 from insidegame.live.registry import SessionRegistry
 from insidegame.live.segments import fixture_segment_profile
+from insidegame.live.studio_view import StudioWindow
 
 SSE_MEDIA_TYPE: str = "text/event-stream"
 SSE_HEADERS: dict[str, str] = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
@@ -75,6 +77,15 @@ async def highlights(
 ) -> dict[str, object]:
     """Automated highlights reel: key moments with tracking frames and narration, replayable on the pitch."""
     return _registry(request).get(session_id).highlights(stage, segment)
+
+
+@router.get("/{session_id}/studio")
+async def studio(
+    session_id: str, request: Request,
+    window: StudioWindow = Query(default=StudioWindow.MATCH, description="match (default) or last_15 minutes."),
+) -> dict[str, object]:
+    """Studio visuals: heat, pressing, and pass maps per team, space control, and the analyst's recommended visual."""
+    return _registry(request).get(session_id).studio(window)
 
 
 @router.post("/{session_id}/ask")

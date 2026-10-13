@@ -145,6 +145,13 @@ main:focus { outline: none; }
 .modal-backdrop { position: fixed; inset: 0; background: rgba(2, 6, 14, 0.72); display: grid; place-items: center; padding: var(--space-4); z-index: 10; }
 .modal { max-width: 640px; width: 100%; max-height: 90vh; overflow-y: auto; }
 .modal ol { padding-left: var(--space-5); }
+.studio-page { padding: var(--space-4); }
+.studio { max-width: 1320px; display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-4); align-items: start; }
+.studio-controls { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.studio-caption { margin: 0; }
+.studio-headline { margin: 0; font-size: var(--text-xl); }
+.studio-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); text-transform: capitalize; }
+@media (max-width: 960px) { .studio { grid-template-columns: 1fr; } }
 .modal-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .highlight-caption { position: absolute; left: var(--space-5); right: var(--space-5); bottom: var(--space-4); display: grid; gap: var(--space-1); padding: var(--space-3) var(--space-4); border-left: 6px solid var(--color-warning); }
 .highlight-title { font-size: var(--text-lg); text-transform: uppercase; }

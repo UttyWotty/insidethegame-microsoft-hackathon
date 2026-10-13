@@ -104,3 +104,18 @@ def test_highlights_wait_for_the_recap_then_replay_key_moments() -> None:
         assert reel["clips"] and all(clip["frames"] and clip["commentary"] for clip in reel["clips"])
         assert len(reel["clips"][0]["frames"][0]["positions"]) == 22
         assert client.get(f"/api/matches/{session_id}/highlights", params={"stage": "extra"}).status_code == 422
+
+
+def test_studio_returns_maps_control_and_the_analyst_pick() -> None:
+    with _client() as client:
+        session_id = client.post("/api/matches", json={"home": "kestrel_bay", "away": "ironvale", "seed": 7}).json()[
+            "session_id"]
+        with client.stream("GET", f"/api/matches/{session_id}/stream", params={"persona": "analyst"}) as r:
+            for line in r.iter_lines():
+                if line == "event: end":
+                    break
+        studio = client.get(f"/api/matches/{session_id}/studio", params={"window": "last_15"}).json()
+        assert studio["window"] == "last_15" and studio["events"] > 0
+        assert studio["teams"]["home"]["network"]["nodes"] and len(studio["teams"]["away"]["heat"]) == 8
+        assert 0 < studio["control"]["home_share"] < 100 and studio["analyst"]["theme"]
+        assert studio["recommended"] in {"heat_map", "pressing", "pass_network", "space_control"}

@@ -201,6 +201,7 @@ skipped.
 | GET | `/api/matches/{id}/stream?persona=&language=&team=&player=` | Personalized SSE feed |
 | GET | `/api/matches/{id}/producer` | Producer console state: timeline, broadcast records, pipeline health |
 | GET | `/api/matches/{id}/producer/stream` | Server-sent events: the producer console state whenever it changes, then `end` |
+| GET | `/api/matches/{id}/studio?window=` | Studio visuals for `match` or `last_15`: heat, pressing, and pass maps per team, space control, and the analyst's recommended visual |
 | GET | `/api/matches/{id}/highlights?stage=` | Highlights reel for `half_time` or `full_time` (409 until that recap exists): clips with tracking frames and narration |
 | POST | `/api/matches/{id}/producer/hold`, `/producer/release` | Hold AI overlays for approval; release one or all |
 | GET | `/api/speech/status` | Whether neural speech is configured (configuration only, no service call) |
@@ -280,6 +281,11 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   cut off calm lines. Pace follows the replay speed (natural at 1x real time), lines rotate through varied wordings
   without near repeats, and the viewer's own system voice (or a natural male commentator voice) is used.
 - **Recaps:** half-time and full-time recaps open in an accessible dialog, led by the viewer's persona take.
+- **Studio:** a pundit screen with four analysis visuals on the pitch: space control (each area owned by the
+  nearest team, with the players), pass networks, heat maps, and pressing maps, per team, for the whole match or
+  the last 15 minutes. By default it follows the Match Analyst: the tactical theme of the newest explanation picks
+  the visual (pressure shift shows the pressing map, chaos shows space control, and so on), with the explanation
+  and its source beside it.
 - **Automated highlights:** at half-time and full-time a highlights reel replays every goal and the biggest
   moments (up to six) on the pitch from the tracking frames recorded live, at real match pace, with a broadcast
   caption and the moment's commentary spoken in the viewer's language. Pause, skip, replay, or go back to live.
@@ -384,6 +390,7 @@ backend/
     analytics/    streaming interpretation: xG, pass quality, stats, rhythm, key moments (stage 2)
     tracking/     synthetic 22-player positions with speed-limited motion and sprint detection
     highlights/   automated highlights reels: clip selection, frame windows, narration (pure)
+    studio/       studio visuals: heat and pressing grids, pass networks, space control, theme to visual (pure)
     speech/       neural voice choice and SSML for spoken commentary (pure)
     commentary/   deterministic play-by-play lines with intensity for goals and close calls
     agents/       personas, schemas, prompts, grounding, fallbacks, resilient agent steps (stages 3-5)
@@ -399,7 +406,7 @@ frontend/
   src/api/        HTTP client and server-sent event hook
   src/state/      pure stream reducer
   src/lib/        pitch geometry, motion timing, spoken commentary planning, viewer resolution, team colours
-  src/components/ pitch, overlays, stats, momentum, ticker, recap, multiview, producer console
+  src/components/ pitch, overlays, stats, momentum, ticker, recap, highlights, studio, multiview, producer console
 ```
 
 Dependency direction: `api -> live -> orchestration -> agents -> analytics -> domain -> core`, with `simulation -> domain -> core`. Lower layers never import higher ones.

@@ -95,6 +95,25 @@ export interface HighlightClip {
 
 export interface HighlightReel { stage: "half_time" | "full_time"; headline: string; clips: HighlightClip[] }
 
+export type StudioVisual = "heat_map" | "pressing" | "pass_network" | "space_control";
+export interface SpaceControl {
+  owners: number[][]; home_share: number; home_thirds: number[];
+  /** Players in the frame the control was computed from, absolute home frame. */
+  positions?: TrackingFrame;
+}
+export interface PassNetwork {
+  nodes: { player_id: string; x: number; y: number; passes: number }[]; links: [string, string, number][];
+}
+export interface StudioTeam { team_id: string; heat: number[][]; pressing: number[][]; network: PassNetwork }
+/** The Match Analyst's latest explanation, which picks the recommended studio visual. */
+export interface StudioAnalyst {
+  minute: string; kind: string; headline: string; why_it_matters: string; theme: string; source: "agent" | "template";
+}
+export interface StudioPayload {
+  window: "match" | "last_15"; events: number; teams: { home: StudioTeam; away: StudioTeam };
+  control: SpaceControl | null; analyst: StudioAnalyst | null; recommended: StudioVisual;
+}
+
 export interface PersonaInfo {
   key: PersonaKey; name: string; audience: string; voice: string; max_words: number; overlay_style: Layout;
 }

@@ -1,5 +1,6 @@
 /**
- * Application shell: loads metadata, starts matches, and switches between the broadcast view and multiview.
+ * Application shell: loads metadata, starts matches, and switches between the broadcast, multiview, studio, and
+ * producer views.
  * Viewer preferences are resolved into a valid segment before any stream is opened.
  * The header shows which model provider powers the agents.
  */
@@ -8,6 +9,7 @@ import { api, ApiError, type CreateMatch, type Health } from "./api/client";
 import { BroadcastView } from "./components/BroadcastView";
 import { Landing } from "./components/Landing";
 import { MultiView } from "./components/MultiView";
+import { StudioView } from "./components/StudioView";
 import { ProducerConsole } from "./components/producer/ProducerConsole";
 import { SetupPanel } from "./components/SetupPanel";
 import { ViewerControls } from "./components/ViewerControls";
@@ -15,7 +17,7 @@ import { withRetry } from "./lib/retry";
 import { resolveViewer } from "./lib/viewer";
 import type { ClubInfo, PersonaInfo, SessionInfo, ViewerSettings } from "./types";
 
-type View = "broadcast" | "multiview" | "producer";
+type View = "broadcast" | "multiview" | "studio" | "producer";
 
 export function App() {
   const [clubs, setClubs] = useState<ClubInfo[]>([]);
@@ -61,9 +63,9 @@ export function App() {
           <span className="muted tagline">Explainable match intelligence</span>
         </div>
         <div className="tabs" role="group" aria-label="View">
-          {(["broadcast", "multiview", "producer"] as View[]).map((v) => (
+          {(["broadcast", "multiview", "studio", "producer"] as View[]).map((v) => (
             <button key={v} className="tab" aria-pressed={view === v} onClick={() => setView(v)}>
-              {{ broadcast: "Broadcast", multiview: "All personas", producer: "Producer" }[v]}
+              {{ broadcast: "Broadcast", multiview: "All personas", studio: "Studio", producer: "Producer" }[v]}
             </button>
           ))}
         </div>
@@ -85,6 +87,8 @@ export function App() {
             ? <BroadcastView key={session.session_id} sessionId={session.session_id} viewer={viewer} />
             : <Landing busy={busy} onDemo={start} />}
         </main>
+      ) : view === "studio" ? (
+        <StudioView key={session.session_id} sessionId={session.session_id} match={match} language={viewer.language} />
       ) : view === "multiview" ? (
         <main id="main" tabIndex={-1}><MultiView sessionId={session.session_id} personas={personas} language={viewer.language} match={match} /></main>
       ) : (
