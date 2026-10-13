@@ -1,11 +1,14 @@
 """Synthetic player tracking: formation-aware positions for all 22 players after every event.
 
 Teams in possession push up and spread; teams out of possession compact, shift toward the ball, and press higher
-when their style says so. Players involved in the event are placed exactly, and a small deterministic sway keeps
-movement natural. Positions are returned in the absolute home frame (home attacking toward x = 105).
+when their style says so. Players involved in the event are targeted at the ball, players about to act start
+running so they arrive on time, and a small deterministic sway keeps movement natural. Every player moves toward their target no faster than their pace-based top speed allows in
+the elapsed match time (formations reset at kick-offs), and the fastest sprinter of each frame is reported.
+Positions are returned in the absolute home frame (home attacking toward x = 105).
 """
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from insidegame.core.constants import GOAL_CENTER_Y_M, PITCH_LENGTH_M, PITCH_WIDTH_M
@@ -15,6 +18,7 @@ from insidegame.domain.events import MatchEvent
 from insidegame.domain.match import MatchMetadata
 from insidegame.domain.teams import Team
 from insidegame.tracking.formation import DEFENDER_INDICES, FORWARD_INDICES, GOALKEEPER_INDEX, SLOTS
+from insidegame.tracking.motion import fastest_sprinter, speed_kmh, step_toward, timed_target, top_speed_kmh
 
 POSITION_DECIMALS: int = 1
 ATTACK_PIVOT_X: float = 45.0
@@ -37,8 +41,12 @@ CLOSE_DOWN_M: float = 2.5
 SWAY_M: float = 1.2
 SWAY_SEQUENCE_PRIME: int = 37
 SWAY_INDEX_PRIME: int = 101
+LOOKAHEAD_S: float = 8.0
+LOOKAHEAD_EVENTS: int = 12
+OFF_BALL_PACE: float = 0.75
 
 Frame = list[tuple[str, float, float]]
+Sprint = tuple[str, float]
 
 
 def _clamp(value: float, bounds: tuple[float, float]) -> float:
@@ -79,6 +87,14 @@ class TrackingModel:
     metadata: MatchMetadata
     possessing: Side = Side.HOME
     ball_home_frame: Point = field(default_factory=lambda: PITCH_CENTER)
+    previous: dict[str, Point] = field(default_factory=dict)
+    clock: tuple[int, float] = (0, 0.0)
+    top_speeds: dict[str, float] = field(default_factory=dict)
+    sprint: Sprint | None = None
+
+    def __post_init__(self) -> None:
+        self.top_speeds = {p.player_id: top_speed_kmh(p.attributes.pace)
+                           for team in (self.metadata.home, self.metadata.away) for p in team.players}
 
     def _to_home(self, point: Point, side: Side) -> Point:
         return point if side is Side.HOME else mirror(point)
@@ -90,15 +106,37 @@ class TrackingModel:
         if location is not None and event.team_id is not None:
             self.ball_home_frame = self._to_home(location, self.metadata.side_of(event.team_id))
 
-    def _pin_actors(self, event: MatchEvent, positions: dict[str, Point]) -> None:
+    def _pin_actors(self, event: MatchEvent, positions: dict[str, Point]) -> set[str]:
+        """Target the event's actor and successful receiver at the ball; returns who was pinned."""
         if event.team_id is None:
-            return
+            return set()
+        pinned: set[str] = set()
         side = self.metadata.side_of(event.team_id)
         if event.player_id and event.start:
             anchor = event.end if event.event_type is EventType.CARRY and event.end else event.start
             positions[event.player_id] = self._to_home(anchor, side)
+            pinned.add(event.player_id)
         if event.receiver_id and event.end and event.outcome is Outcome.SUCCESS:
             positions[event.receiver_id] = self._to_home(event.end, side)
+            pinned.add(event.receiver_id)
+        return pinned
+
+    def _anticipate(self, event: MatchEvent, upcoming: Sequence[MatchEvent], positions: dict[str, Point],
+                    involved: set[str]) -> None:
+        """Start players toward actions they take within LOOKAHEAD_S, timed to arrive as the action happens."""
+        if not self.previous or event.period != self.clock[0]:
+            return
+        elapsed = event.match_second - self.clock[1]
+        for later in upcoming:
+            ahead = later.match_second - event.match_second
+            if later.period != event.period or ahead > LOOKAHEAD_S:
+                return
+            pid = later.player_id
+            if pid is None or pid in involved or later.start is None or later.team_id is None:
+                continue
+            destination = self._to_home(later.start, self.metadata.side_of(later.team_id))
+            positions[pid] = timed_target(self.previous[pid], destination, elapsed, elapsed + ahead)
+            involved.add(pid)
 
     def _close_down(self, positions: dict[str, Point], event: MatchEvent) -> None:
         defending = self.metadata.team(self.possessing.opponent)
@@ -110,8 +148,33 @@ class TrackingModel:
             ratio = (gap - CLOSE_DOWN_M) / gap
             positions[nearest] = Point(current.x + (ball.x - current.x) * ratio, current.y + (ball.y - current.y) * ratio)
 
-    def frame(self, event: MatchEvent) -> Frame:
-        """Return [player_id, x, y] for all 22 players after the event, in the absolute home frame."""
+    def _cap(self, player_id: str, involved: set[str]) -> float:
+        """Speed limit: full top speed on or toward the ball, OFF_BALL_PACE of it while holding shape."""
+        top = self.top_speeds[player_id]
+        return top if player_id in involved else top * OFF_BALL_PACE
+
+    def _move(self, event: MatchEvent, targets: dict[str, Point], involved: set[str]) -> dict[str, Point]:
+        """Cap each player's step at their speed limit; kick-offs and new periods reset to the targets.
+
+        Sprint tags consider only the involved players, those on or about to reach the ball.
+        """
+        elapsed = event.match_second - self.clock[1]
+        if event.event_type is EventType.KICK_OFF or event.period != self.clock[0] or not self.previous:
+            moved, speeds = dict(targets), {}
+        else:
+            moved = {pid: step_toward(self.previous[pid], target, self._cap(pid, involved), elapsed)
+                     for pid, target in targets.items()}
+            speeds = {pid: speed_kmh(self.previous[pid], point, elapsed) for pid, point in moved.items()}
+        self.previous, self.clock = moved, (event.period, event.match_second)
+        self.sprint = fastest_sprinter({pid: v for pid, v in speeds.items() if pid in involved})
+        return moved
+
+    def frame(self, event: MatchEvent, upcoming: Sequence[MatchEvent] = ()) -> Frame:
+        """Return [player_id, x, y] for all 22 players after the event, in the absolute home frame.
+
+        upcoming (default empty) lists the next events, oldest first, so players can start toward their next action.
+        After each call, sprint holds the fastest involved player at sprint speed with their km/h, or None.
+        """
         self._update_ball(event)
         positions: dict[str, Point] = {}
         for side in (Side.HOME, Side.AWAY):
@@ -121,6 +184,8 @@ class TrackingModel:
                                      strict=True):
                 positions[player.player_id] = self._to_home(point, side)
         self._close_down(positions, event)
-        self._pin_actors(event, positions)
+        involved = self._pin_actors(event, positions)
+        self._anticipate(event, upcoming, positions, involved)
+        positions = self._move(event, positions, involved)
         return [(pid, round(min(max(p.x, 0.0), PITCH_LENGTH_M), POSITION_DECIMALS),
                  round(min(max(p.y, 0.0), PITCH_WIDTH_M), POSITION_DECIMALS)) for pid, p in positions.items()]

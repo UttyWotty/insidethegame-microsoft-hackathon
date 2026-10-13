@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { useMatchStream } from "../api/useMatchStream";
+import { sprintSpeed, type ReceivedSprint } from "../lib/motion";
 import { teamColor } from "../lib/teams";
 import { useNow } from "../lib/useNow";
 import { speechSupported, useSpokenCommentary, type SpeechUrlBuilder } from "../lib/useSpokenCommentary";
@@ -45,7 +46,7 @@ function isTyping(): boolean {
 }
 
 function playerDots(match: MatchMetadata | undefined, positions: Record<string, Point>, last: MatchEvent | null,
-                    tracked: string | null): PlayerDot[] {
+                    tracked: string | null, sprint: ReceivedSprint | null, now: number): PlayerDot[] {
   if (!match) return [];
   const tagged = new Set([last?.player_id, last?.receiver_id].filter(Boolean));
   return [match.home, match.away].flatMap((team, i) => team.players
@@ -54,7 +55,7 @@ function playerDots(match: MatchMetadata | undefined, positions: Record<string, 
       id: p.player_id, number: p.shirt_number, shortName: p.name.split(" ").slice(-1)[0],
       side: i === 0 ? "home" as const : "away" as const, position: positions[p.player_id],
       goalkeeper: p.position === "GK", tagged: tagged.has(p.player_id), tracked: p.player_id === tracked,
-      tagBelow: p.player_id === last?.receiver_id,
+      tagBelow: p.player_id === last?.receiver_id, sprintKmh: sprintSpeed(sprint, p.player_id, now),
     })));
 }
 import { AskPanel } from "./AskPanel";
@@ -74,8 +75,9 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   const [camera, setCamera] = useState<Camera>("broadcast");
   const [anchor, setAnchor] = useState<BallAnchor>(null);
   const onBallAnchor = useCallback((next: BallAnchor) => setAnchor(next), []);
-  const dots = useMemo(() => playerDots(state.session?.match, state.players, state.lastEvent, viewer.player),
-    [state.session, state.players, state.lastEvent, viewer.player]);
+  const dots = useMemo(
+    () => playerDots(state.session?.match, state.players, state.lastEvent, viewer.player, state.sprint, now),
+    [state.session, state.players, state.lastEvent, viewer.player, state.sprint, now]);
   const [seenStages, setSeenStages] = useState<Set<string>>(() => new Set());
   const [voiceOn, setVoiceOn] = useState(savedVoicePreference);
   const [neuralVoice, setNeuralVoice] = useState(false);
@@ -118,7 +120,7 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   return (
     <>
       <div className="stage">
-        <Pitch ball={state.ball} trail={state.trail} players={dots} homeColor={homeColor} awayColor={awayColor}
+        <Pitch ball={state.ball} trail={state.trail} players={dots} moveMs={state.moveMs} homeColor={homeColor} awayColor={awayColor}
           camera={camera} shot={shot} onBallAnchor={onBallAnchor} label={`Live pitch: ${match.home.name} versus ${match.away.name}`}>
           <ScoreBug home={match.home} away={match.away} homeColor={homeColor} awayColor={awayColor} lastEvent={state.lastEvent} />
           <OverlayLayer active={goal ? null : active} anchor={anchor} teamColor={cueTeamIsAway ? awayColor : homeColor} />

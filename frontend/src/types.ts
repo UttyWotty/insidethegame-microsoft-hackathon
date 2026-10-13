@@ -40,9 +40,13 @@ export interface KeyMoment {
 
 export type TrackingFrame = [string, number, number][];
 
+/** The fastest player on or toward the ball in a tracking frame, at sprint speed (25.2 km/h or more). */
+export interface SprintTag { player_id: string; speed_kmh: number }
+
 export interface EventUpdate {
   event: MatchEvent; xg: number | null; pass_quality: { difficulty: number } | null; rhythm: Rhythm; moments: KeyMoment[];
   positions?: TrackingFrame | null;
+  sprint?: SprintTag | null;
 }
 
 export type StatBlock = Record<string, number>;

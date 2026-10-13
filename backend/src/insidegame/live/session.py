@@ -32,6 +32,7 @@ from insidegame.orchestration.cues import MomentBroadcast
 from insidegame.orchestration.messages import MomentJob
 from insidegame.orchestration.producer import is_stale
 from insidegame.orchestration.service import MatchIntelligenceService, degraded_broadcast
+from insidegame.tracking.model import LOOKAHEAD_EVENTS
 
 logger = logging.getLogger(__name__)
 
@@ -304,8 +305,12 @@ class MatchSession:
         for index, event in enumerate(self.result.events):
             await self.sleep(replay_delay_s(previous, event, self.speed))
             self.clock = (event.period, event.match_second)
-            interpretation = self.service.interpret(event)
-            payload = interpretation.update.to_dict() | {"positions": interpretation.positions}
+            upcoming = self.result.events[index + 1:index + 1 + LOOKAHEAD_EVENTS]
+            interpretation = self.service.interpret(event, upcoming)
+            sprint = interpretation.sprint
+            payload = interpretation.update.to_dict() | {
+                "positions": interpretation.positions,
+                "sprint": {"player_id": sprint[0], "speed_kmh": sprint[1]} if sprint else None}
             self.publish(LiveMessage(MessageType.EVENT, payload))
             line = self.play_by_play.observe(interpretation.update)
             if line is not None:
