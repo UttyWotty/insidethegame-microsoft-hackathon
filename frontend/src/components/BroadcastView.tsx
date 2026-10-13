@@ -14,7 +14,6 @@ import { speechSupported, useSpokenCommentary, type SpeechUrlBuilder } from "../
 import { activeCue } from "../state/matchState";
 import type { HighlightReel, Recap, ViewerSettings } from "../types";
 
-type Camera = "broadcast" | "tactical";
 
 const SHOT_VISIBLE_MS = 4000;
 const HALF_TIME_RECAP_MS = 15000;
@@ -52,7 +51,8 @@ import { MomentumChart } from "./MomentumChart";
 import { OverlayLayer } from "./overlays/OverlayLayer";
 import { GoalBanner } from "./overlays/Overlays";
 import { HighlightsPlayer } from "./HighlightsPlayer";
-import { Pitch, type BallAnchor } from "./Pitch";
+import { type BallAnchor } from "./Pitch";
+import { PitchView, type Camera } from "./PitchView";
 import { RecapModal } from "./RecapModal";
 import { ScoreBug } from "./ScoreBug";
 import { StatsPanel } from "./StatsPanel";
@@ -115,13 +115,13 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
           <HighlightsPlayer sessionId={sessionId} stage={reelStage} segment={state.cues[0]?.cue.viewer_id} match={match}
             homeColor={homeColor} awayColor={awayColor} camera={camera} voiceOn={voiceOn} onClose={() => setReelStage(null)} />
         ) : (
-          <Pitch ball={state.ball} trail={state.trail} players={dots} moveMs={state.moveMs} homeColor={homeColor} awayColor={awayColor}
+          <PitchView ball={state.ball} trail={state.trail} players={dots} moveMs={state.moveMs} homeColor={homeColor} awayColor={awayColor}
             camera={camera} shot={shot} onBallAnchor={onBallAnchor} label={`Live pitch: ${match.home.name} versus ${match.away.name}`}>
             <ScoreBug home={match.home} away={match.away} homeColor={homeColor} awayColor={awayColor} lastEvent={state.lastEvent} />
             <OverlayLayer active={goal ? null : active} anchor={anchor} teamColor={cueTeamIsAway ? awayColor : homeColor} />
             {goal && <GoalBanner key={goal.id} scorer={goal.scorer} score={goal.score}
               teamColor={goal.side === "home" ? homeColor : awayColor} />}
-          </Pitch>
+          </PitchView>
         )}
         <p className="visually-hidden" aria-live="assertive">
           {state.goalFlash ? `Goal, ${state.goalFlash.scorer}. ${state.goalFlash.score}` : ""}
@@ -129,9 +129,9 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
         <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)", alignItems: "center" }}>
           {status === "open" && !state.ended && <span className="chip chip--live">LIVE</span>}
           <div className="tabs camera-toggle" role="group" aria-label="Camera">
-            {(["broadcast", "tactical"] as Camera[]).map((c) => (
+            {(["broadcast", "tactical", "3d"] as Camera[]).map((c) => (
               <button key={c} className="tab" aria-pressed={camera === c} onClick={() => setCamera(c)}>
-                {c === "broadcast" ? "Broadcast cam" : "Tactical"}
+                {{ broadcast: "Broadcast cam", tactical: "Tactical", "3d": "3D" }[c]}
               </button>
             ))}
           </div>

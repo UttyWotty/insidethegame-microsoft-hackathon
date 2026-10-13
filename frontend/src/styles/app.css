@@ -80,6 +80,12 @@ main:focus { outline: none; }
 .overlay-layer { position: absolute; inset: 0; pointer-events: none; }
 .pitch-wrap { perspective: 1400px; background: radial-gradient(ellipse at center, #10331f 0%, #07140c 100%); }
 .pitch-wrap .pitch { transition: transform var(--duration-medium) var(--ease-out); transform-origin: 50% 55%; }
+.pitch3d-canvas { width: 100%; aspect-ratio: 16 / 9; }
+.pitch3d-canvas canvas { display: block; width: 100% !important; height: auto !important; }
+.pitch3d-tags { position: absolute; inset: 0; pointer-events: none; }
+.pitch3d-tag { position: absolute; transform: translate(-50%, -100%); display: grid; justify-items: center; font: 700 var(--text-xs) var(--font-display); color: #ffffff; text-transform: uppercase; letter-spacing: 0.04em; text-shadow: 0 0 3px #0b1220, 0 0 6px #0b1220; white-space: nowrap; }
+.pitch3d-speed { color: var(--color-warning); }
+.pitch3d-fallback, .pitch3d-loading { padding: var(--space-6); text-align: center; color: var(--color-fg-muted); }
 .pitch-wrap.cam-broadcast .pitch { transform: rotateX(30deg) scale(0.86); }
 .player { transition: transform var(--move-ms, 650ms) linear; }
 .player-speed { font: 700 1.6px var(--font-display); fill: var(--color-warning); paint-order: stroke; stroke: #0b1220; stroke-width: 0.45px; letter-spacing: 0.02em; }

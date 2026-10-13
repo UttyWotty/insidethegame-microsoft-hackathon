@@ -9,14 +9,15 @@ import { playerDots } from "../lib/playerDots";
 import { clipLengthMs, frameBall, frameIndexAt, framePositions, glideMs, REEL_RATE } from "../lib/reel";
 import { speakLine, stopSpeaking } from "../lib/speakLine";
 import type { HighlightReel, MatchMetadata } from "../types";
-import { Pitch, type BallAnchor } from "./Pitch";
+import { type BallAnchor } from "./Pitch";
+import { PitchView, type Camera } from "./PitchView";
 
 const TICK_MS = 100;
 const NO_SPRINT = () => null;
 
 interface HighlightsPlayerProps {
   sessionId: string; stage: HighlightReel["stage"]; segment?: string; match: MatchMetadata;
-  homeColor: string; awayColor: string; camera: "broadcast" | "tactical"; voiceOn: boolean; onClose: () => void;
+  homeColor: string; awayColor: string; camera: Camera; voiceOn: boolean; onClose: () => void;
 }
 
 export function HighlightsPlayer(props: HighlightsPlayerProps) {
@@ -86,7 +87,7 @@ export function HighlightsPlayer(props: HighlightsPlayerProps) {
           <p className="muted" style={{ margin: 0 }}>{reel.headline}</p>
         </div>
       ) : (
-        <Pitch ball={frameBall(frame)} trail={[]} players={dots} moveMs={glideMs(clip, frameIndex)} homeColor={homeColor}
+        <PitchView ball={frameBall(frame)} trail={[]} players={dots} moveMs={glideMs(clip, frameIndex)} homeColor={homeColor}
           awayColor={awayColor} camera={camera} shot={null} onBallAnchor={onBallAnchor}
           label={`${label}: ${clip.minute} ${clip.title}`}>
           <div className="glass highlight-caption" aria-live="polite">
@@ -94,7 +95,7 @@ export function HighlightsPlayer(props: HighlightsPlayerProps) {
             <strong className="display highlight-title">{clip.minute} {clip.title}{clip.actor ? ` - ${clip.actor}` : ""}</strong>
             <span>{clip.commentary}</span>
           </div>
-        </Pitch>
+        </PitchView>
       )}
       <div className="highlight-controls" role="group" aria-label="Highlights controls">
         <button className="tab" onClick={() => goTo(clipIndex - 1)} disabled={clipIndex === 0}>Previous</button>

@@ -95,6 +95,8 @@ Copilot-through-MCP recording, the demo video, then the submission steps. Fabric
   moments in order with a small in-flight limit, and skip non-goal moments that are stale by the time a slot frees.
   Resolved 2026-10-13: production slots, stale skipping, and console statuses.
 -->
+- `npm audit` reports advisories in vitest's dependencies (tinypool, @vitest/mocker); they affect only the test
+  runner, not the shipped bundle. Upgrade to vitest 4 (a breaking change) in its own pull request.
 - Live sessions are in memory, so the app runs a single replica; move session state to a shared store before scaling out.
 <!--
 - `/api/matches` (match creation) has no per-client rate limit beyond the 20-session cap.
