@@ -148,10 +148,10 @@ class MatchSession:
                 "match": self.result.metadata.to_dict(), "subscribers": len(self.subscribers)}
 
     def snapshot(self) -> dict[str, object]:
-        """Current interpreted state without the full moment list."""
+        """Current interpreted state plus each player's distance and top speed, without the full moment list."""
         snap = self.service.analyzer.snapshot()
         snap.pop("moments", None)
-        return snap
+        return snap | {"physical": self.service.tracking.physical()}
 
     def subscribe(self, profile: ViewerProfile) -> Subscriber:
         """Register a client for a segment and prime it with the current state."""

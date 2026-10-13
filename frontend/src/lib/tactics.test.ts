@@ -9,7 +9,7 @@ import { analyseFrame, attacksRight, carrierAfter, chanceBand, distanceToSegment
 
 const dot = (id: string, side: "home" | "away", x: number, y: number, goalkeeper = false): PlayerDot => ({
   id, number: 1, shortName: id, side, position: { x, y }, goalkeeper, tagged: false, tracked: false,
-  tagBelow: false, sprintKmh: null,
+  tagBelow: false, sprintKmh: null, popup: null,
 });
 const players = [
   dot("hk", "home", 5, 34, true), dot("h1", "home", 50, 34), dot("h2", "home", 60, 20), dot("h3", "home", 70, 50),

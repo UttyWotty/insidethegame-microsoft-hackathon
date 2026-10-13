@@ -219,7 +219,7 @@ export default function Pitch3D(props: Pitch3DProps) {
     }
   }, [tactics, homeColor, awayColor]);
 
-  const tagged = players.filter((p) => p.tagged || p.tracked || p.sprintKmh !== null);
+  const tagged = players.filter((p) => p.tagged || p.tracked || p.sprintKmh !== null || p.popup);
   return (
     <div className="pitch-wrap cam-3d" role="img" aria-label={label}>
       <div ref={mountRef} className="pitch3d-canvas" />
@@ -230,6 +230,7 @@ export default function Pitch3D(props: Pitch3DProps) {
             if (el) tagRefs.current.set(p.id, el);
             else tagRefs.current.delete(p.id);
           }}>
+            {p.popup && <span className="pitch3d-popup">{p.popup}</span>}
             {p.sprintKmh !== null && <span className="pitch3d-speed">{p.sprintKmh.toFixed(1)} km/h</span>}
             {p.shortName}
           </span>

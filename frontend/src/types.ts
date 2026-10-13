@@ -54,7 +54,13 @@ export interface EventUpdate {
   positions?: TrackingFrame | null;
   sprint?: SprintTag | null;
   shot?: ShotCardInfo | null;
+  /** Live home win, draw, and away win probabilities after this event. */
+  win?: WinProbability | null;
 }
+
+export interface WinProbability { home: number; draw: number; away: number }
+/** Distance covered (km) and top speed (km/h) per player. */
+export type PhysicalStats = Record<string, { distance_km: number; top_kmh: number }>;
 
 export type StatBlock = Record<string, number>;
 
@@ -66,6 +72,8 @@ export interface Snapshot {
   match_id: string; period: number | null; minute: number | null; match_second: number | null;
   score: { home: number; away: number }; home: TeamSnapshot; away: TeamSnapshot; rhythm: Rhythm | null;
   players: Record<string, PlayerSnapshot & { name?: string; team_id?: string }>;
+  /** Distance and top speed per player from tracking, when the live session sends them. */
+  physical?: PhysicalStats;
 }
 
 export interface Provenance { source: OutputSource; attempts: number; latency_ms: number }

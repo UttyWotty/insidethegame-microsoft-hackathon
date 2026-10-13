@@ -3,7 +3,8 @@
 Teams in possession push up and spread; teams out of possession compact, shift toward the ball, and press higher
 when their style says so. Players involved in the event are targeted at the ball, players about to act start
 running so they arrive on time, and a small deterministic sway keeps movement natural. Every player moves toward their target no faster than their pace-based top speed allows in
-the elapsed match time (formations reset at kick-offs), and the fastest sprinter of each frame is reported.
+the elapsed match time (formations reset at kick-offs), the fastest sprinter of each frame is reported, and each
+player's distance covered and top speed accumulate for the physical leaderboard.
 Positions are returned in the absolute home frame (home attacking toward x = 105).
 """
 
@@ -44,6 +45,8 @@ SWAY_INDEX_PRIME: int = 101
 LOOKAHEAD_S: float = 8.0
 LOOKAHEAD_EVENTS: int = 12
 OFF_BALL_PACE: float = 0.75
+M_PER_KM: float = 1000.0
+PHYSICAL_DECIMALS: int = 2
 
 Frame = list[tuple[str, float, float]]
 Sprint = tuple[str, float]
@@ -91,6 +94,8 @@ class TrackingModel:
     clock: tuple[int, float] = (0, 0.0)
     top_speeds: dict[str, float] = field(default_factory=dict)
     sprint: Sprint | None = None
+    covered_m: dict[str, float] = field(default_factory=dict)
+    fastest_kmh: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.top_speeds = {p.player_id: top_speed_kmh(p.attributes.pace)
@@ -165,9 +170,18 @@ class TrackingModel:
             moved = {pid: step_toward(self.previous[pid], target, self._cap(pid, involved), elapsed)
                      for pid, target in targets.items()}
             speeds = {pid: speed_kmh(self.previous[pid], point, elapsed) for pid, point in moved.items()}
+        for pid, point in moved.items():
+            if pid in speeds:
+                self.covered_m[pid] = self.covered_m.get(pid, 0.0) + distance(self.previous[pid], point)
+                self.fastest_kmh[pid] = max(self.fastest_kmh.get(pid, 0.0), speeds[pid])
         self.previous, self.clock = moved, (event.period, event.match_second)
         self.sprint = fastest_sprinter({pid: v for pid, v in speeds.items() if pid in involved})
         return moved
+
+    def physical(self) -> dict[str, dict[str, float]]:
+        """Distance covered (km) and top speed (km/h) so far for every player who has moved."""
+        return {pid: {"distance_km": round(self.covered_m[pid] / M_PER_KM, PHYSICAL_DECIMALS),
+                      "top_kmh": round(self.fastest_kmh.get(pid, 0.0), 1)} for pid in self.covered_m}
 
     def frame(self, event: MatchEvent, upcoming: Sequence[MatchEvent] = ()) -> Frame:
         """Return [player_id, x, y] for all 22 players after the event, in the absolute home frame.

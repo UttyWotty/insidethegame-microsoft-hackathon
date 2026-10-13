@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Live win probability and stat graphics: pure `analytics/win_probability.py` gives home win, draw, and away win
+  after every event (`win` in the event message) from the score, the time left, and Poisson goal rates that blend
+  a prior (1.55 home, 1.25 away per match) with each team's xG rate so far, weighted by time played; kick-off odds
+  are about 45%, 27%, and 28%. The score bug shows it as a three-part bar. Event pop-ups (TACKLE WON,
+  INTERCEPTION, SAVE) flash over the player for 1.8 seconds on the 2D and 3D pitch, and a Physical panel ranks
+  the top five for distance covered and top speed, accumulated by the tracking model and sent with each snapshot
+  (`physical`).
 - Live tactics overlay: computed in the browser from the 22 tracked positions (pure `lib/tactics.ts`): the defending
   side's offside line (second-deepest defender, ends swapping at half-time), its outfield block with depth and
   width (both teams when nobody has the ball), a pressure ring when opponents are within 5 m of the ball carrier,

@@ -13,14 +13,22 @@ export interface PlayerDot {
   tagBelow: boolean;
   /** Speed in km/h while this player is the recent sprinter, otherwise null. */
   sprintKmh: number | null;
+  /** Short event pop-up over the player (for example TACKLE WON), otherwise null. */
+  popup: string | null;
 }
 
 /** Who is in the action: the actor and receiver get name tags, the receiver's tag sits below. */
 export interface ActionFocus { actor: string | null; receiver: string | null }
 
-/** Dots for both teams; tracked is the followed player and sprintFor gives a player's speed tag (or null). */
+const NO_POPUP = (): string | null => null;
+
+/**
+ * Dots for both teams; tracked is the followed player, sprintFor gives a player's speed tag (or null), and
+ * popupFor (default none) gives a player's event pop-up.
+ */
 export function playerDots(match: MatchMetadata | undefined, positions: Record<string, Point>, focus: ActionFocus,
-                           tracked: string | null, sprintFor: (playerId: string) => number | null): PlayerDot[] {
+                           tracked: string | null, sprintFor: (playerId: string) => number | null,
+                           popupFor: (playerId: string) => string | null = NO_POPUP): PlayerDot[] {
   if (!match) return [];
   const tagged = new Set([focus.actor, focus.receiver].filter(Boolean));
   return [match.home, match.away].flatMap((team, i) => team.players
@@ -29,6 +37,6 @@ export function playerDots(match: MatchMetadata | undefined, positions: Record<s
       id: p.player_id, number: p.shirt_number, shortName: p.name.split(" ").slice(-1)[0],
       side: i === 0 ? "home" as const : "away" as const, position: positions[p.player_id],
       goalkeeper: p.position === "GK", tagged: tagged.has(p.player_id), tracked: p.player_id === tracked,
-      tagBelow: p.player_id === focus.receiver, sprintKmh: sprintFor(p.player_id),
+      tagBelow: p.player_id === focus.receiver, sprintKmh: sprintFor(p.player_id), popup: popupFor(p.player_id),
     })));
 }

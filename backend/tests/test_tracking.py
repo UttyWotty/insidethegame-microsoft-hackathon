@@ -97,3 +97,14 @@ def test_distance_covered_is_realistic() -> None:
     outfield = sorted(v / 1000 for pid, v in covered.items() if not pid.endswith("-01"))
     median = outfield[len(outfield) // 2]
     assert DISTANCE_KM_RANGE[0] <= median <= DISTANCE_KM_RANGE[1]
+
+
+def test_physical_stats_report_distance_and_top_speed() -> None:
+    result = simulate_match(build_fixture("kestrel_bay", "ironvale", 7))
+    model = TrackingModel(result.metadata)
+    for index, event in enumerate(result.events):
+        model.frame(event, result.events[index + 1:index + 1 + LOOKAHEAD_EVENTS])
+    physical = model.physical()
+    outfield = [v for pid, v in physical.items() if not pid.endswith("-01")]
+    assert len(physical) == PLAYERS and all(v["top_kmh"] <= HUMAN_TOP_SPEED_KMH for v in physical.values())
+    assert DISTANCE_KM_RANGE[0] <= sorted(v["distance_km"] for v in outfield)[len(outfield) // 2] <= DISTANCE_KM_RANGE[1]
