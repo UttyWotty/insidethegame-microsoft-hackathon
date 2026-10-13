@@ -89,6 +89,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Demo script and submission text cover the 3D broadcast view, studio visuals, live agent trace, and automated
+  highlights, with current test counts (194 backend, 52 frontend).
 - Documentation refreshed: README status (as of PR #47, deployment not yet verified), calibration table from the
   480-match report, "Stack" instead of "Planned Stack", and project structure; architecture diagrams add the
   tracking model, play-by-play voice, and Azure AI Speech, with live-delivery notes on backpressure, sprints, and

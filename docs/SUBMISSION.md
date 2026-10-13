@@ -31,12 +31,16 @@ grounded fallback guarantees the broadcast never goes blank.
 - **Explain:** the Match Analyst agent explains why a moment matters, calling statistics tools for evidence; the
   Lead Commentator writes a broadcast line on top of continuous play-by-play; the Standards Editor fact-checks
   attribution and outcomes before anything airs. Commentary can be spoken aloud, and it reacts: goals, close
-  calls, and bold passes are called with raised energy and cut in over calmer lines.
+  calls, and bold passes are called with raised energy and cut in over calmer lines. A Studio view draws the
+  evidence on the pitch (space control, pass networks, heat and pressing maps), and the Analyst's own tactical
+  theme picks which visual backs its explanation.
 - **Render:** each moment becomes timed overlay cues (layout, display time, duration, priority, stats, provenance)
-  rendered over a broadcast-angle pitch with all 22 players, live name tags, sprint speed tags, shot traces sized
-  by xG, and a goal banner, as a stat panel, lower third, hype banner, player tag, or explainer card. A producer
-  console, updated live over server-sent events, shows pipeline health, every moment's full broadcast record, and
-  hold-and-release control of AI overlays.
+  rendered over the match in a 3D broadcast view (running players, stands, a touchline camera that follows the
+  ball) or a broadcast-angle pitch, with live name tags, sprint speed tags, shot traces sized by xG, and a goal
+  banner, as a stat panel, lower third, hype banner, player tag, or explainer card. A producer
+  console, updated live over server-sent events, shows pipeline health, a live trace of the agents handing work
+  to each other for every moment, every moment's full broadcast record, and hold-and-release control of AI
+  overlays. At half-time and full-time an automated highlights package replays the key moments with narration.
 - **Personalize:** five personas (Analyst, Casual Fan, Superfan, Player Tracker, Newcomer) with their own voice,
   vocabulary, word budget, statistical focus, relevance rules, and overlay style; any language; favourite club and
   player. Half-time and full-time recaps carry a take written for each persona, and viewers can ask the Match
@@ -74,7 +78,7 @@ in the viewer's language, while staying factually grounded enough for a live pro
   optional producer key.
 - Keyless model access, least-privilege roles, non-root container, optional MCP bearer token.
 - Agent evaluation harness reporting per-agent model, corrected, and fallback rates and latency.
-- 182 automated backend tests and 39 frontend tests in CI; infrastructure as code.
+- 194 automated backend tests and 52 frontend tests in CI; infrastructure as code.
 
 ## Testing instructions
 
