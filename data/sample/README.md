@@ -14,16 +14,16 @@ Inside the Game analytics engine. Every file is JSON Lines.
 | File | Rows | Description |
 |---|---|---|
 | `matches.jsonl` | 2 | One row per match: clubs, styles, score, possession, xG, key moment count |
-| `events.jsonl` | 4944 | Every event with absolute coordinates, xG, pass difficulty, momentum, rhythm state |
+| `events.jsonl` | 4896 | Every event with absolute coordinates, xG, pass difficulty, momentum, rhythm state |
 | `players.jsonl` | 44 | Per-player match statistics |
-| `moments.jsonl` | 29 | Labelled key moments with importance and supporting facts |
-| `tracking.jsonl` | 990 | Ball and all 22 player positions after every 5th event |
+| `moments.jsonl` | 38 | Labelled key moments with importance and supporting facts |
+| `tracking.jsonl` | 980 | Ball and all 22 player positions after every 5th event |
 
 ## Headline statistics
 
 - Matches: 2 (seeds 1 to 2)
-- Mean goals per match: 2.0
-- Mean expected goals per match: 2.43
+- Mean goals per match: 3.0
+- Mean expected goals per match: 3.37
 
 ## Calibration
 
@@ -32,13 +32,13 @@ Result shares are noisy below a few hundred matches.
 
 | Metric | Synthetic | Reference band | Within band | Note |
 |---|---|---|---|---|
-| Goals per match | 2.0 | 2.5 to 3.1 | no |  |
-| Expected goals per match | 2.43 | 2.4 to 3.2 | yes |  |
-| Goals minus xG per match | -0.43 | -0.3 to 0.3 | no | xG model agrees with simulated finishing |
-| Shots per match | 24.5 | 22.0 to 28.0 | yes |  |
-| Shots on target (%) | 30.61 | 30.0 to 40.0 | yes | no blocked shots are modelled |
-| Shot conversion (%) | 8.16 | 9.0 to 13.0 | no |  |
-| Pass accuracy (%) | 80.0 | 78.0 to 86.0 | yes |  |
+| Goals per match | 3.0 | 2.5 to 3.1 | yes |  |
+| Expected goals per match | 3.37 | 2.4 to 3.2 | no |  |
+| Goals minus xG per match | -0.37 | -0.3 to 0.3 | no | xG model agrees with simulated finishing |
+| Shots per match | 27.0 | 22.0 to 28.0 | yes |  |
+| Shots on target (%) | 29.63 | 30.0 to 40.0 | no | blocked shots count as not on target |
+| Shot conversion (%) | 11.11 | 9.0 to 13.0 | yes |  |
+| Pass accuracy (%) | 79.67 | 78.0 to 86.0 | yes |  |
 | Home wins (%) | 0.0 | 40.0 to 48.0 | no | needs a few hundred matches to settle |
 | Draws (%) | 100.0 | 22.0 to 30.0 | no | needs a few hundred matches to settle |
 | Away wins (%) | 0.0 | 25.0 to 33.0 | no | needs a few hundred matches to settle |

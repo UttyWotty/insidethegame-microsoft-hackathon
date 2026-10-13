@@ -34,7 +34,7 @@ BENCHMARKS: tuple[Benchmark, ...] = (
     Benchmark("xg_per_match", "Expected goals per match", 2.4, 3.2),
     Benchmark("goals_minus_xg", "Goals minus xG per match", -0.3, 0.3, "xG model agrees with simulated finishing"),
     Benchmark("shots_per_match", "Shots per match", 22.0, 28.0),
-    Benchmark("on_target_pct", "Shots on target (%)", 30.0, 40.0, "no blocked shots are modelled"),
+    Benchmark("on_target_pct", "Shots on target (%)", 30.0, 40.0, "blocked shots count as not on target"),
     Benchmark("conversion_pct", "Shot conversion (%)", 9.0, 13.0),
     Benchmark("pass_accuracy_pct", "Pass accuracy (%)", 78.0, 86.0),
     Benchmark("home_win_pct", "Home wins (%)", 40.0, 48.0, "needs a few hundred matches to settle"),

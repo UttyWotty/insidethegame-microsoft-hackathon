@@ -90,8 +90,11 @@ Ordered by priority within each section; status as of 2026-10-12 (develop at PR 
 - `/api/matches` (match creation) has no per-client rate limit beyond the 20-session cap.
   Resolved 2026-10-13: per-client sliding-window limit (MATCH_CREATE_MAX_PER_MINUTE).
 -->
+<!--
 - Blocked shots are not modelled, so shots on target run slightly above the reference band (40% against 30 to 40%
   in `docs/CALIBRATION.md`); a block outcome in `resolve_shot` would fix it.
+  Resolved 2026-10-13: blocks were already modelled; the cause was the save share (0.40 to 0.32), now 35%.
+-->
 - Tracking-derived player speeds are unrealistic (teleporting event actors), so speed indicators use modelled shot and ball speeds only; smoothing or a kinematic model would allow real sprint tags.
 - Local MLX runs are slow (10 to 35 seconds per call with one call at a time); try the Qwen 35B A3B MoE model or a concurrency of 2 if local testing matters.
 - The producer console polls every 2 seconds; move it to the event stream if it needs to scale.

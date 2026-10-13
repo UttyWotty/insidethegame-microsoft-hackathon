@@ -7,19 +7,19 @@ Regenerate it after changing the simulator; the numbers are reproducible from th
 # Simulator Calibration
 
 Generated 2026-10-13 from 480 matches (seeds 1 to 480, every
-home and away pairing of the 4 fictional clubs). 9 of 10 metrics fall inside their band.
+home and away pairing of the 4 fictional clubs). 10 of 10 metrics fall inside their band.
 
 | Metric | Synthetic | Reference band | Within band | Note |
 |---|---|---|---|---|
-| Goals per match | 2.88 | 2.5 to 3.1 | yes |  |
-| Expected goals per match | 2.97 | 2.4 to 3.2 | yes |  |
-| Goals minus xG per match | -0.09 | -0.3 to 0.3 | yes | xG model agrees with simulated finishing |
-| Shots per match | 25.33 | 22.0 to 28.0 | yes |  |
-| Shots on target (%) | 40.14 | 30.0 to 40.0 | no | no blocked shots are modelled |
-| Shot conversion (%) | 11.37 | 9.0 to 13.0 | yes |  |
-| Pass accuracy (%) | 79.67 | 78.0 to 86.0 | yes |  |
-| Home wins (%) | 43.33 | 40.0 to 48.0 | yes | needs a few hundred matches to settle |
-| Draws (%) | 29.17 | 22.0 to 30.0 | yes | needs a few hundred matches to settle |
+| Goals per match | 2.84 | 2.5 to 3.1 | yes |  |
+| Expected goals per match | 2.98 | 2.4 to 3.2 | yes |  |
+| Goals minus xG per match | -0.14 | -0.3 to 0.3 | yes | xG model agrees with simulated finishing |
+| Shots per match | 25.05 | 22.0 to 28.0 | yes |  |
+| Shots on target (%) | 34.77 | 30.0 to 40.0 | yes | blocked shots count as not on target |
+| Shot conversion (%) | 11.33 | 9.0 to 13.0 | yes |  |
+| Pass accuracy (%) | 79.69 | 78.0 to 86.0 | yes |  |
+| Home wins (%) | 43.54 | 40.0 to 48.0 | yes | needs a few hundred matches to settle |
+| Draws (%) | 28.96 | 22.0 to 30.0 | yes | needs a few hundred matches to settle |
 | Away wins (%) | 27.5 | 25.0 to 33.0 | yes | needs a few hundred matches to settle |
 
 Reference bands are approximate typical ranges for top European leagues, used as sanity checks rather than exact
