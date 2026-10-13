@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Per-client rate limit on starting matches (`MATCH_CREATE_MAX_PER_MINUTE`, default 6): clients are identified by
+  the last `X-Forwarded-For` entry (the one the Container Apps proxy appends), so a forged header cannot reset the
+  budget; the MCP `start_match` tool shares one budget.
 - Backpressure for moment production: moments queue in order for `PARALLEL_MOMENTS` production slots (default 2),
   non-goal moments that fall more than five match minutes behind while queued are skipped, and the producer console
   shows Queued and Skipped (stale) moments plus a skipped count. Previously every moment started at once, so with a

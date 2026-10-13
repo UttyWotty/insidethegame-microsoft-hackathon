@@ -310,6 +310,7 @@ Model configuration (environment variables, all optional):
 | `SHUTDOWN_GRACE_S` | `5` | Seconds open streams may delay shutdown |
 | `PRODUCER_KEY` | empty | Required in `X-Producer-Key` for producer routes when set |
 | `PARALLEL_MOMENTS` | `2` | Moments per match whose agent workflows run at once; later moments queue in order |
+| `MATCH_CREATE_MAX_PER_MINUTE` | `6` | New matches per client per minute, via the API or the MCP tool (429 beyond) |
 | `ASK_MAX_PER_MINUTE` | `20` | Questions per match per minute for `/ask` and the MCP companion tool (429 beyond) |
 | `MCP_ALLOWED_HOSTS` | `127.0.0.1:*,localhost:*,testserver` | Host headers accepted by `/mcp` (DNS rebinding protection) |
 | `FRONTEND_ORIGINS` | `http://localhost:5199` | Comma-separated CORS origins |

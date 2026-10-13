@@ -77,7 +77,10 @@ Ordered by priority within each section; status as of 2026-10-12 (develop at PR 
   Resolved 2026-10-13: production slots, stale skipping, and console statuses.
 -->
 - Live sessions are in memory, so the app runs a single replica; move session state to a shared store before scaling out.
+<!--
 - `/api/matches` (match creation) has no per-client rate limit beyond the 20-session cap.
+  Resolved 2026-10-13: per-client sliding-window limit (MATCH_CREATE_MAX_PER_MINUTE).
+-->
 - Tracking-derived player speeds are unrealistic (teleporting event actors), so speed indicators use modelled shot and ball speeds only; smoothing or a kinematic model would allow real sprint tags.
 - Local MLX runs are slow (10 to 35 seconds per call with one call at a time); try the Qwen 35B A3B MoE model or a concurrency of 2 if local testing matters.
 - The producer console polls every 2 seconds; move it to the event stream if it needs to scale.
