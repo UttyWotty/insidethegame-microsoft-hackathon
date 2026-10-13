@@ -17,6 +17,12 @@ type Camera = "broadcast" | "tactical";
 const SHOT_VISIBLE_MS = 4000;
 const HALF_TIME_RECAP_MS = 15000;
 const GOAL_VISIBLE_MS = 4500;
+const TYPING_ELEMENTS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
+
+/** True while the viewer is typing in a field, when a recap dialog must not take focus away. */
+function isTyping(): boolean {
+  return TYPING_ELEMENTS.has(document.activeElement?.tagName ?? "");
+}
 
 function playerDots(match: MatchMetadata | undefined, positions: Record<string, Point>, last: MatchEvent | null,
                     tracked: string | null): PlayerDot[] {
@@ -64,7 +70,7 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   useEffect(() => {
     const fresh = state.recaps.find((r) => !seenStages.has(r.stage));
     if (fresh) {
-      setOpenRecap(fresh);
+      if (!isTyping()) setOpenRecap(fresh);
       setSeenStages((current) => new Set(current).add(fresh.stage));
     }
   }, [state.recaps, seenStages]);
@@ -95,6 +101,9 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
           {goal && <GoalBanner key={goal.id} scorer={goal.scorer} score={goal.score}
             teamColor={goal.side === "home" ? homeColor : awayColor} />}
         </Pitch>
+        <p className="visually-hidden" aria-live="assertive">
+          {state.goalFlash ? `Goal, ${state.goalFlash.scorer}. ${state.goalFlash.score}` : ""}
+        </p>
         <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
           {status === "open" && !state.ended && <span className="chip chip--live">LIVE</span>}
           <div className="tabs camera-toggle" role="group" aria-label="Camera">

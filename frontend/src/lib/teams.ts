@@ -1,13 +1,13 @@
 /**
  * Presentation colours for the fictional clubs, keyed by team id.
- * Colours are chosen to stay distinguishable on the dark pitch and against each other.
+ * Colours are chosen to stay distinguishable against each other and reach 3:1 contrast on both pitch stripes.
  * Unknown teams fall back to neutral tones.
  */
 export const TEAM_COLORS: Record<string, string> = {
-  brk: "#3B82F6",
-  irv: "#F97316",
+  brk: "#7DB4FB",
+  irv: "#FB923C",
   kba: "#2DD4BF",
-  slr: "#C084FC",
+  slr: "#D0A2FD",
 };
 
 const FALLBACK_HOME = "#E2E8F0";

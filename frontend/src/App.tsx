@@ -54,14 +54,15 @@ export function App() {
 
   return (
     <>
+      <a className="skip-link" href="#main">Skip to the match</a>
       <header className="app-header">
         <div className="brand">
           <h1 className="display">Inside the Game</h1>
           <span className="muted tagline">Explainable match intelligence</span>
         </div>
-        <div className="tabs" role="tablist" aria-label="View">
+        <div className="tabs" role="group" aria-label="View">
           {(["broadcast", "multiview", "producer"] as View[]).map((v) => (
-            <button key={v} role="tab" className="tab" aria-selected={view === v} onClick={() => setView(v)}>
+            <button key={v} className="tab" aria-pressed={view === v} onClick={() => setView(v)}>
               {{ broadcast: "Broadcast", multiview: "All personas", producer: "Producer" }[v]}
             </button>
           ))}
@@ -75,7 +76,7 @@ export function App() {
         </div>
       )}
       {view === "broadcast" || !session || !match ? (
-        <main className="layout">
+        <main id="main" className="layout">
           <div className="stack controls">
             <SetupPanel clubs={clubs} busy={busy} error={error} onStart={start} />
             <ViewerControls aiOnline={health?.model_provider !== "offline"} personas={personas} languages={languages} match={match} viewer={viewer} onChange={setRawViewer} />
@@ -85,7 +86,7 @@ export function App() {
             : <Landing busy={busy} onDemo={start} />}
         </main>
       ) : view === "multiview" ? (
-        <main><MultiView sessionId={session.session_id} personas={personas} language={viewer.language} match={match} /></main>
+        <main id="main"><MultiView sessionId={session.session_id} personas={personas} language={viewer.language} match={match} /></main>
       ) : (
         <ProducerConsole sessionId={session.session_id} match={match} language={viewer.language} />
       )}

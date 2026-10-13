@@ -21,7 +21,7 @@ export function ProducerConsole({ sessionId, match, language }: ConsoleProps) {
   return (
     <>
       <MatchBar sessionId={sessionId} language={language} match={match} note="Producer console: audit and control AI overlays." />
-      <main className="producer">
+      <main id="main" className="producer">
         {error && <p className="error" role="alert">{error}</p>}
         {summary && (
           <>
