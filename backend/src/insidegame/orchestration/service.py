@@ -30,12 +30,15 @@ from insidegame.orchestration.cues import MomentBroadcast, build_cue
 from insidegame.orchestration.messages import MomentJob, PersonalizedCard
 from insidegame.orchestration.producer import ProducerPolicy
 from insidegame.orchestration.workflow import build_moment_workflow
+from insidegame.orchestration.trace import COMPLETED, FAILED, INVOKED
 from insidegame.tracking.model import Frame, Sprint, TrackingModel
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 WorkflowFactory = Callable[[AgentSuite, MatchAnalyzer, RunPolicy], Workflow]
+TraceObserver = Callable[[str, str], None]
+TRACE_EVENT_TYPES: frozenset[str] = frozenset({INVOKED, COMPLETED, FAILED})
 
 DEGRADED_ATTEMPTS: int = 0
 DEGRADED_LATENCY_MS: int = 0
@@ -130,12 +133,20 @@ class MatchIntelligenceService:
         positions = self.tracking.frame(event, upcoming)
         return Interpretation(update, jobs, stage, contexts, positions, self.tracking.sprint)
 
-    async def produce(self, job: MomentJob) -> MomentBroadcast:
-        """Run the multi-agent workflow for one job, degrading to templates if the workflow fails."""
+    async def produce(self, job: MomentJob, observer: TraceObserver | None = None) -> MomentBroadcast:
+        """Run the multi-agent workflow for one job, degrading to templates if the workflow fails.
+
+        observer (default None) receives each executor event as (executor_id, event type) while the workflow runs,
+        which feeds the producer console's live agent trace.
+        """
         match_id = self.analyzer.metadata.match_id
         workflow = self.workflow_factory(self.suite, self.analyzer, self.policy)
         try:
-            outputs = (await workflow.run(job)).get_outputs()
+            stream = workflow.run(job, stream=True)
+            async for event in stream:
+                if observer is not None and event.type in TRACE_EVENT_TYPES and event.executor_id:
+                    observer(str(event.executor_id), str(event.type))
+            outputs = (await stream.get_final_response()).get_outputs()
         except AgentFrameworkException as exc:
             logger.error("Workflow failed for %s: %s", job.context.moment.moment_id, exc)
             outputs = []

@@ -24,7 +24,7 @@ class FaultyService(MatchIntelligenceService):
         super().__init__(*args)  # type: ignore[arg-type]
         self.fail_recap, self.fail_produce, self.gate, self.produced = fail_recap, fail_produce, gate, 0
 
-    async def produce(self, job: MomentJob):  # type: ignore[no-untyped-def]
+    async def produce(self, job: MomentJob, observer: object = None):  # type: ignore[no-untyped-def]
         self.produced += 1
         if self.gate is not None:
             await self.gate.wait()

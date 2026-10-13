@@ -8,6 +8,7 @@ Every tracking frame is kept so half-time and full-time highlights can be replay
 
 import asyncio
 import logging
+import time
 from collections import Counter, deque
 from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
@@ -37,6 +38,7 @@ from insidegame.orchestration.cues import MomentBroadcast
 from insidegame.orchestration.messages import MomentJob
 from insidegame.orchestration.producer import is_stale
 from insidegame.orchestration.service import MatchIntelligenceService, degraded_broadcast
+from insidegame.orchestration.trace import AgentTrace
 from insidegame.tracking.model import LOOKAHEAD_EVENTS, Frame
 
 logger = logging.getLogger(__name__)
@@ -50,6 +52,7 @@ COMMENTARY_HISTORY: int = 40
 MOMENT_HISTORY: int = 30
 DEFAULT_PARALLEL_MOMENTS: int = 2
 BALL_DECIMALS: int = 1
+TRACE_HISTORY: int = 12
 
 Sleeper = Callable[[float], Awaitable[None]]
 
@@ -111,11 +114,13 @@ class MatchSession:
     """Owns one replayed match, its pipeline, and its subscribers."""
 
     def __init__(self, session_id: str, result: MatchResult, service: MatchIntelligenceService, speed: float,
-                 sleep: Sleeper = asyncio.sleep, parallel_moments: int = DEFAULT_PARALLEL_MOMENTS) -> None:
+                 sleep: Sleeper = asyncio.sleep, parallel_moments: int = DEFAULT_PARALLEL_MOMENTS,
+                 clock: Callable[[], float] = time.monotonic) -> None:
         """Create a session.
 
         sleep defaults to asyncio.sleep and is injectable for tests; parallel_moments (default
-        DEFAULT_PARALLEL_MOMENTS = 2) caps how many moments run their agent workflows at once.
+        DEFAULT_PARALLEL_MOMENTS = 2) caps how many moments run their agent workflows at once; clock (default
+        time.monotonic) times the live agent traces.
         """
         self.session_id, self.result, self.service, self.speed, self.sleep = session_id, result, service, speed, sleep
         self.status = SessionStatus.PENDING
@@ -134,6 +139,8 @@ class MatchSession:
         self.commentary: deque[dict[str, object]] = deque(maxlen=COMMENTARY_HISTORY)
         self.frames: list[FrameRecord] = []
         self.played = 0
+        self.clock_s = clock
+        self.traces: dict[str, AgentTrace] = {}
 
     def describe(self) -> dict[str, object]:
         """Session summary for listings."""
@@ -207,10 +214,20 @@ class MatchSession:
         task.add_done_callback(self.tasks.discard)
         return task
 
+    def _start_trace(self, job: MomentJob) -> AgentTrace:
+        """Open a live trace for a moment entering production, keeping the newest TRACE_HISTORY traces."""
+        moment = job.context.moment
+        trace = AgentTrace(moment.moment_id, moment.minute_label, moment.kind.value, self.clock_s())
+        self.traces[moment.moment_id] = trace
+        for old in list(self.traces)[:-TRACE_HISTORY]:
+            del self.traces[old]
+        return trace
+
     async def _broadcast(self, job: MomentJob) -> MomentBroadcast:
         """Run the agent workflow; any unexpected failure degrades to templates instead of losing the moment."""
+        trace = self._start_trace(job)
         try:
-            return await self.service.produce(job)
+            return await self.service.produce(job, lambda executor, kind: trace.observe(executor, kind, self.clock_s()))
         except Exception:  # noqa: BLE001 - resilience boundary for background work
             logger.exception("Production failed for %s; publishing degraded cues", job.context.moment.moment_id)
             return degraded_broadcast(self.result.metadata.match_id, job.context, job)
@@ -274,9 +291,13 @@ class MatchSession:
                               tuple(self.recent_moments), window)
 
     def producer_summary(self) -> dict[str, object]:
-        """State for the producer console."""
-        return self.desk.summary(self.service.analyzer.moments, len(self.service.viewers), self.in_production.keys(),
-                                 self.queued.keys())
+        """State for the producer console, including live agent traces for the newest moments."""
+        summary = self.desk.summary(self.service.analyzer.moments, len(self.service.viewers),
+                                    self.in_production.keys(), self.queued.keys())
+        now = self.clock_s()
+        traces = [trace.to_dict(now, self.desk.records[mid].cues if mid in self.desk.records else [])
+                  for mid, trace in reversed(self.traces.items())]
+        return summary | {"traces": traces}
 
     async def _recap(self, stage: RecapStage) -> None:
         """Write the shared recap, then publish it to each viewer segment with that segment's persona take."""

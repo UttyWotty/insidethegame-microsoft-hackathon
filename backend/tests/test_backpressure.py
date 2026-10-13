@@ -44,7 +44,7 @@ def _finished_session() -> tuple[MatchSession, int]:
         session = MatchSession("bp", result, service, SPEED, sleeper)
         original, active, peak = service.produce, 0, 0
 
-        async def blocked(job: MomentJob) -> MomentBroadcast:
+        async def blocked(job: MomentJob, observer: object = None) -> MomentBroadcast:
             nonlocal active, peak
             active += 1
             peak = max(peak, active)

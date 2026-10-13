@@ -113,7 +113,7 @@ def test_service_degrades_when_workflow_fails(goal_context: MomentContext) -> No
     result = simulate_match(build_fixture("brookhaven", "silverlake", 3))
 
     class BrokenWorkflow:
-        async def run(self, job: MomentJob) -> None:
+        def run(self, job: MomentJob, stream: bool = False) -> None:
             raise AgentFrameworkException("executor crashed")
 
     service = MatchIntelligenceService(result.metadata, create_agent_suite(CallbackChatClient(_respond)), POLICY,
