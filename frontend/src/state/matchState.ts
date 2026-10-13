@@ -7,7 +7,7 @@
 import { DEFAULT_MOVE_MS, moveDuration, type ReceivedSprint } from "../lib/motion";
 import { ballAfter, minuteLabel, toScreen } from "../lib/pitch";
 import type {
-  EventUpdate, MatchEvent, OverlayCue, Point, Recap, Rhythm, SessionInfo, ShotCardInfo, Snapshot,
+  EventUpdate, MatchEvent, OverlayCue, Point, Recap, Rhythm, SessionInfo, ShotCardInfo, Snapshot, WinProbability,
 } from "../types";
 
 export const TRAIL_LENGTH = 14;
@@ -54,6 +54,8 @@ export interface MatchState {
   /** Wall-clock time the last event arrived, or null before the first. */
   lastEventAt: number | null;
   sprint: ReceivedSprint | null;
+  /** Live home win, draw, and away win probabilities, or null before the first event. */
+  win: WinProbability | null;
   trail: TrailPoint[];
   rhythm: Rhythm | null;
   momentum: MomentumPoint[];
@@ -72,7 +74,7 @@ export type StreamAction =
 
 export const initialMatchState: MatchState = {
   session: null, snapshot: null, lastEvent: null, ball: null, players: {}, moveMs: DEFAULT_MOVE_MS, lastEventAt: null,
-  sprint: null, trail: [], rhythm: null, momentum: [], cues: [],
+  sprint: null, win: null, trail: [], rhythm: null, momentum: [], cues: [],
   ticker: [], recaps: [], ended: false, lastShot: null, goalFlash: null,
 };
 
@@ -137,6 +139,7 @@ function applyEvent(state: MatchState, update: EventUpdate, at: number): MatchSt
     : state.players;
   const sprint = update.sprint ? { ...update.sprint, at } : state.sprint;
   return { ...state, lastEvent: event, ball, players, moveMs: moveDuration(state.lastEventAt, at), lastEventAt: at, sprint,
+           win: update.win ?? state.win,
            trail, rhythm: update.rhythm, momentum, ticker,
            lastShot: shotTrace(state, update, at), goalFlash: goalFlash(state, event, at) };
 }

@@ -285,6 +285,10 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   cut off calm lines. Pace follows the replay speed (natural at 1x real time), lines rotate through varied wordings
   without near repeats, and the viewer's own system voice (or a natural male commentator voice) is used.
 - **Recaps:** half-time and full-time recaps open in an accessible dialog, led by the viewer's persona take.
+- **Win probability and live stats:** a home win, draw, and away win bar under the score bug moves with every
+  goal, chance, and minute (a Poisson model blending typical top-flight scoring and home advantage with each team's
+  live xG rate); pop-ups flash TACKLE WON, INTERCEPTION, or SAVE over the player; and a Physical leaderboard ranks
+  distance covered and top speed from the tracking.
 - **Tactics overlay:** on the 2D and 3D pitch, the defending block with its depth and width, the offside line
   (second-deepest defender), a pressure ring when opponents close in on the ball carrier, and arrows to the
   carrier's three best passing options with a completion chance from distance and opponents near the lane

@@ -1,6 +1,6 @@
 """Streaming facade for pipeline stage two, turning each raw event into interpreted output.
 
-MatchAnalyzer.ingest computes xG, pass quality, and a broadcast shot card, updates statistics and rhythm, and
+MatchAnalyzer.ingest computes xG, pass quality, a broadcast shot card, and live win probability, updates statistics and rhythm, and
 detects key moments.
 snapshot returns the full machine-readable match state for overlays, agents, and APIs.
 """
@@ -12,6 +12,7 @@ from insidegame.analytics.moments import KeyMoment
 from insidegame.analytics.pass_quality import PassQuality, assess_pass
 from insidegame.analytics.rhythm import RhythmReading, RhythmTracker
 from insidegame.analytics.shot_card import ShotCard, shot_card
+from insidegame.analytics.win_probability import WinProbability, win_probability
 from insidegame.analytics.stats import StatsAccumulator
 from insidegame.analytics.xg import expected_goals
 from insidegame.domain.enums import EventType, Side
@@ -19,13 +20,14 @@ from insidegame.domain.events import MatchEvent
 from insidegame.domain.match import MatchMetadata
 
 POSSESSION_DECIMALS: int = 1
+FINAL_PERIOD: int = 2
 
 
 @dataclass(frozen=True)
 class AnalysisUpdate:
     """Everything stage two derived from a single event.
 
-    Defaults: shot is None except on shot events.
+    Defaults: shot is None except on shot events; win is None only when built without it.
     """
 
     event: MatchEvent
@@ -34,6 +36,7 @@ class AnalysisUpdate:
     rhythm: RhythmReading
     moments: tuple[KeyMoment, ...]
     shot: ShotCard | None = None
+    win: WinProbability | None = None
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-friendly representation."""
@@ -44,6 +47,7 @@ class AnalysisUpdate:
             "rhythm": self.rhythm.to_dict(),
             "moments": [m.to_dict() for m in self.moments],
             "shot": self.shot.to_dict() if self.shot else None,
+            "win": self.win.to_dict() if self.win else None,
         }
 
 
@@ -76,7 +80,14 @@ class MatchAnalyzer:
         self.moments.extend(new_moments)
         self.last_event, self.last_reading = event, reading
         card = shot_card(event, xg) if xg is not None else None
-        return AnalysisUpdate(event, xg, quality, reading, new_moments, card)
+        return AnalysisUpdate(event, xg, quality, reading, new_moments, card, self._win(event))
+
+    def _win(self, event: MatchEvent) -> WinProbability:
+        """Live win probability after this event."""
+        home, away = self.metadata.home.team_id, self.metadata.away.team_id
+        finished = event.event_type is EventType.PERIOD_END and event.period == FINAL_PERIOD
+        return win_probability(event.score_home, event.score_away, self.stats.teams[home].xg,
+                               self.stats.teams[away].xg, event.match_second, finished)
 
     def _team_block(self, side: Side) -> dict[str, object]:
         team = self.metadata.team(side)

@@ -84,11 +84,15 @@ function Player({ dot, color }: { dot: PlayerDot; color: string }) {
       {dot.tracked && <circle r={PLAYER_RADIUS + 0.9} fill="none" stroke="#ffffff" strokeWidth={0.35} strokeDasharray="0.8 0.5" />}
       <circle r={PLAYER_RADIUS} fill={fill} stroke="#0b1220" strokeWidth={0.3} />
       <text className="player-number" textAnchor="middle" dominantBaseline="central">{dot.number}</text>
-      {(dot.tagged || dot.tracked || dot.sprintKmh !== null) && (
+      {(dot.tagged || dot.tracked || dot.sprintKmh !== null || dot.popup) && (
         <text className="player-tag" x={tagX} y={place.below ? TAG_OFFSET + BELOW_EXTRA : -TAG_OFFSET}
           textAnchor={place.anchor}>
           {dot.shortName}
         </text>
+      )}
+      {dot.popup && (
+        <text className="player-popup" y={place.below ? SPEED_OFFSET + BELOW_EXTRA + 2 : -SPEED_OFFSET - (dot.sprintKmh !== null ? 2 : 0)}
+          x={tagX} textAnchor={place.anchor}>{dot.popup}</text>
       )}
       {dot.sprintKmh !== null && (
         <text className="player-speed" x={tagX} y={place.below ? SPEED_OFFSET + BELOW_EXTRA : -SPEED_OFFSET}

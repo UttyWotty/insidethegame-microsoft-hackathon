@@ -84,11 +84,17 @@ main:focus { outline: none; }
 .pitch3d-canvas canvas { display: block; width: 100% !important; height: auto !important; }
 .pitch3d-tags { position: absolute; inset: 0; pointer-events: none; }
 .pitch3d-tag { position: absolute; transform: translate(-50%, -100%); display: grid; justify-items: center; font: 700 var(--text-xs) var(--font-display); color: #ffffff; text-transform: uppercase; letter-spacing: 0.04em; text-shadow: 0 0 3px #0b1220, 0 0 6px #0b1220; white-space: nowrap; }
+.pitch3d-popup { color: #0b1220; background: var(--color-info); padding: 0 var(--space-1); border-radius: 3px; margin-bottom: 2px; }
 .pitch3d-speed { color: var(--color-warning); }
 .pitch3d-fallback, .pitch3d-loading { padding: var(--space-6); text-align: center; color: var(--color-fg-muted); }
 .pitch-wrap.cam-broadcast .pitch { transform: rotateX(30deg) scale(0.86); }
 .player { transition: transform var(--move-ms, 650ms) linear; }
+.leaderboard { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.leaderboard li { display: grid; grid-template-columns: 6px 1fr auto; gap: var(--space-2); align-items: center; font-size: var(--text-sm); }
+.leaderboard .swatch { width: 6px; height: 14px; border-radius: 2px; }
+.leader-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tactics-label { font: 700 1.5px var(--font-display); fill: #ffffff; paint-order: stroke; stroke: #0b1220; stroke-width: 0.4px; }
+.player-popup { font: 700 1.5px var(--font-display); fill: #0b1220; paint-order: stroke; stroke: var(--color-info); stroke-width: 0.9px; letter-spacing: 0.06em; }
 .player-speed { font: 700 1.6px var(--font-display); fill: var(--color-warning); paint-order: stroke; stroke: #0b1220; stroke-width: 0.45px; letter-spacing: 0.02em; }
 .player-number { font: 700 1.25px var(--font-display); fill: #0b1220; pointer-events: none; }
 .player-tag { font: 700 1.9px var(--font-display); fill: #ffffff; paint-order: stroke; stroke: #0b1220; stroke-width: 0.45px; letter-spacing: 0.02em; text-transform: uppercase; }
@@ -98,8 +104,12 @@ main:focus { outline: none; }
 .camera-toggle .tab[aria-pressed="true"] { background: var(--color-accent); color: var(--color-on-accent); }
 @media (prefers-reduced-motion: reduce) { .player, .ball, .pitch-wrap .pitch { transition: none; } }
 
+.score-stack { position: absolute; top: var(--space-3); left: var(--space-3); display: grid; gap: 4px; z-index: 2; }
+.win-bar { display: flex; height: 16px; border-radius: var(--radius-sm); overflow: hidden; font: 700 var(--text-xs) var(--font-display); color: #0b1220; }
+.win-bar span { display: grid; place-items: center; transition: width var(--duration-medium) var(--ease-out); white-space: nowrap; overflow: hidden; }
+.win-draw { background: #cbd5e1; }
 .score-bug {
-  position: absolute; top: var(--space-3); left: var(--space-3); display: flex; align-items: stretch; overflow: hidden;
+  display: flex; align-items: stretch; overflow: hidden;
   border-radius: var(--radius-sm); background: var(--color-glass); backdrop-filter: blur(var(--blur-glass));
   border: 1px solid var(--color-glass-border); font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700;
 }

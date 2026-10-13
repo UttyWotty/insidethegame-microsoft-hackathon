@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
 import { useMatchStream } from "../api/useMatchStream";
+import { eventPopup } from "../lib/broadcastStats";
 import { sprintSpeed } from "../lib/motion";
 import { playerDots } from "../lib/playerDots";
 import { earnsReplay, REPLAY_DELAY_MS } from "../lib/replay";
@@ -52,6 +53,7 @@ function isTyping(): boolean {
 import { AskPanel } from "./AskPanel";
 import { CommentaryTicker } from "./CommentaryTicker";
 import { MomentumChart } from "./MomentumChart";
+import { PhysicalPanel } from "./PhysicalPanel";
 import { OverlayLayer } from "./overlays/OverlayLayer";
 import { GoalBanner } from "./overlays/Overlays";
 import { ShotCard } from "./overlays/ShotCard";
@@ -72,8 +74,11 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   const onBallAnchor = useCallback((next: BallAnchor) => setAnchor(next), []);
   const dots = useMemo(() => playerDots(state.session?.match, state.players,
     { actor: state.lastEvent?.player_id ?? null, receiver: state.lastEvent?.receiver_id ?? null }, viewer.player,
-    (id) => sprintSpeed(state.sprint, id, now)),
-  [state.session, state.players, state.lastEvent, viewer.player, state.sprint, now]);
+    (id) => sprintSpeed(state.sprint, id, now), (id) => {
+      const popup = eventPopup(state.lastEvent, state.lastEventAt, now);
+      return popup?.playerId === id ? popup.text : null;
+    }),
+  [state.session, state.players, state.lastEvent, state.lastEventAt, viewer.player, state.sprint, now]);
   const [reelStage, setReelStage] = useState<HighlightReel["stage"] | null>(null);
   const [autoReplay, setAutoReplay] = useState(true);
   const [showTactics, setShowTactics] = useState(true);
@@ -147,7 +152,8 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
           <PitchView ball={state.ball} trail={state.trail} players={dots} moveMs={state.moveMs} homeColor={homeColor} awayColor={awayColor}
             camera={camera} shot={shot} onBallAnchor={onBallAnchor} tactics={tactics}
             label={`Live pitch: ${match.home.name} versus ${match.away.name}`}>
-            <ScoreBug home={match.home} away={match.away} homeColor={homeColor} awayColor={awayColor} lastEvent={state.lastEvent} />
+            <ScoreBug home={match.home} away={match.away} homeColor={homeColor} awayColor={awayColor} lastEvent={state.lastEvent}
+              win={state.win} />
             <OverlayLayer active={goal || cardShot?.card ? null : active} anchor={anchor} teamColor={cueTeamIsAway ? awayColor : homeColor} />
             {goal && <GoalBanner key={goal.id} scorer={goal.scorer} score={goal.score}
               teamColor={goal.side === "home" ? homeColor : awayColor} />}
@@ -190,6 +196,7 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
       <aside className="rail">
         <AskPanel sessionId={sessionId} viewer={viewer} />
         <StatsPanel snapshot={state.snapshot} homeColor={homeColor} awayColor={awayColor} />
+        <PhysicalPanel physical={state.snapshot?.physical} match={match} homeColor={homeColor} awayColor={awayColor} />
         <MomentumChart points={state.momentum} rhythm={state.rhythm} homeColor={homeColor} awayColor={awayColor}
           homeName={match.home.short_name} awayName={match.away.short_name} />
       </aside>
