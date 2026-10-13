@@ -6,6 +6,7 @@ It is built from the same rows that are written, so the numbers always match the
 
 from collections.abc import Mapping, Sequence
 
+from insidegame.datasets.calibration import CalibrationRow, calibration_table
 from insidegame.datasets.rows import Row
 from insidegame.datasets.tracking_rows import DEFAULT_SAMPLE_EVERY
 
@@ -16,8 +17,12 @@ def _mean(values: Sequence[float]) -> float:
     return round(sum(values) / len(values), STAT_DECIMALS) if values else 0.0
 
 
-def dataset_card(matches: Sequence[Row], counts: Mapping[str, int]) -> str:
-    """Return the Markdown dataset card; counts maps each table name (events, players, moments, tracking) to rows."""
+def dataset_card(matches: Sequence[Row], counts: Mapping[str, int], calibration: Sequence[CalibrationRow]) -> str:
+    """Return the Markdown dataset card.
+
+    counts maps each table name (events, players, moments, tracking) to its row count; calibration holds the
+    measured realism metrics for this dataset.
+    """
     goals = [float(m["home_goals"]) + float(m["away_goals"]) for m in matches]  # type: ignore[arg-type]
     xg = [float(m["home_xg"]) + float(m["away_xg"]) for m in matches]  # type: ignore[arg-type]
     seeds = sorted({int(m["seed"]) for m in matches})  # type: ignore[call-overload]
@@ -47,6 +52,13 @@ Inside the Game analytics engine. Every file is JSON Lines.
 - Matches: {len(matches)} (seeds {seeds[0] if seeds else 0} to {seeds[-1] if seeds else 0})
 - Mean goals per match: {_mean(goals)}
 - Mean expected goals per match: {_mean(xg)}
+
+## Calibration
+
+Measured on this dataset against approximate top-flight reference bands (sanity checks, not exact statistics).
+Result shares are noisy below a few hundred matches.
+
+{calibration_table(calibration)}
 
 ## Coordinates
 

@@ -48,6 +48,10 @@ FINISHING_WEIGHT: float = 0.6
 
 FATIGUE_MAX_PENALTY: float = 0.05
 
+NEUTRAL_VENUE: float = 1.0
+HOME_SHOT_FACTOR: float = 1.25
+AWAY_SHOT_FACTOR: float = 0.78
+
 CHASE_START_SECOND: float = 60 * 60
 PROTECT_START_SECOND: float = 70 * 60
 CHASE_BOOST: float = 0.20
@@ -94,12 +98,17 @@ def fatigue_factor(match_second: float) -> float:
     return 1.0 - FATIGUE_MAX_PENALTY * _unit(match_second / MATCH_SECONDS)
 
 
-def shot_probability(ball: Point, attrs: PlayerAttributes, style: TeamStyle) -> float:
-    """Probability the carrier shoots from the current location."""
+def venue_factor(is_home: bool) -> float:
+    """Shot-volume multiplier for home advantage: home sides create more chances, away sides fewer."""
+    return HOME_SHOT_FACTOR if is_home else AWAY_SHOT_FACTOR
+
+
+def shot_probability(ball: Point, attrs: PlayerAttributes, style: TeamStyle, venue: float = NEUTRAL_VENUE) -> float:
+    """Probability the carrier shoots from the current location; venue defaults to NEUTRAL_VENUE (1.0)."""
     d = distance_to_goal(ball)
     if d > MAX_SHOT_DISTANCE_M:
         return 0.0
-    base = SHOT_BASE_SCALE * math.exp(-d / SHOT_DECAY_M)
+    base = SHOT_BASE_SCALE * math.exp(-d / SHOT_DECAY_M) * venue
     return _bounded(base * (SHOT_RISK_FLOOR + SHOT_RISK_WEIGHT * style.risk) * (0.5 + attrs.finishing))
 
 
@@ -110,10 +119,11 @@ def carry_probability(attrs: PlayerAttributes, under_pressure: bool) -> float:
 
 
 def choose_action(
-    ball: Point, attrs: PlayerAttributes, style: TeamStyle, under_pressure: bool, rng: random.Random
+    ball: Point, attrs: PlayerAttributes, style: TeamStyle, under_pressure: bool, rng: random.Random,
+    venue: float = NEUTRAL_VENUE,
 ) -> ActionKind:
-    """Sample the carrier's next action."""
-    p_shot = shot_probability(ball, attrs, style)
+    """Sample the carrier's next action; venue (default NEUTRAL_VENUE) scales the chance of shooting."""
+    p_shot = shot_probability(ball, attrs, style, venue)
     draw = rng.random()
     if draw < p_shot:
         return ActionKind.SHOT

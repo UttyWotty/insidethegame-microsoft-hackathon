@@ -17,6 +17,7 @@ from insidegame.simulation.probabilities import (
     pressure_probability,
     scoring_probability,
     shot_probability,
+    venue_factor,
 )
 
 AVERAGE = PlayerAttributes(pace=0.5, passing=0.5, finishing=0.5, tackling=0.5)
@@ -80,3 +81,10 @@ def test_choose_action_never_shoots_from_own_half() -> None:
     rng = random.Random(7)
     actions = {choose_action(Point(20, 34), AVERAGE, STYLE, False, rng) for _ in range(500)}
     assert ActionKind.SHOT not in actions
+
+
+def test_home_sides_shoot_more_often_than_away_sides() -> None:
+    near_goal = Point(92, 34)
+    home = shot_probability(near_goal, AVERAGE, STYLE, venue_factor(True))
+    away = shot_probability(near_goal, AVERAGE, STYLE, venue_factor(False))
+    assert home > shot_probability(near_goal, AVERAGE, STYLE) > away

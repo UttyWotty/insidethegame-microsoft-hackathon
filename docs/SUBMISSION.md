@@ -21,7 +21,8 @@ grounded fallback guarantees the broadcast never goes blank.
 
 - **Ingest:** a seeded possession-chain simulator generates full 90-minute matches between fictional clubs with
   distinct tactical styles that adapt to the scoreline and fatigue; averages match real top-flight football
-  (about 24 shots, 2.8 goals, 80% pass accuracy). A tracking model adds formation-aware positions for all 22
+  (about 25 shots, 2.9 goals, 80% pass accuracy, and a realistic home advantage), checked by a calibration
+  report against top-flight reference bands. A tracking model adds formation-aware positions for all 22
   players after every event, and the dataset generator exports events, players, moments, and tracking as JSON
   Lines with a dataset card.
 - **Interpret:** streaming analytics compute xG, an explainable 0-100 pass difficulty, running player and team

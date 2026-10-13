@@ -9,7 +9,7 @@ from insidegame.core.geometry import PITCH_CENTER
 from insidegame.domain.enums import EventType, Side
 from insidegame.domain.match import MatchMetadata, MatchResult
 from insidegame.simulation.open_play import apply_pressure, resolve_carry, resolve_pass
-from insidegame.simulation.probabilities import ActionKind, choose_action, effective_style
+from insidegame.simulation.probabilities import ActionKind, choose_action, effective_style, venue_factor
 from insidegame.simulation.set_pieces import kick_off, resolve_shot
 from insidegame.simulation.state import SimState
 
@@ -26,7 +26,8 @@ def _step(state: SimState) -> None:
         state.defending_team.style, state.goal_difference(state.attacking.opponent), state.clock_s
     )
     apply_pressure(state, defending_style)
-    action = choose_action(state.ball, state.carrier.attributes, attacking_style, state.under_pressure, state.rng)
+    action = choose_action(state.ball, state.carrier.attributes, attacking_style, state.under_pressure, state.rng,
+                           venue_factor(state.attacking is Side.HOME))
     if action is ActionKind.SHOT:
         resolve_shot(state)
     elif action is ActionKind.CARRY:

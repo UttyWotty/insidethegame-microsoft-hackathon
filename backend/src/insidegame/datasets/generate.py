@@ -10,6 +10,7 @@ import json
 from collections.abc import Iterable
 from pathlib import Path
 
+from insidegame.datasets.calibration import calibrate
 from insidegame.datasets.card import dataset_card
 from insidegame.datasets.rows import Row, build_tables
 from insidegame.datasets.tracking_rows import tracking_rows
@@ -43,7 +44,9 @@ def generate(matches: int, start_seed: int, output: Path) -> dict[str, int]:
         "moments": _write_jsonl(output / "moments.jsonl", (row for t in tables for row in t.moments)),
         "tracking": _write_jsonl(output / "tracking.jsonl", (row for r in results for row in tracking_rows(r))),
     }
-    card = dataset_card([t.match for t in tables], counts)
+    match_rows = [t.match for t in tables]
+    calibration = calibrate(match_rows, (row for t in tables for row in t.events))
+    card = dataset_card(match_rows, counts, calibration)
     (output / "README.md").write_text(card, encoding="utf-8")
     return counts
 

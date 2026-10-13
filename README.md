@@ -82,6 +82,12 @@ JSON Lines tables across every fixture pairing:
 | `tracking.jsonl` | Ball and all 22 player positions in the absolute home frame, sampled every fifth event |
 | `README.md` | Generated dataset card: parameters, schema, statistics, intended uses, limitations |
 
+Realism is measured, not claimed: `python -m insidegame.datasets.calibrate --matches 480` compares goals, xG,
+shots, accuracy, conversion, and home, draw, and away shares with approximate top-flight bands, and every dataset
+card carries the same table. The current report ([docs/CALIBRATION.md](docs/CALIBRATION.md)) has 9 of 10 metrics
+inside their band; shots on target run slightly high because blocked shots are not modelled. Home advantage comes
+from a shot-volume factor, so goals stay consistent with the independent xG model.
+
 Twelve matches (about 30,000 events) generate in under two seconds. A two-match sample is committed in
 [`data/sample/`](data/sample/README.md). The files load directly into Microsoft Fabric lakehouses, notebooks,
 or training pipelines.

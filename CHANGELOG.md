@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Simulator calibration: `insidegame.datasets.calibrate` compares goals, xG agreement, shots, on-target share,
+  conversion, pass accuracy, and result shares with approximate top-flight reference bands and writes
+  `docs/CALIBRATION.md` (9 of 10 within band over 480 matches); every dataset card now includes the same table.
 - Azure AI Speech for spoken commentary: `/api/matches/{id}/speech` returns MP3 from a neural voice per language,
   only for lines the match produced (looked up by reference, never arbitrary text), cached and rate-limited per
   client; keyless via the app's managed identity with the Cognitive Services Speech User role on the existing AI
@@ -50,6 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Home advantage in the simulator: home sides take more shots and away sides fewer (shot-volume factors 1.25 and
+  0.78), moving results from about 33/35/32 to 43/29/28 home/draw/away; seeded matches differ from earlier builds.
 - Submission text and demo script describe the seven agents, fact-checking, the producer console, tracking, and
   the Copilot-via-MCP segment; the script requires real AI output before recording and uses the exact UI labels.
 - Agent evaluation takes one moment per kind (instead of the first few in time order) so every persona, the
