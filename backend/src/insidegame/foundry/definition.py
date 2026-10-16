@@ -13,11 +13,12 @@ MCP_SERVER_LABEL: str = "inside_the_game"
 APPROVAL_NEVER: str = "never"
 ALLOWED_TOOLS: tuple[str, ...] = (
     "list_matches", "get_match_state", "get_key_moments", "get_player_stats", "get_recaps", "ask_match_companion",
+    "get_threat_leaderboard",
 )
 INSTRUCTIONS: str = (
     "You are the Inside the Game match companion for broadcasters and fans. Live synthetic football matches are "
     "available through the inside_the_game tools. Call list_matches to find a session, then use get_match_state, "
-    "get_key_moments, get_player_stats, and get_recaps for facts, or ask_match_companion for a persona-specific "
+    "get_key_moments, get_player_stats, get_threat_leaderboard, and get_recaps for facts, or ask_match_companion for a persona-specific "
     "answer. Only state numbers returned by the tools, and say clearly when no match is live. All clubs and players "
     "are fictional."
 )

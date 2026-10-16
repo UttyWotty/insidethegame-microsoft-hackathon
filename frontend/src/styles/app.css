@@ -298,3 +298,13 @@ main:focus { outline: none; }
 @media (max-width: 640px) { .scout-card { width: 55%; bottom: 30%; } }
 .scout-zone-label { font: 700 1.8px var(--font-display); fill: #ffffff; text-transform: uppercase; paint-order: stroke; stroke: #0b1220; stroke-width: 0.4px; }
 .goal-payoff { font-size: var(--text-sm); font-weight: 600; max-width: 80%; text-align: center; }
+
+/* Expected threat (xT): the line-breaker card takes the shot card's top-right slot when no shot card is showing. */
+.threat-card { position: absolute; top: var(--space-4); right: var(--space-4); width: min(260px, 40%); padding: var(--space-3); border-top: 4px solid var(--color-accent); display: grid; gap: var(--space-2); animation: shot-card-in var(--duration-medium) var(--ease-out); }
+.threat-card-pass { font-size: var(--text-md); text-transform: uppercase; }
+.threat-card-rows { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-1); margin: 0; }
+.threat-card-rows div { display: grid; }
+.threat-card-rows dt { font-size: var(--text-xs); color: var(--color-fg-muted); text-transform: uppercase; }
+.threat-card-rows dd { margin: 0; font: 700 var(--text-md) var(--font-display); }
+@media (prefers-reduced-motion: reduce) { .threat-card { animation: none; } }
+@media (max-width: 640px) { .threat-card { width: 55%; } .threat-card-rows dd { font-size: var(--text-sm); } }

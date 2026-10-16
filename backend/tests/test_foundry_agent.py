@@ -31,3 +31,9 @@ def test_agent_cannot_start_matches_and_sends_the_key_when_configured() -> None:
     tool = definition.tools[0]
     assert "start_match" not in tool.allowed_tools and set(tool.allowed_tools) == set(ALLOWED_TOOLS)
     assert tool.headers == {"Authorization": "Bearer secret"}
+
+
+def test_agent_can_read_the_threat_leaderboard() -> None:
+    assert "get_threat_leaderboard" in ALLOWED_TOOLS
+    tool = build_agent_definition(HostedAgentSettings("m", MCP_URL)).tools[0]
+    assert "get_threat_leaderboard" in tool.allowed_tools

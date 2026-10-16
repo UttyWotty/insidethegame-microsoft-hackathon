@@ -17,7 +17,7 @@ from insidegame.api.mcp_auth import BearerTokenGuard
 
 MCP_HEADERS = {"accept": "application/json, text/event-stream", "content-type": "application/json"}
 EXPECTED_TOOLS = {"list_clubs", "start_match", "list_matches", "get_match_state", "get_key_moments",
-                  "get_player_stats", "get_recaps", "ask_match_companion"}
+                  "get_player_stats", "get_recaps", "ask_match_companion", "get_threat_leaderboard"}
 
 
 def _structured(result: object) -> object:
@@ -66,3 +66,54 @@ def test_bearer_guard_rejects_missing_or_wrong_token() -> None:
     assert guarded.get("/", headers={"authorization": "Bearer wrong"}).status_code == 401
     assert guarded.get("/", headers={"authorization": "Bearer secret"}).text == "ok"
     assert StarletteClient(BearerTokenGuard(inner, "")).get("/").text == "ok"
+
+
+def _initialise(client: object) -> None:
+    init = {"jsonrpc": "2.0", "id": 1, "method": "initialize",
+            "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "test", "version": "1"}}}
+    assert client.post("/mcp/", json=init, headers=MCP_HEADERS).status_code == 200  # type: ignore[attr-defined]
+
+
+def test_threat_leaderboard_ranks_teams_and_players_of_a_live_session() -> None:
+    with _client() as client:
+        mcp = client.app.state.mcp  # type: ignore[attr-defined]
+
+        async def scenario() -> tuple[object, object]:
+            started = _structured(await mcp.call_tool("start_match", {"home": "kestrel_bay", "away": "ironvale", "seed": 7}))
+            session_id = started["session_id"]  # type: ignore[index]
+            await asyncio.sleep(0.5)
+            board = _structured(await mcp.call_tool("get_threat_leaderboard", {"session_id": session_id, "limit": 3}))
+            stats = _structured(await mcp.call_tool("get_player_stats",
+                                                    {"session_id": session_id, "player_name": board["players"][0]["name"]}))  # type: ignore[index]
+            return board, stats
+
+        board, stats = client.portal.call(scenario)  # type: ignore[union-attr]
+        assert [t["team_id"] for t in board["teams"]] == ["kba", "irv"]  # type: ignore[index]
+        assert all({"team_id", "name", "xt_added", "line_breaking_passes"} == set(t) for t in board["teams"])  # type: ignore[index]
+        players = board["players"]  # type: ignore[index]
+        assert 0 < len(players) <= 3 and all(p["xt_added"] > 0 for p in players)
+        assert [p["xt_added"] for p in players] == sorted((p["xt_added"] for p in players), reverse=True)
+        assert stats["xt_added"] == players[0]["xt_added"] and "line_breaking_passes" in stats  # type: ignore[index]
+
+
+def test_threat_leaderboard_for_an_unknown_session_is_an_mcp_error_result() -> None:
+    with _client() as client:
+        _initialise(client)
+        call = {"jsonrpc": "2.0", "id": 3, "method": "tools/call",
+                "params": {"name": "get_threat_leaderboard", "arguments": {"session_id": "missing"}}}
+        response = client.post("/mcp/", json=call, headers=MCP_HEADERS)
+        assert response.status_code == 200
+        body = response.json()
+        assert body["result"]["isError"] is True
+        assert client.get("/api/health").json()["status"] == "ok"
+
+
+def test_threat_leaderboard_rejects_a_limit_outside_one_to_twenty_two() -> None:
+    with _client() as client:
+        _initialise(client)
+        for limit in (0, 23, -1):
+            call = {"jsonrpc": "2.0", "id": 4, "method": "tools/call",
+                    "params": {"name": "get_threat_leaderboard", "arguments": {"session_id": "missing", "limit": limit}}}
+            body = client.post("/mcp/", json=call, headers=MCP_HEADERS).json()
+            assert body["result"]["isError"] is True
+            assert "validation error" in body["result"]["content"][0]["text"]

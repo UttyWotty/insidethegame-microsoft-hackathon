@@ -49,6 +49,18 @@ export interface ShotCardInfo {
   placement_y: number | null; placement_z: number | null; keeper_y: number | null;
 }
 
+/** Expected threat (xT) one completed pass or carry added, and any line break, mirroring ThreatAction.to_dict(). */
+export interface ThreatInfo {
+  event_id: string; team_id: string; player_id: string; action: "pass" | "carry"; xt_start: number; xt_end: number;
+  xt_added: number; opponents_bypassed: number | null; lines_broken: string[]; breaks_line: boolean;
+}
+
+/** One row of the danger leaderboard: the players whose passes and carries added the most xT. */
+export interface ThreatLeader {
+  player_id: string; name: string; team_id: string; xt_added: number; line_breaking_passes: number;
+  opponents_bypassed: number;
+}
+
 export interface EventUpdate {
   event: MatchEvent; xg: number | null; pass_quality: { difficulty: number } | null; rhythm: Rhythm; moments: KeyMoment[];
   positions?: TrackingFrame | null;
@@ -56,6 +68,8 @@ export interface EventUpdate {
   shot?: ShotCardInfo | null;
   /** Live home win, draw, and away win probabilities after this event. */
   win?: WinProbability | null;
+  /** xT added by a completed pass or carry, or null for any other event. */
+  threat?: ThreatInfo | null;
 }
 
 export interface WinProbability { home: number; draw: number; away: number }
@@ -74,6 +88,8 @@ export interface Snapshot {
   players: Record<string, PlayerSnapshot & { name?: string; team_id?: string }>;
   /** Distance and top speed per player from tracking, when the live session sends them. */
   physical?: PhysicalStats;
+  /** Danger leaderboard by expected threat (xT) added, at most five players. */
+  threat_leaders?: ThreatLeader[];
 }
 
 export interface Provenance { source: OutputSource; attempts: number; latency_ms: number }

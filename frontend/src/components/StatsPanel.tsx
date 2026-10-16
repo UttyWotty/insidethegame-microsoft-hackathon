@@ -1,11 +1,13 @@
 /**
  * Side-by-side team comparison bars for possession, shots, xG, passing, and pressing.
  * Values come from the live snapshot so they update as the match unfolds.
- * Each row shows numbers as text as well as bars, so it never relies on colour alone.
+ * Each row shows numbers as text as well as bars, so it never relies on colour alone; analysts also get expected
+ * threat (xT) and line-breaking pass rows.
  */
-import type { Snapshot } from "../types";
+import { analystStatRows, type StatRow } from "../lib/threat";
+import type { PersonaKey, Snapshot } from "../types";
 
-interface Row { label: string; home: number; away: number; format: (v: number) => string }
+type Row = StatRow;
 
 const pct = (v: number) => `${Math.round(v)}%`;
 const int = (v: number) => `${Math.round(v)}`;
@@ -25,12 +27,14 @@ function rows(snapshot: Snapshot): Row[] {
   ];
 }
 
-export function StatsPanel({ snapshot, homeColor, awayColor }: { snapshot: Snapshot | null; homeColor: string; awayColor: string }) {
+interface StatsPanelProps { snapshot: Snapshot | null; homeColor: string; awayColor: string; persona?: PersonaKey }
+
+export function StatsPanel({ snapshot, homeColor, awayColor, persona }: StatsPanelProps) {
   if (!snapshot) return <section className="panel"><h2 className="display">Match stats</h2><p className="muted">Waiting for kick-off</p></section>;
   return (
     <section className="panel stack" aria-label="Match statistics">
       <h2 className="display">Match stats</h2>
-      {rows(snapshot).map((row) => {
+      {[...rows(snapshot), ...(persona === "analyst" ? analystStatRows(snapshot) : [])].map((row) => {
         const total = row.home + row.away || 1;
         return (
           <div className="stat-row" key={row.label}>

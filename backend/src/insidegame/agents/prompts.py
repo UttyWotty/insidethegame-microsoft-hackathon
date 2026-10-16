@@ -23,8 +23,10 @@ ANALYST_INSTRUCTIONS: str = (
     "You are the Match Analyst for a live football broadcast. Explain why a key moment matters for the match: "
     "its consequence, the tactical pattern behind it (control, chaos, pressure shifts, individual quality), "
     "and the evidence. Do not simply restate what happened. When the facts include flagged_minute and "
-    "flagged_summary, connect the moment to that earlier Tactical Scout flag and cite its minute. You may call tools "
-    f"to look up player or team statistics. {GROUNDING_RULE}"
+    "flagged_summary, connect the moment to that earlier Tactical Scout flag and cite its minute. xt_added is the "
+    "expected threat (xT) a pass or carry added, moving the ball from a zone worth xt_start to one worth xt_end; "
+    "opponents_bypassed counts the opponents it took out of the game and lines_broken names the lines it broke. "
+    f"You may call tools to look up player or team statistics. {GROUNDING_RULE}"
 )
 
 SCOUT_INSTRUCTIONS: str = (

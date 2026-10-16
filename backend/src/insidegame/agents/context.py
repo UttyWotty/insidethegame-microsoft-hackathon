@@ -14,9 +14,9 @@ from insidegame.domain.match import MatchMetadata
 
 PLAYER_CONTEXT_KEYS: tuple[str, ...] = (
     "passes_completed", "pass_accuracy", "shots", "goals", "xg", "carry_distance_m", "max_shot_speed_kmh",
-    "tackles", "saves",
+    "tackles", "saves", "xt_added",
 )
-TEAM_CONTEXT_KEYS: tuple[str, ...] = ("shots", "shots_on_target", "xg", "pass_accuracy", "pressures")
+TEAM_CONTEXT_KEYS: tuple[str, ...] = ("shots", "shots_on_target", "xg", "pass_accuracy", "pressures", "xt_added")
 RHYTHM_CONTEXT_KEYS: tuple[str, ...] = ("momentum", "chaos", "state")
 POSSESSION_DECIMALS: int = 1
 IMPORTANCE_DECIMALS: int = 2

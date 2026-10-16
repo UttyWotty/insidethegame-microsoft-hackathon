@@ -14,7 +14,7 @@ Inside the Game analytics engine. Every file is JSON Lines.
 | File | Rows | Description |
 |---|---|---|
 | `matches.jsonl` | 2 | One row per match: clubs, styles, score, possession, xG, key moment count |
-| `events.jsonl` | 4754 | Every event with absolute coordinates, xG, pass difficulty, momentum, rhythm state |
+| `events.jsonl` | 4754 | Every event with absolute coordinates, xG, pass difficulty, xT added, momentum, rhythm state |
 | `players.jsonl` | 44 | Per-player match statistics |
 | `moments.jsonl` | 50 | Labelled key moments with importance and supporting facts |
 | `tracking.jsonl` | 952 | Ball, all 22 player positions, and any sprinter after every 5th event |
@@ -55,6 +55,13 @@ spread in possession, compact and shift toward the ball out of it) rather than p
 step is capped at the player's pace-based top speed (about 30 to 35 km/h, three quarters of it off the ball), and
 players about to act start running so they arrive on time; `sprint_player_id` and `sprint_kmh` name the fastest
 player on or toward the ball at 25.2 km/h or more.
+
+## Expected threat
+
+`xt_added` on completed passes and carries is the expected threat (xT) of the cell where the ball ended minus the
+cell where it started, from a 12 x 8 grid fitted by value iteration to the simulator's own matches
+(`python -m insidegame.datasets.xt_fit`); it is empty for every other event. Line breaks and opponents bypassed
+need tracking positions at the moment of the pass, so they are live-only and not part of these files.
 
 ## Intended uses
 

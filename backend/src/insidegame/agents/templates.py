@@ -22,6 +22,7 @@ from insidegame.agents.schemas import (
     TranslatedCard,
 )
 from insidegame.analytics.moments import FactValue, MomentKind, moment_intensity
+from insidegame.analytics.threat_moments import LINES_JOINER
 from insidegame.domain.enums import Intensity
 
 GAME_STATE_PHRASES: dict[str, str] = {
@@ -37,6 +38,7 @@ FACT_LABELS: dict[str, str] = {
     "momentum": "Momentum", "turnovers_per_minute": "Turnovers per min",
     "carry_distance_m": "Distance carried (m)", "ball_speed_kmh": "Ball speed (km/h)",
     "count": "Count", "share_pct": "Share (%)", "window_minutes": "Window (min)",
+    "xt_added": "xT added", "opponents_bypassed": "Opponents bypassed",
 }
 PATTERN_HEADLINES: dict[str, str] = {
     "flank_exposed": "{team} keep getting in behind down {flank_label}",
@@ -59,9 +61,14 @@ EXCITED_OPENERS: dict[MomentKind, tuple[str, ...]] = {
     MomentKind.DISTANCE_THRESHOLD: ("What a ball!", "Look at that range!", "Oh, that is glorious!", "Superb!"),
     MomentKind.DIFFICULT_PASS: ("Oh, that is clever!", "What vision!", "Wonderful pass!", "Oh, lovely!"),
     MomentKind.SPEED_THRESHOLD: ("What a hit!", "Absolutely hammered!", "Oh, that was struck!", "Thunderous!"),
+    MomentKind.THREAT_CREATED: ("Oh, that cuts them open!", "Straight through them!", "What a ball through!",
+                                "That takes them all out!"),
 }
 CARRY_OPENERS: tuple[str, ...] = ("What a run!", "Still going!", "Look at this!")
 HALF: float = 0.5
+THREAT_HEADLINE: str = "{passer} breaks the {lines_broken} {line_word} to find {receiver}"
+THREAT_WHY: str = ("The pass took {opponents_bypassed} opponents out of the game and moved the ball from a zone worth "
+                   "{xt_start} xT to one worth {xt_end}, adding {xt_added} expected threat.")
 SPOKEN_METRES = re.compile(r"(\d+(?:\.\d+)?) m\b")
 SPOKEN_SPEED = re.compile(r"(\d+(?:\.\d+)?) km/h")
 
@@ -181,12 +188,23 @@ def _tactical(c: MomentContext) -> ExplanationParts:
             PATTERN_THEMES.get(pattern, TacticalTheme.CONTROL))
 
 
+def _threat(c: MomentContext) -> ExplanationParts:
+    f = c.moment.facts
+    lines = _f(f, "lines_broken")
+    headline = THREAT_HEADLINE.format(passer=_f(f, "passer"), receiver=_f(f, "receiver"), lines_broken=lines,
+                                      line_word="lines" if LINES_JOINER in lines else "line")
+    why = THREAT_WHY.format(opponents_bypassed=_f(f, "opponents_bypassed"), xt_start=_f(f, "xt_start"),
+                            xt_end=_f(f, "xt_end"), xt_added=_f(f, "xt_added"))
+    return (headline, why, [f"xT added {_f(f, 'xt_added')}", f"Opponents bypassed {_f(f, 'opponents_bypassed')}"],
+            TacticalTheme.INDIVIDUAL_BRILLIANCE)
+
+
 EXPLAINERS: dict[MomentKind, Callable[[MomentContext], ExplanationParts]] = {
     MomentKind.GOAL: _goal, MomentKind.BIG_CHANCE_MISSED: _big_chance, MomentKind.GREAT_SAVE: _great_save,
     MomentKind.SPEED_THRESHOLD: _speed, MomentKind.DISTANCE_THRESHOLD: _distance,
     MomentKind.DIFFICULT_PASS: _difficult_pass,
     MomentKind.MOMENTUM_SWING: _momentum, MomentKind.CHAOS_SPELL: _chaos, MomentKind.MILESTONE: _milestone,
-    MomentKind.TACTICAL_PATTERN: _tactical,
+    MomentKind.TACTICAL_PATTERN: _tactical, MomentKind.THREAT_CREATED: _threat,
 }
 
 
@@ -270,6 +288,7 @@ KIND_LABELS: dict[str, str] = {
     MomentKind.DISTANCE_THRESHOLD.value: "long-range play", MomentKind.DIFFICULT_PASS.value: "defence-splitting pass",
     MomentKind.MOMENTUM_SWING.value: "momentum swing", MomentKind.CHAOS_SPELL.value: "chaotic spell",
     MomentKind.MILESTONE.value: "milestone", MomentKind.TACTICAL_PATTERN.value: "Tactical Scout flag",
+    MomentKind.THREAT_CREATED.value: "line-breaking pass",
 }
 
 

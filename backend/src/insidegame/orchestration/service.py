@@ -122,8 +122,9 @@ class MatchIntelligenceService:
         """Interpret an event and decide which moments to send to the agents, without awaiting them.
 
         upcoming (default empty) lists the next events so tracked players can start toward their next action.
+        Passes are assessed for line breaks against the tracked positions from before this event (the last frame).
         """
-        update = self.analyzer.ingest(event)
+        update = self.analyzer.ingest(event, self.tracking.previous or None)
         jobs = tuple(MomentJob(build_moment_context(moment, self.analyzer, _tracked_players(audience)), audience)
                      for moment, audience in self.producer.select(update.moments, tuple(self.viewers.values())))
         stage = None

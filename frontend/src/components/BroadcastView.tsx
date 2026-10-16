@@ -1,5 +1,6 @@
 /**
- * The main broadcast experience: the live pitch with persona overlays, score bug, stats, momentum, and commentary.
+ * The main broadcast experience: the live pitch with persona overlays, score bug, shot and line-breaker cards, stats,
+ * physical and danger leaderboards, momentum, and commentary.
  * It subscribes to the viewer's personalized stream and opens the recap dialog when a new recap arrives.
  * Changing persona or language reconnects to a different segment of the same live match.
  */
@@ -11,6 +12,7 @@ import { sprintSpeed } from "../lib/motion";
 import { playerDots } from "../lib/playerDots";
 import { earnsReplay, REPLAY_DELAY_MS } from "../lib/replay";
 import { SCOUT_CARD_MS, SCOUT_ZONE_MS, scoutZoneFor, stillVisible } from "../lib/scout";
+import { THREAT_CARD_MS } from "../lib/threat";
 import { analyseFrame, carrierAfter } from "../lib/tactics";
 import { teamColor } from "../lib/teams";
 import { useNow } from "../lib/useNow";
@@ -53,12 +55,14 @@ function isTyping(): boolean {
 
 import { AskPanel } from "./AskPanel";
 import { CommentaryTicker } from "./CommentaryTicker";
+import { DangerPanel } from "./DangerPanel";
 import { MomentumChart } from "./MomentumChart";
 import { PhysicalPanel } from "./PhysicalPanel";
 import { OverlayLayer } from "./overlays/OverlayLayer";
 import { GoalBanner } from "./overlays/Overlays";
 import { ScoutCard } from "./overlays/ScoutCard";
 import { ShotCard } from "./overlays/ShotCard";
+import { ThreatCard } from "./overlays/ThreatCard";
 import { HighlightsPlayer } from "./HighlightsPlayer";
 import { ReplayPlayer } from "./ReplayPlayer";
 import { type BallAnchor } from "./Pitch";
@@ -147,6 +151,8 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   const cardShot = state.lastShot && now - state.lastShot.at < SHOT_CARD_MS ? state.lastShot : null;
   const goal = state.goalFlash && now - state.goalFlash.at < GOAL_VISIBLE_MS ? state.goalFlash : null;
   const scoutCard = flag && stillVisible(flag.at, now, SCOUT_CARD_MS) ? flag : null;
+  const threat = state.threatFlash;
+  const threatCard = threat && !goal && !cardShot?.card && stillVisible(threat.at, now, THREAT_CARD_MS) ? threat : null;
 
   return (
     <>
@@ -164,7 +170,7 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
             label={`Live pitch: ${match.home.name} versus ${match.away.name}`}>
             <ScoreBug home={match.home} away={match.away} homeColor={homeColor} awayColor={awayColor} lastEvent={state.lastEvent}
               win={state.win} />
-            <OverlayLayer active={goal || cardShot?.card ? null : active} anchor={anchor} teamColor={cueTeamIsAway ? awayColor : homeColor} />
+            <OverlayLayer active={goal || cardShot?.card || threatCard ? null : active} anchor={anchor} teamColor={cueTeamIsAway ? awayColor : homeColor} />
             {goal && <GoalBanner key={goal.id} scorer={goal.scorer} score={goal.score} payoff={goal.payoff}
               teamColor={goal.side === "home" ? homeColor : awayColor} />}
             {scoutCard && !goal && <ScoutCard key={scoutCard.momentId} flag={scoutCard}
@@ -172,6 +178,8 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
             {cardShot?.card && <ShotCard key={cardShot.id} card={cardShot.card}
               color={cardShot.side === "home" ? homeColor : awayColor}
               shooter={[...match.home.players, ...match.away.players].find((p) => p.player_id === cardShot.shooter)?.name ?? ""} />}
+            {threatCard && <ThreatCard key={threatCard.momentId} flash={threatCard}
+              color={threatCard.side === "home" ? homeColor : awayColor} persona={viewer.persona} />}
           </PitchView>
         )}
         <p className="visually-hidden" aria-live="assertive">
@@ -208,8 +216,9 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
       </div>
       <aside className="rail">
         <AskPanel sessionId={sessionId} viewer={viewer} />
-        <StatsPanel snapshot={state.snapshot} homeColor={homeColor} awayColor={awayColor} />
+        <StatsPanel snapshot={state.snapshot} homeColor={homeColor} awayColor={awayColor} persona={viewer.persona} />
         <PhysicalPanel physical={state.snapshot?.physical} match={match} homeColor={homeColor} awayColor={awayColor} />
+        <DangerPanel leaders={state.snapshot?.threat_leaders} match={match} homeColor={homeColor} awayColor={awayColor} />
         <MomentumChart points={state.momentum} rhythm={state.rhythm} homeColor={homeColor} awayColor={awayColor}
           homeName={match.home.short_name} awayName={match.away.short_name} />
       </aside>

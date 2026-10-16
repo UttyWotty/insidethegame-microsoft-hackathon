@@ -1,6 +1,7 @@
 """Builds the live-match evidence a Match Companion answer may draw on.
 
-It summarises the score, clock, team statistics, rhythm, the most influential players, and recent key moments;
+It summarises the score, clock, team statistics, rhythm, the most influential players, the expected threat (xT)
+danger leaderboard, and recent key moments;
 every player's statistics are kept for direct lookups but left out of prompts, where tools provide them.
 The same summary feeds the prompt, the grounding check, and the fallback answer.
 """
@@ -9,9 +10,12 @@ from dataclasses import dataclass, field
 
 from insidegame.agents.recap_context import impact_score
 from insidegame.analytics.analyzer import MatchAnalyzer
+from insidegame.analytics.threat import XT_DECIMALS
+from insidegame.analytics.threat_board import threat_leaders
 from insidegame.core.clock import minute_label
 
 TOP_PLAYERS: int = 5
+THREAT_LEADERS: int = 3
 RECENT_MOMENTS: int = 5
 STAT_DECIMALS: int = 2
 POSSESSION_DECIMALS: int = 1
@@ -32,6 +36,7 @@ class QuestionContext:
     top_players: list[dict[str, object]] = field(default_factory=list)
     recent_moments: list[dict[str, object]] = field(default_factory=list)
     players: dict[str, dict[str, object]] = field(default_factory=dict)
+    threat_leaders: list[dict[str, object]] = field(default_factory=list)
 
     @property
     def scoreline(self) -> str:
@@ -41,7 +46,8 @@ class QuestionContext:
     def to_prompt_dict(self) -> dict[str, object]:
         """Return the context as a JSON-friendly dict for prompts."""
         return {"score": self.scoreline, "clock": self.clock, "teams": self.teams, "rhythm": self.rhythm,
-                "top_players": self.top_players, "recent_moments": self.recent_moments}
+                "top_players": self.top_players, "threat_leaders": self.threat_leaders,
+                "recent_moments": self.recent_moments}
 
 
 def build_question_context(analyzer: MatchAnalyzer) -> QuestionContext:
@@ -52,12 +58,16 @@ def build_question_context(analyzer: MatchAnalyzer) -> QuestionContext:
         name: {"possession_pct": round(stats.possession_share(team_id), POSSESSION_DECIMALS),
                "shots": stats.teams[team_id].shots, "shots_on_target": stats.teams[team_id].shots_on_target,
                "xg": round(stats.teams[team_id].xg, STAT_DECIMALS),
-               "pass_accuracy": round(stats.teams[team_id].pass_accuracy, STAT_DECIMALS)}
+               "pass_accuracy": round(stats.teams[team_id].pass_accuracy, STAT_DECIMALS),
+               "xt_added": round(stats.teams[team_id].xt_added, XT_DECIMALS)}
         for team_id, name in names.items()
     }
     best = sorted(stats.players.values(), key=impact_score, reverse=True)[:TOP_PLAYERS]
     top_players = [{"name": p.name, "team": names[p.team_id], "goals": p.goals, "xg": round(p.xg, STAT_DECIMALS),
                     "passes_completed": p.passes_completed, "tackles": p.tackles} for p in best]
+    danger = [{"name": leader.name, "team": names[leader.team_id], "xt_added": round(leader.xt_added, XT_DECIMALS),
+               "line_breaking_passes": leader.line_breaking_passes}
+              for leader in threat_leaders(stats.players.values(), THREAT_LEADERS)]
     recent = [{"minute": m.minute_label, "kind": m.kind.value, "facts": dict(m.facts)}
               for m in analyzer.moments[-RECENT_MOMENTS:]]
     players = {p.name: {"team": names[p.team_id], "goals": p.goals, "shots": p.shots, "xg": round(p.xg, STAT_DECIMALS),
@@ -69,5 +79,5 @@ def build_question_context(analyzer: MatchAnalyzer) -> QuestionContext:
         score_home=event.score_home if event else 0, score_away=event.score_away if event else 0,
         clock=minute_label(event.match_second, event.period) if event else KICK_OFF_LABEL,
         teams=teams, rhythm={k: reading[k] for k in ("momentum", "chaos", "state") if k in reading},
-        top_players=top_players, recent_moments=recent, players=players,
+        top_players=top_players, recent_moments=recent, players=players, threat_leaders=danger,
     )
