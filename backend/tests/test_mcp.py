@@ -14,6 +14,7 @@ from starlette.testclient import TestClient as StarletteClient
 from test_api import _client
 
 from insidegame.api.mcp_auth import BearerTokenGuard
+from insidegame.simulation.roster import DEMO_SEED
 
 MCP_HEADERS = {"accept": "application/json, text/event-stream", "content-type": "application/json"}
 EXPECTED_TOOLS = {"list_clubs", "start_match", "list_matches", "get_match_state", "get_key_moments",
@@ -121,8 +122,8 @@ def test_threat_leaderboard_rejects_a_limit_outside_one_to_twenty_two() -> None:
 
 def test_team_shape_tool_reports_readings_and_shifts_of_a_live_session() -> None:
     with _client() as client:
-        session_id = client.post("/api/matches", json={"home": "kestrel_bay", "away": "ironvale", "seed": 201}).json()[
-            "session_id"]
+        fixture = {"home": "kestrel_bay", "away": "ironvale", "seed": DEMO_SEED}
+        session_id = client.post("/api/matches", json=fixture).json()["session_id"]
         with client.stream("GET", f"/api/matches/{session_id}/stream", params={"persona": "analyst"}) as r:
             for line in r.iter_lines():
                 if line == "event: end":

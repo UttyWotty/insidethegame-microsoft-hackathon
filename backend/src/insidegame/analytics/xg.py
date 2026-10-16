@@ -8,7 +8,7 @@ import math
 
 from insidegame.core.geometry import Point, distance_to_goal, goal_angle
 
-XG_INTERCEPT: float = -2.35
+XG_INTERCEPT: float = -2.00
 XG_DISTANCE_COEF: float = -0.10
 XG_ANGLE_COEF: float = 1.5
 PRESSURE_MULTIPLIER: float = 0.85

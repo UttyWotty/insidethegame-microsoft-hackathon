@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from insidegame.adapters.model_client import ModelProvider, ModelRuntime
 from insidegame.agents.runner import RunPolicy
 from insidegame.api.app import SpeechFactory, create_app
+from insidegame.simulation.roster import DEMO_SEED
 
 PERSONA_COUNT = 5
 
@@ -166,8 +167,8 @@ def test_match_detail_snapshot_carries_the_threat_leaders() -> None:
 
 def test_match_detail_and_studio_carry_team_shape() -> None:
     with _client() as client:
-        session_id = client.post("/api/matches", json={"home": "kestrel_bay", "away": "ironvale", "seed": 201}).json()[
-            "session_id"]
+        fixture = {"home": "kestrel_bay", "away": "ironvale", "seed": DEMO_SEED}
+        session_id = client.post("/api/matches", json=fixture).json()["session_id"]
         with client.stream("GET", f"/api/matches/{session_id}/stream", params={"persona": "analyst"}) as r:
             for line in r.iter_lines():
                 if line == "event: end":

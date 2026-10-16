@@ -19,7 +19,7 @@ DEFAULT_KICKOFF_UTC: str = "2026-10-24T14:00:00Z"
 ATTRIBUTE_SPREAD: float = 0.12
 DEMO_HOME: str = "kestrel_bay"
 DEMO_AWAY: str = "ironvale"
-DEMO_SEED: int = 201
+DEMO_SEED: int = 1407
 
 FORMATION: tuple[Position, ...] = (
     (Position.GOALKEEPER,) + (Position.DEFENDER,) * 4 + (Position.MIDFIELDER,) * 3 + (Position.FORWARD,) * 3

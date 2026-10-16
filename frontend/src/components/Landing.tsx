@@ -5,7 +5,7 @@
  */
 import type { CreateMatch } from "../api/client";
 
-const DEMO_MATCH: CreateMatch = { home: "kestrel_bay", away: "ironvale", seed: 201, speed: 30 };
+const DEMO_MATCH: CreateMatch = { home: "kestrel_bay", away: "ironvale", seed: 1407, speed: 30 };
 
 const PILLARS = [
   { title: "Explains why it matters", text: "Agents turn xG, pass difficulty, momentum, and control versus chaos into the story behind each moment." },

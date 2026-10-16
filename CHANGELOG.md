@@ -15,6 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Demo-story scorer and seed search: the pure `datasets/demo_story.py` checks eight hard rules a demo match must
+  meet (at most 9 Scout flags; a home go-ahead goal from 6 m or more linked to a home flank flag 3 to 12 minutes
+  earlier; a later dropped shape shift by the leader with falling control; a replayed big save; a passing build-up;
+  and the winner's auto replay not dropped at 30x, using the frontend's replay drop rule) and scores preferences
+  (held winner, comeback, late goal, quick payoff, exploited weak flank, save replay, build-up). The CLI
+  `python -m insidegame.datasets.demo_search --start-seed 1 --end-seed 4000 --top 10` prints a deterministic
+  Markdown table of the passing seeds; 3 of 4000 pass, and seed 1407 is the demo seed.
+- `tests/test_finishing_realism.py`: permanent realism checks over seeds 1-60 (carry stop bound, walk-in shots at
+  most 1% of shots and 2% of goals, goal share under 6 m at most 25%, 6-18 m at least 60%) and a tracked check
+  over seeds 1-20 that the keeper stands nearer the goal line than a close shooter (99.0% of shots within 20 m).
+
 - Team shape and shape shifts: pure shape metrics per team (`analytics/shape.py`: back-line height, length, width,
   compactness, and a high, mid, or low block) measured out of possession from the tracked positions before each
   event; a deterministic `ShapeTracker` (`analytics/shape_tracker.py`) that compares the last 10 minutes with the 10
@@ -162,6 +173,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tracked player, and a broadcast camera mode tilting the pitch like a TV angle (with a flat tactical mode).
 
 ### Changed
+
+- Realistic finishing: forward carries no longer pile up at the old `CARRY_MAX_X_M` limit (x = 103, 2 m out); a
+  carry that would end beyond 93 m stops at a depth drawn from `CARRY_STOP_X_M` (93 to 102 m, 3 to 12 m from the
+  goal line) and never moves behind its start (`carry_stop_x`). Over seeds 1-60 of Kestrel Bay vs Ironvale, shots
+  from 2.5 m or less off the line fall from 8.3% of shots and 35.1% of goals to 0.1% and 0.6%, and 67.5% of goals
+  now come from 6-12 m. Shot volume and finishing are re-tuned so every calibration band still holds (13 of 13):
+  `SHOT_BASE_SCALE` 0.20 -> 0.18, `SHOT_DECAY_M` 22 -> 23, simulator `XG_INTERCEPT` -2.35 -> -1.90.
+- Keeper positioning: a new pure `tracking/keeper.py` (`keeper_spot`) places the tracked keeper on the line from the
+  goal centre to the ball, 30% of the way out, whenever the ball is within 20 m of goal (the old step-out formula
+  beyond), and at a shot the keeper sets against the strike point rather than where the ball ends up, so replays
+  show the keeper between a close shooter and the goal (99.0% of shots within 20 m, up from 85.8%).
+- The analytics xG model's intercept moves from -2.35 to -2.00 so goals minus xG stays about 0 now that tap-ins are
+  rare; every displayed xG (cards, replay analysis, recaps, Scout payoff text) rises slightly as a result.
+- Regenerated with the project's own commands: the xT grid (`analytics/xt_grid.py`, peak 0.051), the calibration
+  report (`docs/CALIBRATION.md`), and the two-match sample in `data/sample/`.
+- Demo seed 201 -> 1407 (`DEMO_SEED` and the Landing button): Kestrel Bay Athletic 2-1 Ironvale United, the 58'
+  Scout flank flag paid off by Zane Brekke's 65' winner from 9.4 m, and a shape shift at 83' (back line 27.1 m to
+  17.8 m). `docs/DEMO_SCRIPT.md`, the README examples, and the seed-pinned replay, reel, API, and MCP tests move to
+  the new seed; the reel test's milestone check runs on seed 28 (a half-time brace), since the demo match has none.
 
 - Analysed instant replay: the replay of a goal or big chance now re-plays the real build-up and the shot instead
   of the stored frames around it. A pure server builder (`highlights/replay_story.py`) turns the shooting team's

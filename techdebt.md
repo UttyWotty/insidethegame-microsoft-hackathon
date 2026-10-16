@@ -50,10 +50,22 @@ Copilot-through-MCP recording, the demo video, then the submission steps. Fabric
   interaction, so it can look like it went in; stop it at the keeper the way blocked shots stop at the blocker.
   Resolved 2026-10-16: built on `feature/replay-keeper-save` (saved ball stops at the keeper, keeper shown at the save).
 -->
+<!--
 - Follow-up (separate task, needs regenerated xT grid, calibration doc, and sample data): 4 of the 7 seed-201 goals
   (15', 19', 52', 62') come from dribbles that stop at the `CARRY_MAX_X_M` limit (x = 103.0, 2 to 3 m out), with
   the tracked keeper level or behind. Across 60 seeds these shots are 8.3% of shots but 35% of goals. The new
   replay will show the passes and the ball going in, but these goals will still look like walk-ins.
+  Resolved 2026-10-17: built on `feature/realistic-finishing` (carry stop band, keeper narrows the angle, demo seed 1407).
+-->
+- Follow-up (separate tuning task): the pass-target clamp `MAX_PASS_X_M = 99.0` (`simulation/open_play.py`) makes
+  a spike of shots from exactly x = 99 (6 m out). It is not a walk-in (the keeper is in front), but replays show
+  many shots from the same depth: 17.8% of shots and 19.1% of goals before the finishing change, 20.4% and 33.1%
+  after (seeds 1-60, Kestrel Bay vs Ironvale). Spreading it (`pass=92:101`, `pass=93:102`) was prototyped, but
+  goals fell to 2.40-2.57 per match and draws rose out of band, so it needs its own calibration tuning.
+- Follow-up (separate task): the superfan persona card for a goal linked to a `flank_exposed` Scout flag
+  (`agents/templates.py`, prefix plus the full `why_it_matters`) can exceed the superfan's 40-word limit (x 1.3)
+  on seeds 779, 802, 1176, and 1809 (and 3693, the only late-winner demo candidate). Fix: prefix plus the leading
+  whole sentences of `why_it_matters` within `max_words`. Seed 1407 (the demo) is not affected.
 
 ## Blockers before submitting
 

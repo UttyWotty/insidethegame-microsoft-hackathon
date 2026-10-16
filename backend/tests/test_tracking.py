@@ -3,6 +3,7 @@
 They check frame completeness and bounds, that event actors reach the ball, team shape by phase, that nobody
 runs faster than a human, that sprint tags are occasional, and that distance covered is football-realistic.
 They also check the game-state protect drop: a side leading late defends deeper out of possession, and only then.
+Keeper tests pin keeper_spot (narrowing the angle within 20 m, the old formula beyond) and the set against a strike.
 """
 
 import math
@@ -16,7 +17,8 @@ from insidegame.simulation.engine import simulate_match
 from insidegame.simulation.roster import build_fixture
 from insidegame.simulation.probabilities import PROTECT_START_SECOND
 from insidegame.tracking.game_state import PROTECT_DROP_M, protect_drop_m
-from insidegame.tracking.model import LOOKAHEAD_EVENTS, TrackingModel
+from insidegame.tracking.keeper import KEEPER_NARROW_FRACTION, KEEPER_NARROW_RANGE_M, OWN_GOAL_CENTER, keeper_spot
+from insidegame.tracking.model import CLOSE_DOWN_M, LOOKAHEAD_EVENTS, TrackingModel
 from insidegame.tracking.motion import SPRINT_KMH
 
 PLAYERS = 22
@@ -147,3 +149,44 @@ def test_a_leading_side_defends_deeper_out_of_possession_only() -> None:
     assert away_leads[keeper] == level[keeper]
     assert home_leads == level
     assert _fresh_frame(EARLY_SECOND, (0, 1)) == _fresh_frame(EARLY_SECOND, (0, 0))
+
+
+KEEPER_TOLERANCE_M = 1e-9
+FAR_BALL = Point(52.5, 34.0)
+FAR_KEEPER = Point(8.2, 34.0)
+CLOSE_BALLS = (Point(6.0, 34.0), Point(10.0, 20.0), Point(15.0, 45.0), Point(1.0, 30.0))
+STRIKE = Point(96.0, 31.4)
+
+
+def test_keeper_spot_narrows_the_angle_on_the_goal_to_ball_line_inside_the_range() -> None:
+    for ball in CLOSE_BALLS:
+        spot = keeper_spot(ball)
+        expected = Point(OWN_GOAL_CENTER.x + (ball.x - OWN_GOAL_CENTER.x) * KEEPER_NARROW_FRACTION,
+                         OWN_GOAL_CENTER.y + (ball.y - OWN_GOAL_CENTER.y) * KEEPER_NARROW_FRACTION)
+        assert distance(spot, expected) <= KEEPER_TOLERANCE_M
+        assert distance(spot, OWN_GOAL_CENTER) < distance(ball, OWN_GOAL_CENTER)
+        assert OWN_GOAL_CENTER.x < spot.x < ball.x
+
+
+def test_keeper_spot_keeps_the_old_formula_beyond_the_range() -> None:
+    spot = keeper_spot(FAR_BALL)
+    assert abs(spot.x - FAR_KEEPER.x) <= KEEPER_TOLERANCE_M and abs(spot.y - FAR_KEEPER.y) <= KEEPER_TOLERANCE_M
+
+
+def test_keeper_spot_uses_the_narrow_rule_at_exactly_the_range() -> None:
+    ball = Point(OWN_GOAL_CENTER.x + KEEPER_NARROW_RANGE_M, OWN_GOAL_CENTER.y)
+    spot = keeper_spot(ball)
+    assert abs(spot.x - KEEPER_NARROW_RANGE_M * KEEPER_NARROW_FRACTION) <= KEEPER_TOLERANCE_M
+    assert spot.y == OWN_GOAL_CENTER.y
+
+
+def test_keeper_sets_against_the_strike_not_where_the_shot_ends() -> None:
+    metadata = build_fixture("kestrel_bay", "ironvale", 7)
+    shooter = metadata.home.players_in(Position.FORWARD)[0].player_id
+    shot = MatchEvent("s1", metadata.match_id, 1, 1, 600.0, EventType.SHOT, metadata.home.team_id, shooter, 1,
+                      STRIKE, 0, 0, end=Point(PITCH_LENGTH_M, OWN_GOAL_CENTER.y))
+    positions = {pid: Point(x, y) for pid, x, y in TrackingModel(metadata).frame(shot)}
+    keeper = positions[metadata.away.goalkeeper().player_id]
+    expected = mirror(keeper_spot(mirror(STRIKE)))
+    assert distance(keeper, expected) <= CLOSE_DOWN_M
+    assert STRIKE.x < keeper.x < PITCH_LENGTH_M

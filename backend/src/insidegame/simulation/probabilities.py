@@ -15,8 +15,8 @@ from insidegame.domain.teams import PlayerAttributes, TeamStyle
 MATCH_SECONDS: int = 2 * PERIOD_SECONDS
 
 MAX_SHOT_DISTANCE_M: float = 35.0
-SHOT_DECAY_M: float = 22.0
-SHOT_BASE_SCALE: float = 0.20
+SHOT_DECAY_M: float = 23.0
+SHOT_BASE_SCALE: float = 0.18
 SHOT_RISK_FLOOR: float = 0.6
 SHOT_RISK_WEIGHT: float = 0.8
 SHOT_OPENNESS_POWER: float = 2.0
@@ -41,7 +41,7 @@ TACKLE_PACE_WEIGHT: float = 0.08
 PRESSURE_BASE: float = 0.12
 PRESSURE_PRESSING_WEIGHT: float = 0.30
 
-XG_INTERCEPT: float = -2.35
+XG_INTERCEPT: float = -1.90
 XG_DISTANCE_COEF: float = -0.11
 XG_ANGLE_COEF: float = 1.6
 FINISHING_FLOOR: float = 0.7

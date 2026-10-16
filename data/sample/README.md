@@ -14,16 +14,16 @@ Inside the Game analytics engine. Every file is JSON Lines.
 | File | Rows | Description |
 |---|---|---|
 | `matches.jsonl` | 2 | One row per match: clubs, styles, score, possession, xG, key moment count |
-| `events.jsonl` | 4754 | Every event with absolute coordinates, xG, pass difficulty, xT added, momentum, rhythm state |
+| `events.jsonl` | 4921 | Every event with absolute coordinates, xG, pass difficulty, xT added, momentum, rhythm state |
 | `players.jsonl` | 44 | Per-player match statistics |
-| `moments.jsonl` | 50 | Labelled key moments with importance and supporting facts |
-| `tracking.jsonl` | 952 | Ball, all 22 player positions, and any sprinter after every 5th event |
+| `moments.jsonl` | 33 | Labelled key moments with importance and supporting facts |
+| `tracking.jsonl` | 985 | Ball, all 22 player positions, and any sprinter after every 5th event |
 
 ## Headline statistics
 
 - Matches: 2 (seeds 1 to 2)
-- Mean goals per match: 1.0
-- Mean expected goals per match: 2.06
+- Mean goals per match: 0.5
+- Mean expected goals per match: 1.31
 
 ## Calibration
 
@@ -32,19 +32,19 @@ Result shares are noisy below a few hundred matches.
 
 | Metric | Synthetic | Reference band | Within band | Note |
 |---|---|---|---|---|
-| Goals per match | 1.0 | 2.5 to 3.1 | no |  |
-| Expected goals per match | 2.06 | 2.4 to 3.2 | no |  |
-| Goals minus xG per match | -1.06 | -0.3 to 0.3 | no | xG model agrees with simulated finishing |
-| Shots per match | 25.0 | 22.0 to 28.0 | yes |  |
-| Shots on target (%) | 32.0 | 30.0 to 40.0 | yes | blocked shots count as not on target |
-| Shot conversion (%) | 4.0 | 9.0 to 13.0 | no |  |
-| Pass accuracy (%) | 81.46 | 78.0 to 86.0 | yes |  |
-| Shots from inside the box (%) | 72.0 | 55.0 to 72.0 | yes |  |
-| Mean shot distance (m) | 15.46 | 14.0 to 19.0 | yes |  |
-| Shots from the byline (%) | 2.0 | 0.0 to 4.0 | yes | within 3 m of the goal line, outside the goal width |
+| Goals per match | 0.5 | 2.5 to 3.1 | no |  |
+| Expected goals per match | 1.31 | 2.4 to 3.2 | no |  |
+| Goals minus xG per match | -0.81 | -0.3 to 0.3 | no | xG model agrees with simulated finishing |
+| Shots per match | 21.5 | 22.0 to 28.0 | no |  |
+| Shots on target (%) | 32.56 | 30.0 to 40.0 | yes | blocked shots count as not on target |
+| Shot conversion (%) | 2.33 | 9.0 to 13.0 | no |  |
+| Pass accuracy (%) | 78.83 | 78.0 to 86.0 | yes |  |
+| Shots from inside the box (%) | 58.14 | 55.0 to 72.0 | yes |  |
+| Mean shot distance (m) | 19.02 | 14.0 to 19.0 | no |  |
+| Shots from the byline (%) | 0.0 | 0.0 to 4.0 | yes | within 3 m of the goal line, outside the goal width |
 | Home wins (%) | 0.0 | 40.0 to 48.0 | no | needs a few hundred matches to settle |
-| Draws (%) | 100.0 | 22.0 to 30.0 | no | needs a few hundred matches to settle |
-| Away wins (%) | 0.0 | 25.0 to 33.0 | no | needs a few hundred matches to settle |
+| Draws (%) | 50.0 | 22.0 to 30.0 | no | needs a few hundred matches to settle |
+| Away wins (%) | 50.0 | 25.0 to 33.0 | no | needs a few hundred matches to settle |
 
 ## Coordinates
 
