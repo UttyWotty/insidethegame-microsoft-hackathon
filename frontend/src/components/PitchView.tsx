@@ -6,6 +6,7 @@ import { lazy, Suspense, type ReactNode } from "react";
 import type { Point } from "../types";
 import type { ShotTrace, TrailPoint } from "../state/matchState";
 import type { ScoutZoneInfo } from "../lib/scout";
+import type { ShapeShiftFlash } from "../lib/shape";
 import type { Tactics } from "../lib/tactics";
 import { Pitch, type BallAnchor, type PlayerDot } from "./Pitch";
 
@@ -23,11 +24,15 @@ interface PitchViewProps {
   tactics?: Tactics | null;
   /** Zone flagged by the Tactical Scout; omitted or null draws none. */
   scoutZone?: ScoutZoneInfo | null;
+  /** Shape shift lines for the 2D pitch; omitted or null draws none (the 3D view does not draw them). */
+  shapeShift?: ShapeShiftFlash | null;
 }
 
-export function PitchView({ camera, children, replay = null, tactics = null, scoutZone = null, ...rest }: PitchViewProps) {
+export function PitchView({ camera, children, replay = null, tactics = null, scoutZone = null, shapeShift = null,
+                            ...rest }: PitchViewProps) {
   if (camera !== "3d") {
-    return <Pitch camera={camera} zoom={replay?.zoom ?? null} tactics={tactics} scoutZone={scoutZone} {...rest}>{children}</Pitch>;
+    return <Pitch camera={camera} zoom={replay?.zoom ?? null} tactics={tactics} scoutZone={scoutZone}
+      shapeShift={shapeShift} {...rest}>{children}</Pitch>;
   }
   const { ball, players, moveMs, homeColor, awayColor, label, onBallAnchor } = rest;
   return (

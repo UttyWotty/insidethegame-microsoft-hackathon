@@ -308,3 +308,10 @@ main:focus { outline: none; }
 .threat-card-rows dd { margin: 0; font: 700 var(--text-md) var(--font-display); }
 @media (prefers-reduced-motion: reduce) { .threat-card { animation: none; } }
 @media (max-width: 640px) { .threat-card { width: 55%; } .threat-card-rows dd { font-size: var(--text-sm); } }
+.shape-shift-layer { animation: shape-shift-in 600ms ease-out; }
+.shape-shift-label { font: 700 1.8px var(--font-display); fill: #ffffff; text-transform: uppercase; paint-order: stroke; stroke: #0b1220; stroke-width: 0.4px; }
+@keyframes shape-shift-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .shape-shift-layer { animation: none; } }
+.shape-timeline { margin-top: var(--space-2); }
+.shape-timeline svg { width: 100%; height: 110px; display: block; }
+.shape-timeline-mark { font: 600 8px var(--font-display); fill: var(--color-fg); }

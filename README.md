@@ -31,7 +31,8 @@ As of 2026-10-13 (develop at PR #58, release v0.1.0 on main):
   band over 480 matches, see [docs/CALIBRATION.md](docs/CALIBRATION.md)), with home advantage, a weak defensive
   flank per club, and speed-limited tracking for all 22 players.
 - Stage 2 (Interpret): streaming analytics implemented (xG, expected threat (xT) with line-breaking passes, pass
-  difficulty, stats, rhythm, key moments, and tactical pattern mining that links later goals to earlier flags).
+  difficulty, stats, rhythm, key moments, tactical pattern mining that links later goals to earlier flags, and team
+  shape with line-height shifts explained as changes in control).
 - Stages 3-5 (Explain, Render, Personalize): eight-agent workflow, including the Tactical Scout, with fact-checking, overlay cues, persona recaps,
   and a Match Companion implemented; validated on a local model through the evaluation harness.
 - Live API: real-time replay with personalized server-sent event streams, moment backpressure, and rate limits.
@@ -47,7 +48,10 @@ Each team has a tactical style (possession, direct, high press, counter) that ad
 trailing teams chase late, leading teams protect. Every club also has a weak defensive flank (Brookhaven and Kestrel
 Bay on the left, Ironvale and Silverlake on the right): opponents drift toward it in the attacking half, and passes
 into it and dribbles down it succeed slightly more often, so the Tactical Scout has real patterns to find. Outcomes are driven by player attributes, pitch geometry,
-pressure, and fatigue.
+pressure, and fatigue. Tracking follows the same game state: from 70' (the simulator's `PROTECT_START_SECOND`), a
+leading team defends 10 m deeper out of possession (`tracking/game_state.py`, keeper and in-possession shapes
+unchanged). The protect drop only moves tracked positions, so events, scorelines, the calibration report, and the
+event and moment datasets are unchanged.
 
 Calibrated averages over 480 simulated matches (every pairing, seeds 1 to 480; full table and reference bands in
 [docs/CALIBRATION.md](docs/CALIBRATION.md), regenerated with `python -m insidegame.datasets.calibrate`):
@@ -153,6 +157,20 @@ or training pipelines.
   `threat_created` key moment (importance 0.50, at most one per 5 minutes of a half, about 3 per match) whose facts
   (`xt_added`, `xt_start`, `xt_end`, `opponents_bypassed`, `lines_broken`) agents can cite; difficult and long
   passes also carry `xt_added`. The snapshot ranks the top five players by xT added (`threat_leaders`).
+- **Team shape and shape shifts:** in the live pipeline, each team's shape is measured out of possession from the
+  tracked positions before each event: back-line height (mean distance of the four defenders from their own goal
+  line), length, width, compactness, and a high (33 m or more), mid, or low (under 24 m) block. The snapshot's
+  `shape` gives each team's five-minute reading. A `ShapeTracker` compares the last 10 minutes with the 10 minutes
+  before; when the back line moves 6 m or more and that holds for 4 minutes (15-minute cooldown per team, reset at
+  each period), it raises a `shape_shift` key moment (importance 0.56) whose facts carry the line height, block,
+  length, and width before and after, the team's space-control and possession shares over the same two windows, the
+  score, the trigger (the goal of the period that preceded it, such as `went_ahead` or `conceded`), and who has
+  momentum: "After going ahead at 77', Kestrel Bay Athletic's back line dropped from 30.9 m to 20.2 m; over the same
+  10 minutes their share of the pitch went from 52.7% to 48.2% and their possession from 65.1% to 49.8%". Wording
+  stays "over the same minutes", never "because". Over Kestrel Bay vs Ironvale seeds 1 to 20 there are about 1.1
+  shifts per match, 69% of late protect-the-lead spells (a team leading for 10 or more minutes after 70') produce a
+  dropped shift by the leader, and space control moves with the line in 91% of shifts (96% over every pairing,
+  seeds 1 to 10). Dataset files carry no shape because generation does not run tracking through the analyzer.
 
 ## Agents and Personas (Stages 3-5)
 
@@ -161,7 +179,7 @@ Eight specialised Microsoft Agent Framework agents, each with a single role:
 | Agent | Role | Output schema |
 |---|---|---|
 | Match Analyst | Explains why a moment matters; calls statistics tools (`get_player_stats`, `compare_teams`, `recent_moments`) | `Explanation` |
-| Tactical Scout | Explains a flagged tactical pattern (which zone or defender it exploits, the count and share that prove it); the workflow routes `tactical_pattern` moments to it instead of the Match Analyst | `Explanation` |
+| Tactical Scout | Explains a flagged tactical pattern (which zone or defender it exploits, the count and share that prove it) or a shape shift (how the back line and block changed, with space control and possession over the same minutes); the workflow routes `tactical_pattern` and `shape_shift` moments to it instead of the Match Analyst | `Explanation` |
 | Lead Commentator | Writes one broadcast-ready commentary line | `Commentary` |
 | Personalization Producer | Rewrites the explanation for a viewer persona | `PersonaCard` |
 | Broadcast Translator | Localises cards, keeping names and numbers intact | `TranslatedCard` |
@@ -273,6 +291,7 @@ live session registry with the UI:
 | `get_key_moments` | Recent key moments with importance and facts |
 | `get_player_stats` | Live statistics for one player |
 | `get_threat_leaderboard` | Expected threat (xT) added per team and the danger leaderboard of players, with line-breaking passes |
+| `get_team_shape` | Each team's current back-line height, length, width, compactness, and block, with the last five shape shifts and their before and after numbers |
 | `get_recaps` | Half-time and full-time recaps |
 | `ask_match_companion` | Question the Match Companion agent in any persona and language |
 
@@ -335,6 +354,11 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   (second-deepest defender), a pressure ring when opponents close in on the ball carrier, and arrows to the
   carrier's three best passing options with a completion chance from distance and opponents near the lane
   (green, amber, red). A Tactics toggle hides it.
+- **Shape shift lines:** when a `shape_shift` moment arrives, the 2D pitch draws the team's back line before (dashed,
+  "Before 30.9 m") and now (solid, "Now 20.2 m") with an arrow between them and the team's block outlined and
+  labelled ("Low block") in club colours, for 12 seconds and independent of the Tactics toggle. Analysts' match
+  stats add back-line height and block rows, and the studio's analyst column shows a line-height timeline for both
+  teams across the whole match, with a half-time divider and each shape shift marked at its minute.
 - **Shot card:** right after every shot, a broadcast card shows where it went in the goal mouth and where the
   keeper dived, with the result, shooter, xG, shot speed, distance, and angle (persona overlays step aside meanwhile).
 - **Instant replays:** a few seconds after every goal and every big chance (xG 0.25 or more), the action replays
@@ -449,8 +473,8 @@ backend/
     domain/       immutable event, team, and match models
     simulation/   seeded synthetic match engine with per-club weak flanks (stage 1 source)
     analytics/    streaming interpretation: xG, expected threat (xT) and line breaks, pass quality, stats, rhythm,
-                  key moments, tactical patterns (stage 2)
-    tracking/     synthetic 22-player positions with speed-limited motion and sprint detection
+                  key moments, tactical patterns, team shape and shape shifts (stage 2)
+    tracking/     synthetic 22-player positions with speed-limited motion, sprint detection, and the late protect drop
     highlights/   automated highlights reels: clip selection, frame windows, narration (pure)
     studio/       studio visuals: heat and pressing grids, pass networks, space control, theme to visual (pure)
     speech/       neural voice choice and SSML for spoken commentary (pure)

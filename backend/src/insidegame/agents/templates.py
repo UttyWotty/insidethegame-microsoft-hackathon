@@ -39,6 +39,8 @@ FACT_LABELS: dict[str, str] = {
     "carry_distance_m": "Distance carried (m)", "ball_speed_kmh": "Ball speed (km/h)",
     "count": "Count", "share_pct": "Share (%)", "window_minutes": "Window (min)",
     "xt_added": "xT added", "opponents_bypassed": "Opponents bypassed",
+    "line_after_m": "Back line (m)", "control_after_pct": "Space control (%)",
+    "possession_after_pct": "Possession (%)",
 }
 PATTERN_HEADLINES: dict[str, str] = {
     "flank_exposed": "{team} keep getting in behind down {flank_label}",
@@ -69,6 +71,10 @@ HALF: float = 0.5
 THREAT_HEADLINE: str = "{passer} breaks the {lines_broken} {line_word} to find {receiver}"
 THREAT_WHY: str = ("The pass took {opponents_bypassed} opponents out of the game and moved the ball from a zone worth "
                    "{xt_start} xT to one worth {xt_end}, adding {xt_added} expected threat.")
+SHAPE_HEADLINES: dict[str, str] = {"dropped": "{team} drop deeper: back line at {line_after_m} m",
+                                   "pushed_up": "{team} push up: back line at {line_after_m} m"}
+SHAPE_WHY: dict[str, str] = {"dropped": "Sitting deeper hands the opponent territory and the ball.",
+                             "pushed_up": "Pushing higher squeezes the space but leaves room in behind."}
 SPOKEN_METRES = re.compile(r"(\d+(?:\.\d+)?) m\b")
 SPOKEN_SPEED = re.compile(r"(\d+(?:\.\d+)?) km/h")
 
@@ -199,12 +205,25 @@ def _threat(c: MomentContext) -> ExplanationParts:
             TacticalTheme.INDIVIDUAL_BRILLIANCE)
 
 
+def _shape_shift(c: MomentContext) -> ExplanationParts:
+    f = c.moment.facts
+    direction = _f(f, "direction")
+    headline = SHAPE_HEADLINES.get(direction, SHAPE_HEADLINES["dropped"]).format(
+        team=_f(f, "team"), line_after_m=_f(f, "line_after_m"))
+    why = f"{_f(f, 'summary')}. " + SHAPE_WHY.get(direction, SHAPE_WHY["dropped"])
+    return (headline, why, [f"Back line {_f(f, 'line_before_m')} m to {_f(f, 'line_after_m')} m",
+                            f"Space control {_f(f, 'control_before_pct')}% to {_f(f, 'control_after_pct')}%",
+                            f"Possession {_f(f, 'possession_before_pct')}% to {_f(f, 'possession_after_pct')}%"],
+            TacticalTheme.CONTROL)
+
+
 EXPLAINERS: dict[MomentKind, Callable[[MomentContext], ExplanationParts]] = {
     MomentKind.GOAL: _goal, MomentKind.BIG_CHANCE_MISSED: _big_chance, MomentKind.GREAT_SAVE: _great_save,
     MomentKind.SPEED_THRESHOLD: _speed, MomentKind.DISTANCE_THRESHOLD: _distance,
     MomentKind.DIFFICULT_PASS: _difficult_pass,
     MomentKind.MOMENTUM_SWING: _momentum, MomentKind.CHAOS_SPELL: _chaos, MomentKind.MILESTONE: _milestone,
     MomentKind.TACTICAL_PATTERN: _tactical, MomentKind.THREAT_CREATED: _threat,
+    MomentKind.SHAPE_SHIFT: _shape_shift,
 }
 
 
@@ -288,7 +307,7 @@ KIND_LABELS: dict[str, str] = {
     MomentKind.DISTANCE_THRESHOLD.value: "long-range play", MomentKind.DIFFICULT_PASS.value: "defence-splitting pass",
     MomentKind.MOMENTUM_SWING.value: "momentum swing", MomentKind.CHAOS_SPELL.value: "chaotic spell",
     MomentKind.MILESTONE.value: "milestone", MomentKind.TACTICAL_PATTERN.value: "Tactical Scout flag",
-    MomentKind.THREAT_CREATED.value: "line-breaking pass",
+    MomentKind.THREAT_CREATED.value: "line-breaking pass", MomentKind.SHAPE_SHIFT.value: "shape shift",
 }
 
 

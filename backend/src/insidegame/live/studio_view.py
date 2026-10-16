@@ -1,4 +1,4 @@
-"""Assembles the studio payload for a live session: maps, pass networks, space control, and the analyst's pick.
+"""Assembles the studio payload for a live session: maps, pass networks, space control, shape, and the analyst's pick.
 
 It reads what the session has already played and recorded, filters events to the requested window, and lets the
 Match Analyst's latest explanation choose the recommended visual (its own template when no agent card exists yet),
@@ -62,9 +62,9 @@ def _analyst_pick(records: Mapping[str, BroadcastRecord], recent: Sequence[Momen
 
 def studio_payload(metadata: MatchMetadata, events: Sequence[MatchEvent], frames: Sequence[FrameRecord],
                    records: Mapping[str, BroadcastRecord], recent: Sequence[MomentContext],
-                   window: StudioWindow) -> dict[str, object]:
-    """Heat, pressing, and pass maps per team, space control (with the players) from the latest frame, and the
-    recommended visual."""
+                   window: StudioWindow, shape: Mapping[str, object]) -> dict[str, object]:
+    """Heat, pressing, and pass maps per team, space control (with the players) from the latest frame, the
+    recommended visual, and shape (the whole match's line-height timeline and shifts, whatever the window)."""
     played = _window(events, window)
     home_id = metadata.home.team_id
     teams = {}
@@ -80,4 +80,4 @@ def studio_payload(metadata: MatchMetadata, events: Sequence[MatchEvent], frames
     pick = _analyst_pick(records, recent)
     theme = str(pick.get("theme")) if pick else None
     return {"window": window.value, "events": len(played), "teams": teams, "control": control,
-            "analyst": pick, "recommended": visual_for(theme).value}
+            "analyst": pick, "recommended": visual_for(theme).value, "shape": dict(shape)}

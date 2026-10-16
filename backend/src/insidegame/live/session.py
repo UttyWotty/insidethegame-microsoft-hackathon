@@ -292,7 +292,7 @@ class MatchSession:
     def studio(self, window: StudioWindow) -> dict[str, object]:
         """Studio analysis visuals over the events played so far, with the analyst's recommended visual."""
         return studio_payload(self.result.metadata, self.result.events[:self.played], self.frames, self.desk.records,
-                              tuple(self.recent_moments), window)
+                              tuple(self.recent_moments), window, self.service.analyzer.shape_studio())
 
     def producer_summary(self) -> dict[str, object]:
         """State for the producer console, including live agent traces for the newest moments."""

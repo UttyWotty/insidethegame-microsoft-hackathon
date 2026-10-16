@@ -1,10 +1,12 @@
 """Tests for the studio analysis visuals.
 
 They check grid density scaling and frame conversion, pass network links, space control shares, and that the
-analyst's theme picks the visual. All logic is pure.
+analyst's theme picks the visual, and that the studio payload carries the shape timeline. All logic is pure.
 """
 
 from insidegame.core.geometry import Point
+from insidegame.live.studio_view import StudioWindow, studio_payload
+from insidegame.simulation.roster import build_fixture
 from insidegame.domain.enums import EventType, Outcome
 from insidegame.domain.events import MatchEvent
 from insidegame.studio.control import CONTROL_COLS, space_control
@@ -46,3 +48,10 @@ def test_the_analyst_theme_picks_the_visual() -> None:
     assert visual_for("pressure_shift") is StudioVisual.PRESSING
     assert visual_for("control") is StudioVisual.PASS_NETWORK
     assert visual_for(None) is DEFAULT_VISUAL and visual_for("unknown") is DEFAULT_VISUAL
+
+
+def test_studio_payload_carries_the_shape_timeline_and_shifts() -> None:
+    shape = {"timeline": [{"period": 1, "match_second": 60.0, "minute": 2, "home_line_m": 28.1, "away_line_m": None}],
+             "shifts": []}
+    payload = studio_payload(build_fixture("kestrel_bay", "ironvale", 1), [], [], {}, (), StudioWindow.MATCH, shape)
+    assert payload["shape"] == shape and payload["control"] is None

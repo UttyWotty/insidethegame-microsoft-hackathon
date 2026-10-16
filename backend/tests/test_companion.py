@@ -1,7 +1,7 @@
 """Tests for the Match Companion question-answering agent and its API endpoint.
 
 They cover grounded acceptance, rejection of invented numbers, the persona and language reaching the prompt,
-the offline fallback through the API, and input validation.
+the offline fallback through the API, input validation, and the team shape in the question context.
 """
 
 import asyncio
@@ -9,6 +9,7 @@ import json
 
 from fakes import ScriptedChatClient
 from test_api import _client
+from threat_helpers import analyse_with_tracking
 
 from insidegame.agents.context import MomentContext, ViewerContext
 from insidegame.agents.factory import create_agent_suite
@@ -63,3 +64,13 @@ def test_ask_endpoint_answers_offline_and_validates_input() -> None:
         assert response.status_code == 200 and body["source"] == "fallback" and body["answer"]
         assert client.post(f"/api/matches/{session_id}/ask", json={"question": "?"}).status_code == 422
         assert client.post("/api/matches/missing/ask", json={"question": QUESTION}).status_code == 404
+
+
+def test_question_context_carries_current_team_shape() -> None:
+    tracked = analyse_with_tracking("kestrel_bay", "ironvale", 7)
+    shape = build_question_context(tracked.analyzer).to_prompt_dict()["shape"]
+    names = {tracked.result.metadata.home.name, tracked.result.metadata.away.name}
+    assert isinstance(shape, dict) and set(shape) == names
+    assert all(set(v) == {"line_height_m", "block"} for v in shape.values())
+    blank = build_question_context(MatchAnalyzer(tracked.result.metadata)).to_prompt_dict()
+    assert blank["shape"] == {}

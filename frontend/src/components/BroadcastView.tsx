@@ -1,6 +1,6 @@
 /**
- * The main broadcast experience: the live pitch with persona overlays, score bug, shot and line-breaker cards, stats,
- * physical and danger leaderboards, momentum, and commentary.
+ * The main broadcast experience: the live pitch with persona overlays, score bug, shot and line-breaker cards,
+ * shape-shift lines, stats, physical and danger leaderboards, momentum, and commentary.
  * It subscribes to the viewer's personalized stream and opens the recap dialog when a new recap arrives.
  * Changing persona or language reconnects to a different segment of the same live match.
  */
@@ -12,6 +12,7 @@ import { sprintSpeed } from "../lib/motion";
 import { playerDots } from "../lib/playerDots";
 import { earnsReplay, REPLAY_DELAY_MS } from "../lib/replay";
 import { SCOUT_CARD_MS, SCOUT_ZONE_MS, scoutZoneFor, stillVisible } from "../lib/scout";
+import { SHAPE_SHIFT_MS } from "../lib/shape";
 import { THREAT_CARD_MS } from "../lib/threat";
 import { analyseFrame, carrierAfter } from "../lib/tactics";
 import { teamColor } from "../lib/teams";
@@ -153,6 +154,7 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   const scoutCard = flag && stillVisible(flag.at, now, SCOUT_CARD_MS) ? flag : null;
   const threat = state.threatFlash;
   const threatCard = threat && !goal && !cardShot?.card && stillVisible(threat.at, now, THREAT_CARD_MS) ? threat : null;
+  const shapeShift = state.shapeShift && stillVisible(state.shapeShift.at, now, SHAPE_SHIFT_MS) ? state.shapeShift : null;
 
   return (
     <>
@@ -167,6 +169,7 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
         ) : (
           <PitchView ball={state.ball} trail={state.trail} players={dots} moveMs={state.moveMs} homeColor={homeColor} awayColor={awayColor}
             camera={camera} shot={shot} onBallAnchor={onBallAnchor} tactics={tactics} scoutZone={scoutZone}
+            shapeShift={shapeShift}
             label={`Live pitch: ${match.home.name} versus ${match.away.name}`}>
             <ScoreBug home={match.home} away={match.away} homeColor={homeColor} awayColor={awayColor} lastEvent={state.lastEvent}
               win={state.win} />

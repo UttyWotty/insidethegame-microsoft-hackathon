@@ -153,3 +153,18 @@ def test_match_detail_snapshot_carries_the_threat_leaders() -> None:
         leaders = snapshot["threat_leaders"]
         assert 0 < len(leaders) <= 5 and all(leader["xt_added"] > 0 for leader in leaders)
         assert snapshot["home"]["stats"]["line_breaking_passes"] > 0
+
+
+def test_match_detail_and_studio_carry_team_shape() -> None:
+    with _client() as client:
+        session_id = client.post("/api/matches", json={"home": "kestrel_bay", "away": "ironvale", "seed": 201}).json()[
+            "session_id"]
+        with client.stream("GET", f"/api/matches/{session_id}/stream", params={"persona": "analyst"}) as r:
+            for line in r.iter_lines():
+                if line == "event: end":
+                    break
+        shape = client.get(f"/api/matches/{session_id}").json()["snapshot"]["shape"]
+        assert shape["home"]["block"] in {"high", "mid", "low"} and shape["away"]["line_height_m"] > 0
+        studio = client.get(f"/api/matches/{session_id}/studio", params={"window": "last_15"}).json()["shape"]
+        assert studio["timeline"] and {p["period"] for p in studio["timeline"]} == {1, 2}
+        assert studio["shifts"] and all(s["direction"] in {"dropped", "pushed_up"} for s in studio["shifts"])

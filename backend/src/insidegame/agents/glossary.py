@@ -31,6 +31,9 @@ CONCEPTS: dict[MomentKind, tuple[str, str]] = {
     MomentKind.THREAT_CREATED: ("Expected threat (xT)",
                                 "xT is how likely a team is to score from where the ball is; a pass that moves it "
                                 "somewhere more dangerous adds threat."),
+    MomentKind.SHAPE_SHIFT: ("Defensive line",
+                             "The defensive line is how far from their own goal a team's defenders stand; a deeper "
+                             "line invites pressure, a higher one squeezes space but leaves room behind."),
 }
 
 

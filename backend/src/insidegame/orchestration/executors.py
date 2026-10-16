@@ -1,8 +1,8 @@
 """Agent Framework executors forming the per-moment multi-agent workflow.
 
-Intake writes the job to shared state, the analyst (or the Tactical Scout, for tactical flags) explains, the narrator
-and personalizer run in parallel, the fact-checker verifies (and sends rejected cards back for revision), and the
-assembler translates and builds cues.
+Intake writes the job to shared state, the analyst (or the Tactical Scout, for tactical flags and shape shifts)
+explains, the narrator and personalizer run in parallel, the fact-checker verifies (and sends rejected cards back
+for revision), and the assembler translates and builds cues.
 """
 
 import asyncio
@@ -29,6 +29,7 @@ from insidegame.orchestration.messages import (
 )
 
 JOB_STATE_KEY: str = "job"
+SCOUT_KINDS: frozenset[MomentKind] = frozenset({MomentKind.TACTICAL_PATTERN, MomentKind.SHAPE_SHIFT})
 EXPLANATION_STATE_KEY: str = "explanation"
 
 
@@ -61,8 +62,8 @@ class AnalystExecutor(Executor):
 
 
 def is_tactical(job: object) -> bool:
-    """Edge condition: True for a tactical_pattern job, which the Tactical Scout explains instead of the analyst."""
-    return isinstance(job, MomentJob) and job.context.moment.kind is MomentKind.TACTICAL_PATTERN
+    """Edge condition: True for a SCOUT_KINDS job (tactical_pattern, shape_shift), which the Tactical Scout explains."""
+    return isinstance(job, MomentJob) and job.context.moment.kind in SCOUT_KINDS
 
 
 def is_not_tactical(job: object) -> bool:
@@ -71,7 +72,7 @@ def is_not_tactical(job: object) -> bool:
 
 
 class ScoutExecutor(Executor):
-    """Runs the Tactical Scout agent on tactical_pattern moments."""
+    """Runs the Tactical Scout agent on tactical_pattern and shape_shift moments."""
 
     def __init__(self, suite: AgentSuite, analyzer: MatchAnalyzer, policy: RunPolicy) -> None:
         super().__init__(id="scout")
@@ -79,7 +80,7 @@ class ScoutExecutor(Executor):
 
     @handler
     async def run(self, job: MomentJob, ctx: WorkflowContext[ExplainedMoment]) -> None:
-        """Explain the flagged pattern and share the explanation, exactly as the analyst would."""
+        """Explain the flagged pattern or shape shift and share the explanation, exactly as the analyst would."""
         outcome = await scout_explain(self.suite, job.context, self.analyzer, self.policy)
         ctx.set_state(EXPLANATION_STATE_KEY, outcome)
         await ctx.send_message(ExplainedMoment(job, outcome))

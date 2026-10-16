@@ -90,7 +90,32 @@ export interface Snapshot {
   physical?: PhysicalStats;
   /** Danger leaderboard by expected threat (xT) added, at most five players. */
   threat_leaders?: ThreatLeader[];
+  /** Each team's out-of-possession shape over the last five minutes, null until it has enough samples. */
+  shape?: { home: TeamShape | null; away: TeamShape | null };
 }
+
+/** How high a team defends, from its back-line height. */
+export type Block = "high" | "mid" | "low";
+
+/** A team's smoothed out-of-possession shape in metres, mirroring TeamShapeReading.to_dict(). */
+export interface TeamShape {
+  team_id: string; line_height_m: number; length_m: number; width_m: number; compactness_m: number; block: Block;
+  samples: number; window_minutes: number;
+}
+
+/** Both teams' smoothed back-line heights at one minute; null before a team has a reading. */
+export interface ShapeTimelinePoint {
+  period: number; match_second: number; minute: number; home_line_m: number | null; away_line_m: number | null;
+}
+
+/** A shape_shift moment as the studio timeline marks it. */
+export interface ShapeShiftMark {
+  moment_id: string; minute_label: string; period: number; match_second: number; team_id: string;
+  direction: "dropped" | "pushed_up"; line_before_m: number; line_after_m: number;
+}
+
+/** The whole match's line-height timeline and shape shifts, whatever the studio window. */
+export interface ShapeStudio { timeline: ShapeTimelinePoint[]; shifts: ShapeShiftMark[] }
 
 export interface Provenance { source: OutputSource; attempts: number; latency_ms: number }
 
@@ -146,6 +171,7 @@ export interface StudioAnalyst {
 export interface StudioPayload {
   window: "match" | "last_15"; events: number; teams: { home: StudioTeam; away: StudioTeam };
   control: SpaceControl | null; analyst: StudioAnalyst | null; recommended: StudioVisual;
+  shape: ShapeStudio;
 }
 
 export interface PersonaInfo {

@@ -33,7 +33,10 @@ SCOUT_INSTRUCTIONS: str = (
     "You are the Tactical Scout for a live football broadcast. You watch the whole match for repeated patterns, "
     "not single actions. Explain the flagged pattern in the input: what the team keeps doing, which zone or "
     "defender it exploits, the count and share that prove it, and what the opponent must change before it costs "
-    f"them. Speak as a scout warning the studio, not as a reporter. {GROUNDING_RULE}"
+    "them. Speak as a scout warning the studio, not as a reporter. For a shape shift, explain how the team's line "
+    "and block changed, cite the before and after numbers, connect it to the change in space control and "
+    "possession over the same minutes, and name the trigger when the facts give one. "
+    f"{GROUNDING_RULE}"
 )
 
 NARRATOR_INSTRUCTIONS: str = (
