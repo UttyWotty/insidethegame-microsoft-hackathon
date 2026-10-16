@@ -1,12 +1,13 @@
 /**
- * Automated highlights reel: replays each key moment on the pitch from stored tracking frames.
- * Players and the ball move at real match pace, a broadcast lower third captions the clip, and the commentator
- * narrates it when Voice is on. Viewers can pause, skip between clips, replay, or go back to the live match.
+ * Automated highlights reel: shot clips replay the real build-up and the ball's flight, other clips stored frames.
+ * Build-up plays at real match pace and the strike in slow motion, a broadcast lower third captions the clip, and
+ * the commentator narrates it when Voice is on. Viewers can pause, skip between clips, replay, or go back to live.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError } from "../api/client";
 import { playerDots } from "../lib/playerDots";
-import { clipLengthMs, frameBall, frameIndexAt, framePositions, glideMs, REEL_RATE } from "../lib/reel";
+import { REEL_RATE } from "../lib/reel";
+import { reelClipLengthMs, reelView } from "../lib/reelPlayback";
 import { speakLine, stopSpeaking } from "../lib/speakLine";
 import type { HighlightReel, MatchMetadata } from "../types";
 import { type BallAnchor } from "./Pitch";
@@ -47,7 +48,7 @@ export function HighlightsPlayer(props: HighlightsPlayerProps) {
   }, [clip, paused]);
 
   useEffect(() => {
-    if (clip && elapsed >= clipLengthMs(clip)) {
+    if (clip && elapsed >= reelClipLengthMs(clip)) {
       setClipIndex((i) => i + 1);
       setElapsed(0);
     }
@@ -69,11 +70,10 @@ export function HighlightsPlayer(props: HighlightsPlayerProps) {
     setPaused(false);
   };
 
-  const frameIndex = clip ? frameIndexAt(clip, elapsed) : 0;
-  const frame = clip?.frames[frameIndex];
-  const dots = useMemo(() => (frame
-    ? playerDots(match, framePositions(frame), { actor: frame.player_id, receiver: null }, null, NO_SPRINT) : []),
-  [match, frame]);
+  const view = useMemo(() => (clip ? reelView(clip, elapsed, TICK_MS) : null), [clip, elapsed]);
+  const dots = useMemo(() => (view
+    ? playerDots(match, view.positions, { actor: view.actor, receiver: view.receiver }, null, NO_SPRINT) : []),
+  [match, view]);
 
   if (error) return <div className="panel empty" role="alert">{error}</div>;
   if (!reel) return <div className="panel empty">Cutting the highlights...</div>;
@@ -81,13 +81,13 @@ export function HighlightsPlayer(props: HighlightsPlayerProps) {
 
   return (
     <section className="stack" aria-label={label}>
-      {finished || !clip || !frame ? (
+      {finished || !clip || !view ? (
         <div className="panel empty stack">
           <h2 className="display" style={{ margin: 0 }}>{clips.length ? "End of highlights" : "No highlights yet"}</h2>
           <p className="muted" style={{ margin: 0 }}>{reel.headline}</p>
         </div>
       ) : (
-        <PitchView ball={frameBall(frame)} trail={[]} players={dots} moveMs={glideMs(clip, frameIndex)} homeColor={homeColor}
+        <PitchView ball={view.ball} trail={[]} players={dots} moveMs={view.moveMs} homeColor={homeColor}
           awayColor={awayColor} camera={camera} shot={null} onBallAnchor={onBallAnchor}
           label={`${label}: ${clip.minute} ${clip.title}`}>
           <div className="glass highlight-caption" aria-live="polite">

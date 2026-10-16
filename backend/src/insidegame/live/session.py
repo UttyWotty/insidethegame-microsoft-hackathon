@@ -30,6 +30,7 @@ from insidegame.domain.enums import Intensity
 from insidegame.domain.events import MatchEvent
 from insidegame.domain.match import MatchResult
 from insidegame.highlights.reel import FrameRecord, build_reel
+from insidegame.highlights.reel_story import StorySource
 from insidegame.highlights.replay_story import build_story
 from insidegame.live.highlight_lines import clip_narrations
 from insidegame.live.pacing import replay_delay_s
@@ -285,7 +286,8 @@ class MatchSession:
         if recap is None:
             raise HighlightsNotReadyError(f"Highlights for {stage.value} are ready once that recap is published")
         narrations = clip_narrations(self.cue_history.get(segment or "", ()), self.desk.records)
-        clips = build_reel(self.service.analyzer.moments, stage, self.frames, narrations)
+        source = StorySource(self.result.events[:self.played], self.event_frames, self.threats, self.result.metadata)
+        clips = build_reel(self.service.analyzer.moments, stage, self.frames, narrations, source)
         headline = recap["recap"]["headline"] if isinstance(recap["recap"], dict) else ""
         return {"stage": stage.value, "headline": headline, "clips": [c.to_dict() for c in clips]}
 

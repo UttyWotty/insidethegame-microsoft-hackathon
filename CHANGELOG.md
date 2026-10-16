@@ -248,6 +248,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Highlights clips of shots now replay the real build-up and the ball's flight into the goal (goals, big chances,
+  great saves, thunderous strikes, and brace or hat-trick milestones): they reuse the instant replay's
+  story keyframes (`highlights/reel_story.py`, `playback: "story"` in the `/highlights` payload) and its timeline
+  (build-up at real pace, the strike in slow motion, then the caption hold, `lib/reelPlayback.ts`). Before, every
+  goal clip ended with the ball snapping back to the scorer's feet and passes ran up to 34 m ahead of the players.
+  Other clips keep their stored frames (`playback: "frames"`); narration, captions, and clip order are unchanged.
 - Instant replays never showed the ball going in: the shot and goal frames share a match second, so the shot's
   flight was skipped and the goal frame reset the ball to the scorer's feet, while the short window cut off the
   build-up (the 77' winner's 34.4 m assist was never seen). The new replay story fixes both.

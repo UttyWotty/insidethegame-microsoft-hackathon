@@ -257,7 +257,7 @@ skipped.
 | GET | `/api/matches/{id}/producer/stream` | Server-sent events: the producer console state whenever it changes, then `end` |
 | GET | `/api/matches/{id}/replay?period=&at=` | Instant replay story of a played shot (`at` within 0.01 s): build-up, strike, and flight keyframes plus its analysis (xG, goal chance, shot cone, assist, build-up); 404 when no shot matches |
 | GET | `/api/matches/{id}/studio?window=` | Studio visuals for `match` or `last_15`: heat, pressing, and pass maps per team, space control, and the analyst's recommended visual |
-| GET | `/api/matches/{id}/highlights?stage=` | Highlights reel for `half_time` or `full_time` (409 until that recap exists): clips with tracking frames and narration |
+| GET | `/api/matches/{id}/highlights?stage=` | Highlights reel for `half_time` or `full_time` (409 until that recap exists): clips with narration and either the shot's replay-story keyframes (`playback: "story"`) or stored tracking frames (`playback: "frames"`) |
 | POST | `/api/matches/{id}/producer/hold`, `/producer/release` | Hold AI overlays for approval; release one or all |
 | GET | `/api/speech/status` | Whether neural speech is configured (configuration only, no service call) |
 | GET | `/api/matches/{id}/speech?ref=&segment=` | MP3 of one commentary line this match produced (never arbitrary text) |
@@ -377,8 +377,10 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   the visual (pressure shift shows the pressing map, chaos shows space control, and so on), with the explanation
   and its source beside it.
 - **Automated highlights:** at half-time and full-time a highlights reel replays every goal and the biggest
-  moments (up to six) on the pitch from the tracking frames recorded live, at real match pace, with a broadcast
-  caption and the moment's commentary spoken in the viewer's language. Pause, skip, replay, or go back to live.
+  moments (up to six) on the pitch, with a broadcast caption and the moment's commentary spoken in the viewer's
+  language. Shot clips play the build-up and the ball's flight into the goal (the instant replay's story, build-up
+  at real pace and the strike in slow motion); other clips replay the tracking frames recorded live at real match
+  pace. Pause, skip, replay, or go back to live.
 - **Ask the analyst:** viewers question the Match Companion about the live match and get grounded answers
   in their persona's voice and language, with supporting stats and suggested follow-ups. Without a model, a
   deterministic engine still answers common questions from live statistics in the persona's voice.
@@ -482,7 +484,7 @@ backend/
     analytics/    streaming interpretation: xG, expected threat (xT) and line breaks, pass quality, stats, rhythm,
                   key moments, tactical patterns, team shape and shape shifts, shot cones and blocks (stage 2)
     tracking/     synthetic 22-player positions with speed-limited motion, sprint detection, and the late protect drop
-    highlights/   automated highlights reels (clip selection, frame windows, narration) and instant replay
+    highlights/   automated highlights reels (clip selection, shot stories, frame windows, narration) and instant replay
                   stories (build-up and flight keyframes, shot analysis) (pure)
     studio/       studio visuals: heat and pressing grids, pass networks, space control, theme to visual (pure)
     speech/       neural voice choice and SSML for spoken commentary (pure)

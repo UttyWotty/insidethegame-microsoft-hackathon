@@ -14,6 +14,7 @@ const frame = (second: number, period = 1): HighlightFrame =>
 const clip: HighlightClip = {
   moment_id: "m", kind: "goal", minute: "10'", period: 1, match_second: 600, title: "Goal", actor: "A h1", commentary: "In!",
   language: "en", intensity: "peak", frames: [frame(590), frame(592), frame(592.1), frame(600)],
+  playback: "frames",
 };
 
 describe("reel timing", () => {
