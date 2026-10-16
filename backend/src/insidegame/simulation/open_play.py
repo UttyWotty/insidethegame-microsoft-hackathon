@@ -4,6 +4,7 @@ Each resolver samples an outcome, emits the corresponding events, and updates Si
 Turnovers hand possession to the defending side with coordinates mirrored into its frame. Near the byline, wide
 of the goal, passes become cutbacks or crosses into the box and carries cut inside, as attackers do in real play.
 Attacks lean toward the defending club's weak flank, where passes complete slightly more often and tackles fail.
+Deep forward carries stop at a depth drawn from CARRY_STOP_X_M, 3 to 12 m from the goal line, never at the line.
 """
 
 from insidegame.core.constants import GOAL_CENTER_Y_M
@@ -54,7 +55,9 @@ CARRY_LATERAL_SD_M: float = 4.0
 CARRY_SPEED_BASE_MS: float = 4.0
 CARRY_SPEED_PACE_MS: float = 3.0
 CARRY_EXTRA_S: float = 1.0
-CARRY_MAX_X_M: float = 103.0
+# A forward carry that would end beyond the first value stops at a depth drawn uniformly from this band, 3 to 12 m
+# from the goal line; it never moves behind its start.
+CARRY_STOP_X_M: tuple[float, float] = (93.0, 102.0)
 
 CROSS_ZONE_X_M: float = 97.0
 CROSS_ZONE_WIDE_M: float = 7.0
@@ -131,6 +134,11 @@ def resolve_pass(state: SimState, style: TeamStyle, defending_style: TeamStyle) 
     state.give_possession(state.attacking.opponent, interceptor, mirror(target))
 
 
+def carry_stop_x(end_x: float, start_x: float, stop_x: float) -> float:
+    """Return a carry's end depth capped at stop_x, but never behind start_x when the carry starts beyond the stop."""
+    return max(min(end_x, stop_x), min(start_x, end_x))
+
+
 def _carry_end(state: SimState) -> Point:
     rng, pace = state.rng, state.carrier.attributes.pace
     if in_cross_zone(state.ball):
@@ -140,7 +148,9 @@ def _carry_end(state: SimState) -> Point:
     forward = rng.gauss(CARRY_FORWARD_BASE_M + CARRY_FORWARD_PACE_M * pace, CARRY_FORWARD_SD_M)
     forward = min(max(forward, CARRY_MIN_M), CARRY_MAX_M)
     end = clamp_to_pitch(Point(state.ball.x + forward, state.ball.y + rng.gauss(0.0, CARRY_LATERAL_SD_M)))
-    return Point(min(end.x, CARRY_MAX_X_M), end.y)
+    if end.x > CARRY_STOP_X_M[0]:
+        return Point(carry_stop_x(end.x, state.ball.x, rng.uniform(*CARRY_STOP_X_M)), end.y)
+    return end
 
 
 def _contest_point(start: Point, end: Point) -> Point:

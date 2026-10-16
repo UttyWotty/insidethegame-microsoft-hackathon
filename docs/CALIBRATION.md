@@ -6,24 +6,24 @@ Regenerate it after changing the simulator; the numbers are reproducible from th
 
 # Simulator Calibration
 
-Generated 2026-10-16 from 480 matches (seeds 1 to 480, every
+Generated 2026-10-17 from 480 matches (seeds 1 to 480, every
 home and away pairing of the 4 fictional clubs). 13 of 13 metrics fall inside their band.
 
 | Metric | Synthetic | Reference band | Within band | Note |
 |---|---|---|---|---|
-| Goals per match | 2.85 | 2.5 to 3.1 | yes |  |
-| Expected goals per match | 2.88 | 2.4 to 3.2 | yes |  |
-| Goals minus xG per match | -0.03 | -0.3 to 0.3 | yes | xG model agrees with simulated finishing |
-| Shots per match | 27.14 | 22.0 to 28.0 | yes |  |
-| Shots on target (%) | 33.96 | 30.0 to 40.0 | yes | blocked shots count as not on target |
-| Shot conversion (%) | 10.51 | 9.0 to 13.0 | yes |  |
-| Pass accuracy (%) | 79.38 | 78.0 to 86.0 | yes |  |
-| Shots from inside the box (%) | 70.3 | 55.0 to 72.0 | yes |  |
-| Mean shot distance (m) | 14.89 | 14.0 to 19.0 | yes |  |
-| Shots from the byline (%) | 2.01 | 0.0 to 4.0 | yes | within 3 m of the goal line, outside the goal width |
-| Home wins (%) | 43.96 | 40.0 to 48.0 | yes | needs a few hundred matches to settle |
-| Draws (%) | 28.33 | 22.0 to 30.0 | yes | needs a few hundred matches to settle |
-| Away wins (%) | 27.71 | 25.0 to 33.0 | yes | needs a few hundred matches to settle |
+| Goals per match | 2.89 | 2.5 to 3.1 | yes |  |
+| Expected goals per match | 2.89 | 2.4 to 3.2 | yes |  |
+| Goals minus xG per match | -0.0 | -0.3 to 0.3 | yes | xG model agrees with simulated finishing |
+| Shots per match | 26.96 | 22.0 to 28.0 | yes |  |
+| Shots on target (%) | 34.28 | 30.0 to 40.0 | yes | blocked shots count as not on target |
+| Shot conversion (%) | 10.71 | 9.0 to 13.0 | yes |  |
+| Pass accuracy (%) | 79.52 | 78.0 to 86.0 | yes |  |
+| Shots from inside the box (%) | 71.14 | 55.0 to 72.0 | yes |  |
+| Mean shot distance (m) | 15.14 | 14.0 to 19.0 | yes |  |
+| Shots from the byline (%) | 0.06 | 0.0 to 4.0 | yes | within 3 m of the goal line, outside the goal width |
+| Home wins (%) | 46.25 | 40.0 to 48.0 | yes | needs a few hundred matches to settle |
+| Draws (%) | 25.42 | 22.0 to 30.0 | yes | needs a few hundred matches to settle |
+| Away wins (%) | 28.33 | 25.0 to 33.0 | yes | needs a few hundred matches to settle |
 
 Reference bands are approximate typical ranges for top European leagues, used as sanity checks rather than exact
 targets. Home advantage comes from a shot-volume factor (home sides create more chances), so goals stay in line
@@ -37,7 +37,7 @@ possessions take many actions per shot. 4 of 4 checks hold.
 
 | Check | Synthetic | Expectation | Holds |
 |---|---|---|---|
-| xT peak cell | 0.053 at 100.6 m, 29.8 m | inside the attacked penalty area | yes |
+| xT peak cell | 0.051 at 100.6 m, 29.8 m | inside the attacked penalty area | yes |
 | xT mean cell value by third (defensive, middle, final) | 0.007, 0.012, 0.022 | rises from defensive to final third | yes |
-| xT added per team per match | 1.267 | positive | yes |
-| Completed passes and carries adding xT (%) | 66.3 | above 50 | yes |
+| xT added per team per match | 1.239 | positive | yes |
+| Completed passes and carries adding xT (%) | 65.3 | above 50 | yes |

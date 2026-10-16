@@ -51,22 +51,25 @@ into it and dribbles down it succeed slightly more often, so the Tactical Scout 
 pressure, and fatigue. Tracking follows the same game state: from 70' (the simulator's `PROTECT_START_SECOND`), a
 leading team defends 10 m deeper out of possession (`tracking/game_state.py`, keeper and in-possession shapes
 unchanged). The protect drop only moves tracked positions, so events, scorelines, the calibration report, and the
-event and moment datasets are unchanged.
+event and moment datasets are unchanged. Finishing is realistic rather than walk-in: a forward dribble that would
+end deeper than 93 m stops at a depth drawn from 93 to 102 m (`CARRY_STOP_X_M`, 3 to 12 m from the goal line), and
+inside 20 m of goal the tracked keeper stands on the line from the goal centre to the ball (or the strike point of a
+shot), 30% of the way out, so the keeper is between a close shooter and the goal (`tracking/keeper.py`).
 
 Calibrated averages over 480 simulated matches (every pairing, seeds 1 to 480; full table and reference bands in
 [docs/CALIBRATION.md](docs/CALIBRATION.md), regenerated with `python -m insidegame.datasets.calibrate`):
 
 | Metric | Simulated | Typical top-flight range |
 |---|---|---|
-| Goals per match | 2.85 | 2.5-3.1 |
-| Expected goals per match | 2.88 | 2.4-3.2 |
-| Shots per match | 27.1 | 22-28 |
-| Shots on target | 34.0% | 30-40% |
-| Shot conversion | 10.5% | 9-13% |
-| Pass accuracy | 79.4% | 78-86% |
-| Shots from inside the box / byline | 70.3% / 2.0% | 55-72% / 0-4% |
-| Mean shot distance | 14.9 m | 14-19 m |
-| Home wins / draws / away wins | 44.0% / 28.3% / 27.7% | 40-48% / 22-30% / 25-33% |
+| Goals per match | 2.89 | 2.5-3.1 |
+| Expected goals per match | 2.89 | 2.4-3.2 |
+| Shots per match | 27.0 | 22-28 |
+| Shots on target | 34.3% | 30-40% |
+| Shot conversion | 10.7% | 9-13% |
+| Pass accuracy | 79.5% | 78-86% |
+| Shots from inside the box / byline | 71.1% / 0.1% | 55-72% / 0-4% |
+| Mean shot distance | 15.1 m | 14-19 m |
+| Home wins / draws / away wins | 46.3% / 25.4% / 28.3% | 40-48% / 22-30% / 25-33% |
 
 Event types: `period_start`, `period_end`, `kick_off`, `pass`, `carry`, `shot`, `goal`, `save`, `pressure`,
 `tackle`, `interception`, `foul`, `possession_change`. Coordinates are metres on a 105 x 68 pitch, relative to the
@@ -103,10 +106,17 @@ JSON Lines tables across every fixture pairing:
 
 Realism is measured, not claimed: `python -m insidegame.datasets.calibrate --matches 480` compares goals, xG,
 shots, accuracy, conversion, and home, draw, and away shares with approximate top-flight bands, and every dataset
-card carries the same table. The current report ([docs/CALIBRATION.md](docs/CALIBRATION.md)) has all 10 metrics
+card carries the same table. The current report ([docs/CALIBRATION.md](docs/CALIBRATION.md)) has all 13 metrics
 inside their band. Home advantage comes from a shot-volume factor, so goals stay consistent with the independent
 xG model. The report ends with an expected threat (xT) sanity section: the grid's peak cell lies in the penalty
 area, value rises third by third, teams add positive xT per match, and most completed passes and carries add threat.
+
+The demo seed is chosen by a tool, not by hand: `python -m insidegame.datasets.demo_search --start-seed 1
+--end-seed 4000 --top 10` simulates Kestrel Bay vs Ironvale per seed and prints a Markdown table of the seeds whose
+match tells the demo story (a home go-ahead goal from 6 m or more linked to a Tactical Scout flank flag 3 to 12
+minutes earlier, a later dropped shape shift with falling control, a big save, a passing build-up, and an auto replay
+that is not dropped), ranked by preferences such as a held winner, a comeback, or a late goal. The demo seed (1407)
+is one of the three seeds in 1 to 4000 that pass every rule.
 
 Twelve matches (about 30,000 events) generate in under two seconds. A two-match sample is committed in
 [`data/sample/`](data/sample/README.md). The files load directly into Microsoft Fabric lakehouses, notebooks,
@@ -133,9 +143,9 @@ or training pipelines.
   down one wide channel at a success rate of 85% or more, naming the beaten full-back), a channel overload (at least
   7 successful entries and 60% of them down one channel), and a turnover zone (at least 5 ball wins in one zone
   outside the winner's defensive third). Flags are at least 10 minutes apart, and the same pattern waits 15 minutes
-  before it can be flagged again; about 7 are raised per match. When a goal or big chance comes from a flagged
+  before it can be flagged again; about 6 to 7 are raised per match. When a goal or big chance comes from a flagged
   pattern within 15 minutes, it carries `flagged_minute` and `flagged_summary`, so the broadcast can say "Scout
-  flagged 31'". Over seeds 1 to 30 of Kestrel Bay vs Ironvale, about 95% of wide flank flags point at the defending
+  flagged 31'". Over seeds 1 to 30 of Kestrel Bay vs Ironvale, about 93% of wide flank flags point at the defending
   club's configured weak flank.
 - **Expected threat (xT):** every completed pass and carry is credited with the expected threat it added (xT where
   the ball ended minus xT where it started) to the player and team (`xt_added`). The 12 x 8 grid is fitted to our
@@ -145,9 +155,9 @@ or training pipelines.
   tackled team), solves `xT = shot share x mean xG + move share x sum of transition share x xT` by value iteration,
   and averages mirrored rows so neither flank is favoured. The committed `analytics/xt_grid.py` is generated (no
   date, so it regenerates byte for byte) and must be refitted whenever the simulator changes. Values run from about
-  0.007 at the own goal line to 0.053 in the central cells of the penalty area: flatter than grids fitted to real
-  leagues, because simulated possessions take many actions per shot. About 66% of completed passes and carries add
-  threat, and a team adds about 1.3 xT per match.
+  0.007 at the own goal line to 0.051 in the central cells of the penalty area: flatter than grids fitted to real
+  leagues, because simulated possessions take many actions per shot. About 65% of completed passes and carries add
+  threat, and a team adds about 1.2 xT per match.
 - **Line-breaking passes:** in the live pipeline, each completed pass is checked against the opponents' tracked
   positions from the frame before it (goalkeeper excluded): `opponents_bypassed` counts outfield opponents nearer
   goal at the start than at the end, and a midfield or defensive line is broken only when the pass starts behind
@@ -165,11 +175,11 @@ or training pipelines.
   each period), it raises a `shape_shift` key moment (importance 0.56) whose facts carry the line height, block,
   length, and width before and after, the team's space-control and possession shares over the same two windows, the
   score, the trigger (the goal of the period that preceded it, such as `went_ahead` or `conceded`), and who has
-  momentum: "After going ahead at 77', Kestrel Bay Athletic's back line dropped from 30.9 m to 20.2 m; over the same
-  10 minutes their share of the pitch went from 52.7% to 48.2% and their possession from 65.1% to 49.8%". Wording
-  stays "over the same minutes", never "because". Over Kestrel Bay vs Ironvale seeds 1 to 20 there are about 1.1
-  shifts per match, 69% of late protect-the-lead spells (a team leading for 10 or more minutes after 70') produce a
-  dropped shift by the leader, and space control moves with the line in 91% of shifts (96% over every pairing,
+  momentum: "After going ahead at 65', Kestrel Bay Athletic's back line dropped from 27.1 m to 17.8 m; over the same
+  10 minutes their share of the pitch went from 51.6% to 43.0% and their possession from 60.6% to 49.3%". Wording
+  stays "over the same minutes", never "because". Over Kestrel Bay vs Ironvale seeds 1 to 20 there are about 1.0
+  shifts per match, 75% of late protect-the-lead spells (a team leading for 10 or more minutes after 70') produce a
+  dropped shift by the leader, and space control moves with the line in 95% of shifts (97% over every pairing,
   seeds 1 to 10). Dataset files carry no shape because generation does not run tracking through the analyzer.
 
 ## Agents and Personas (Stages 3-5)
@@ -355,7 +365,7 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   carrier's three best passing options with a completion chance from distance and opponents near the lane
   (green, amber, red). A Tactics toggle hides it.
 - **Shape shift lines:** when a `shape_shift` moment arrives, the 2D pitch draws the team's back line before (dashed,
-  "Before 30.9 m") and now (solid, "Now 20.2 m") with an arrow between them and the team's block outlined and
+  "Before 27.1 m") and now (solid, "Now 17.8 m") with an arrow between them and the team's block outlined and
   labelled ("Low block") in club colours, for 12 seconds and independent of the Tactics toggle. Analysts' match
   stats add back-line height and block rows, and the studio's analyst column shows a line-height timeline for both
   teams across the whole match, with a half-time divider and each shape shift marked at its minute.
@@ -495,7 +505,8 @@ backend/
     api/          FastAPI app, routers, server-sent events (viewer and producer streams), MCP server
     adapters/     model client (MLX, Ollama, Foundry, offline), Azure AI Speech client, and telemetry setup
     evaluation/   agent evaluation harness
-    datasets/     synthetic dataset tables, dataset card, generator, calibration, and xT fit (xt_fit) CLIs
+    datasets/     synthetic dataset tables, dataset card, generator, calibration, xT fit (xt_fit), and demo-seed
+                  search (demo_search, scored by the pure demo_story module) CLIs
     foundry/      hosted agent definition and registration for Foundry Agent Service
   tests/          unit and integration tests
 frontend/

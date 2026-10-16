@@ -1,8 +1,8 @@
-"""End-to-end tests of instant replay stories on the seed-201 demo fixture, run through a real MatchSession.
+"""End-to-end tests of instant replay stories on the demo fixture (DEMO_SEED), run through a real MatchSession.
 
 The session uses the offline agent policy and an instant sleeper, so the full match plays in seconds while the
 stored frames and threats come from the same interpretation code the broadcast runs.
-They pin the measured numbers of the 15' and 77' goals and the keyframe invariants every shot replay must keep.
+They pin the measured numbers of the 28' and 65' goals and the keyframe invariants every shot replay must keep.
 """
 
 import asyncio
@@ -18,13 +18,12 @@ from insidegame.highlights.replay_story import REPLAY_MAX_LEAD_S
 from insidegame.live.session import MatchSession
 from insidegame.orchestration.service import MatchIntelligenceService
 from insidegame.simulation.engine import simulate_match
-from insidegame.simulation.roster import build_fixture
+from insidegame.simulation.roster import DEMO_SEED, build_fixture
 
 OFFLINE_POLICY = RunPolicy(timeout_s=1.0, max_attempts=0, prompt_suffix="")
-DEMO_SEED = 201
 SPEED = 30.0
-WINNER = (2, 4574.03)
-OPENER = (1, 883.59)
+WINNER = (2, 3841.21)
+OPENER = (1, 1651.62)
 GOAL_LINES = (0.0, 105.0)
 LINE_TOLERANCE_M = 0.01
 MIN_FLIGHT_M = 1.5
@@ -53,28 +52,28 @@ def _shot_event_id(session: MatchSession, period: int, at: float) -> str:
                 if e.period == period and abs(e.match_second - at) <= LINE_TOLERANCE_M and e.event_type.value == "shot")
 
 
-def test_the_77th_minute_winner_matches_the_measured_analysis(session: MatchSession) -> None:
+def test_the_65th_minute_winner_matches_the_measured_analysis(session: MatchSession) -> None:
     story = session.replay(*WINNER)
     analysis = story["analysis"]
     assert isinstance(analysis, dict)
     card = analysis["card"]
-    assert card["result"] == "goal" and analysis["xg"] == 0.075 and analysis["goal_chance_pct"] == 8
-    assert (card["distance_m"], card["angle_deg"], card["speed_kmh"]) == (10.9, 35.4, 81.8)
+    assert card["result"] == "goal" and analysis["xg"] == 0.136 and analysis["goal_chance_pct"] == 14
+    assert (card["distance_m"], card["angle_deg"], card["speed_kmh"]) == (9.4, 41.5, 107.3)
     assist = analysis["assist"]
-    assert assist["passer_id"] == "kba-09" and assist["length_m"] == 34.4
-    assist_id = next(e.event_id for e in session.result.events if e.player_id == "kba-09"
-                     and e.receiver_id == "kba-11" and e.event_type.value == "pass" and e.match_second < WINNER[1]
-                     and e.period == WINNER[0] and e.match_second > WINNER[1] - REPLAY_MAX_LEAD_S)
+    assert assist["passer_id"] == "kba-07" and assist["length_m"] == 26.2
+    assist_id = next(e.event_id for e in reversed(session.result.events) if e.player_id == "kba-07"
+                     and e.receiver_id == "kba-09" and e.event_type.value == "pass" and e.match_second < WINNER[1]
+                     and e.period == WINNER[0])
     assert assist["xt_added"] == session.threats[assist_id].to_dict()["xt_added"]
-    assert analysis["build_up"]["passes"] == 6 and analysis["build_up"]["duration_s"] == 31.4
+    assert analysis["build_up"]["passes"] == 7 and analysis["build_up"]["duration_s"] == 35.9
     assert analysis["keeper_in_cone"] is True and analysis["defenders_in_cone"] == 0
 
 
-def test_the_15th_minute_opener_matches_the_measured_analysis(session: MatchSession) -> None:
+def test_the_28th_minute_opener_matches_the_measured_analysis(session: MatchSession) -> None:
     analysis = session.replay(*OPENER)["analysis"]
     assert isinstance(analysis, dict)
-    assert analysis["card"]["result"] == "goal" and analysis["card"]["distance_m"] == 2.0
-    assert analysis["assist"]["passer_id"] == "irv-09" and analysis["build_up"]["passes"] == 5
+    assert analysis["card"]["result"] == "goal" and analysis["card"]["distance_m"] == 4.6
+    assert analysis["assist"]["passer_id"] == "kba-10" and analysis["build_up"]["passes"] == 7
 
 
 @pytest.mark.parametrize("period, at", [WINNER, OPENER])
@@ -100,3 +99,29 @@ def test_goal_replays_keep_the_keyframe_invariants(session: MatchSession, period
 def test_a_second_without_a_shot_has_no_replay(session: MatchSession) -> None:
     with pytest.raises(ReplayNotFoundError):
         session.replay(WINNER[0], WINNER[1] + 5)
+
+
+KEEPER_CHECK_RANGE_M = 20.0
+GOAL_CENTER_Y = 34.0
+REPLAYED_RESULTS = {"goal", "saved"}
+
+
+def test_close_goal_and_save_replays_show_the_keeper_between_the_strike_and_the_goal(session: MatchSession) -> None:
+    metadata = session.result.metadata
+    checked = 0
+    for event in session.result.events:
+        if event.event_type.value != "shot" or event.shot_result is None or event.shot_result.value not in REPLAYED_RESULTS:
+            continue
+        frames = session.replay(event.period, round(event.match_second, 2))["frames"]
+        shot = next(f for f in frames if f["phase"] == "shot")
+        attacking_home = event.team_id == metadata.home.team_id
+        goal_x = GOAL_LINES[1] if attacking_home else GOAL_LINES[0]
+        ball_x, ball_y = shot["ball"]
+        if distance(Point(ball_x, ball_y), Point(goal_x, GOAL_CENTER_Y)) > KEEPER_CHECK_RANGE_M:
+            continue
+        keeper_id = (metadata.away if attacking_home else metadata.home).goalkeeper().player_id
+        keeper_x = next(x for pid, x, _ in shot["positions"] if pid == keeper_id)
+        low, high = sorted((ball_x, goal_x))
+        assert low < keeper_x < high, (event.event_id, shot["ball"], keeper_x)
+        checked += 1
+    assert checked

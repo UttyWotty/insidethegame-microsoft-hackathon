@@ -20,6 +20,7 @@ from insidegame.domain.match import MatchMetadata
 from insidegame.domain.teams import Team
 from insidegame.tracking.formation import DEFENDER_INDICES, FORWARD_INDICES, GOALKEEPER_INDEX, SLOTS
 from insidegame.tracking.game_state import protect_drop_m
+from insidegame.tracking.keeper import keeper_spot
 from insidegame.tracking.motion import fastest_sprinter, speed_kmh, step_toward, timed_target, top_speed_kmh
 
 POSITION_DECIMALS: int = 1
@@ -35,10 +36,6 @@ DEFEND_BALL_SHIFT: float = 0.35
 PRESSING_HEIGHT_M: float = 6.0
 DEFENDER_LINE_FACTOR: float = 0.8
 FORWARD_DEFENDING_FACTOR: float = 0.7
-KEEPER_BASE_X: float = 4.0
-KEEPER_STEP: float = 0.08
-KEEPER_MAX_STEP_M: float = 12.0
-KEEPER_FOLLOW_Y: float = 0.25
 CLOSE_DOWN_M: float = 2.5
 SWAY_M: float = 1.2
 SWAY_SEQUENCE_PRIME: int = 37
@@ -62,9 +59,11 @@ def _sway(sequence: int, index: int) -> tuple[float, float]:
     return SWAY_M * math.cos(math.radians(angle)), SWAY_M * math.sin(math.radians(angle))
 
 
-def _shape(team: Team, ball: Point, in_possession: bool, sequence: int, drop_m: float) -> list[Point]:
+def _shape(team: Team, ball: Point, keeper_ball: Point, in_possession: bool, sequence: int,
+           drop_m: float) -> list[Point]:
     """Formation positions for one team in its own attacking frame.
 
+    The keeper is placed by keeper_spot(keeper_ball): the ball, except at a shot, where it is the strike point.
     drop_m moves every outfield player that many metres toward their own goal when out of possession (the
     game-state protect drop); the keeper and in-possession shapes ignore it.
     """
@@ -77,8 +76,7 @@ def _shape(team: Team, ball: Point, in_possession: bool, sequence: int, drop_m: 
     points = []
     for index, slot in enumerate(SLOTS):
         if index == GOALKEEPER_INDEX:
-            keeper_x = KEEPER_BASE_X + min(ball.x * KEEPER_STEP, KEEPER_MAX_STEP_M)
-            points.append(Point(keeper_x, GOAL_CENTER_Y_M + (ball.y - GOAL_CENTER_Y_M) * KEEPER_FOLLOW_Y))
+            points.append(keeper_spot(keeper_ball))
             continue
         factor = DEFENDER_LINE_FACTOR if index in DEFENDER_INDICES else (
             FORWARD_DEFENDING_FACTOR if index in FORWARD_INDICES and not in_possession else 1.0)
@@ -116,6 +114,12 @@ class TrackingModel:
         location = event.end or event.start
         if location is not None and event.team_id is not None:
             self.ball_home_frame = self._to_home(location, self.metadata.side_of(event.team_id))
+
+    def _strike_point(self, event: MatchEvent) -> Point | None:
+        """A shot's origin in the home frame, so keepers set against the strike rather than where the ball ends up."""
+        if event.event_type is not EventType.SHOT or event.start is None or event.team_id is None:
+            return None
+        return self._to_home(event.start, self.metadata.side_of(event.team_id))
 
     def _pin_actors(self, event: MatchEvent, positions: dict[str, Point]) -> set[str]:
         """Target the event's actor and successful receiver at the ball; returns who was pinned."""
@@ -198,12 +202,14 @@ class TrackingModel:
         self._update_ball(event)
         positions: dict[str, Point] = {}
         home_lead = event.score_home - event.score_away
+        strike = self._strike_point(event)
         for side in (Side.HOME, Side.AWAY):
             team = self.metadata.team(side)
             ball = self._to_home(self.ball_home_frame, side)
+            keeper_ball = ball if strike is None else self._to_home(strike, side)
             drop = protect_drop_m(home_lead if side is Side.HOME else -home_lead, event.match_second)
-            for player, point in zip(team.players, _shape(team, ball, side is self.possessing, event.sequence, drop),
-                                     strict=True):
+            shape = _shape(team, ball, keeper_ball, side is self.possessing, event.sequence, drop)
+            for player, point in zip(team.players, shape, strict=True):
                 positions[player.player_id] = self._to_home(point, side)
         self._close_down(positions, event)
         involved = self._pin_actors(event, positions)
