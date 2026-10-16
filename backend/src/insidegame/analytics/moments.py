@@ -29,6 +29,7 @@ class MomentKind(StrEnum):
     CHAOS_SPELL = "chaos_spell"
     MILESTONE = "milestone"
     TACTICAL_PATTERN = "tactical_pattern"
+    THREAT_CREATED = "threat_created"
 
 
 @dataclass(frozen=True)
@@ -75,7 +76,7 @@ class KeyMoment:
 PEAK_KINDS: frozenset[MomentKind] = frozenset({MomentKind.GOAL, MomentKind.MILESTONE})
 RAISED_KINDS: frozenset[MomentKind] = frozenset({MomentKind.BIG_CHANCE_MISSED, MomentKind.GREAT_SAVE,
                                                  MomentKind.SPEED_THRESHOLD, MomentKind.DISTANCE_THRESHOLD,
-                                                 MomentKind.DIFFICULT_PASS})
+                                                 MomentKind.DIFFICULT_PASS, MomentKind.THREAT_CREATED})
 
 
 def moment_intensity(kind: MomentKind) -> Intensity:

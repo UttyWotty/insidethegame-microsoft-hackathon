@@ -15,6 +15,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Expected threat (xT) possession value: a 12 x 8 grid fitted by value iteration to 480 of our own simulated
+  matches (`python -m insidegame.datasets.xt_fit`, generated `analytics/xt_grid.py`, mirror-symmetrised, shots valued
+  by our xG model, tackles counted as failed moves) credits every completed pass and carry with the xT it added to
+  the player and team (`xt_added` in statistics, snapshots, agent context, and dataset event rows). Line-breaking
+  passes: live tracking positions from before each pass give `opponents_bypassed` and the midfield or defensive
+  lines broken (strictly from behind every player in the line to beyond every one); counters
+  `line_breaking_passes` and `opponents_bypassed` reach the snapshot. A new `threat_created` key moment fires for a
+  completed line-breaking pass adding 0.025 xT or more (importance 0.50, one per 5 minutes within a half, about 2.9
+  per match over Kestrel Bay vs Ironvale seeds 1-30), with templates, glossary, labels, a "Line-breaking pass" reel
+  title, and analyst prompt guidance; difficult and long-pass moments also carry `xt_added`. The snapshot carries a
+  `threat_leaders` danger leaderboard, the new MCP tool `get_threat_leaderboard` (also allowed for the Foundry
+  hosted agent) returns team xT and the top players, and the Match Companion's context includes the top three. The
+  broadcast shows a LINE BREAKER card (top-right, 6 seconds, xT rows for analysts only), a Danger panel beside the
+  Physical panel, and analyst-only xT and line-breaking pass rows in the match stats. The calibration report gains
+  an expected threat sanity section (four checks, all holding); the reference bands are unchanged.
+
 - Tactical Scout: a deterministic pattern miner (`analytics/patterns.py`, pure rules in
   `analytics/pattern_rules.py`, shared pitch zones in `core/zones.py`) watches a rolling 15-minute window of
   final-third entries and ball wins and raises a new `tactical_pattern` key moment for a flank exposed (6 or more

@@ -1,12 +1,14 @@
 """Running per-player and per-team statistics built incrementally from the event stream.
 
 StatsAccumulator applies one event at a time, using precomputed xG and pass quality values.
-It also attributes elapsed time to the team in possession to derive possession share.
+It also attributes elapsed time to the team in possession to derive possession share, and credits the expected
+threat (xT) and line breaks of completed passes and carries to the acting player and team.
 """
 
 from dataclasses import asdict, dataclass, field
 
 from insidegame.analytics.pass_quality import PassQuality
+from insidegame.analytics.threat import XT_DECIMALS, ThreatAction
 from insidegame.domain.enums import EventType, Outcome, ShotResult
 from insidegame.domain.events import MatchEvent
 from insidegame.domain.match import MatchMetadata
@@ -38,6 +40,9 @@ class ActionCounters:
     pressures: int = 0
     fouls: int = 0
     saves: int = 0
+    xt_added: float = 0.0
+    line_breaking_passes: int = 0
+    opponents_bypassed: int = 0
 
     @property
     def pass_accuracy(self) -> float:
@@ -55,6 +60,7 @@ class ActionCounters:
         data.pop("pass_difficulty_total")
         data["pass_accuracy"] = round(self.pass_accuracy, RATIO_DECIMALS)
         data["avg_pass_difficulty"] = round(self.avg_pass_difficulty, STAT_DECIMALS)
+        data["xt_added"] = round(self.xt_added, XT_DECIMALS)
         return data
 
 
@@ -106,6 +112,13 @@ def _apply_counters(c: ActionCounters, event: MatchEvent, xg: float | None, qual
         c.saves += 1
 
 
+def _apply_threat(c: ActionCounters, threat: ThreatAction) -> None:
+    c.xt_added += threat.xt_added
+    if threat.line_break is not None:
+        c.line_breaking_passes += threat.line_break.breaks_line
+        c.opponents_bypassed += threat.line_break.opponents_bypassed
+
+
 @dataclass
 class StatsAccumulator:
     """Incrementally maintains player and team statistics for one match."""
@@ -122,14 +135,18 @@ class StatsAccumulator:
             for p in team.players:
                 self.players[p.player_id] = PlayerStats(player_id=p.player_id, team_id=team.team_id, name=p.name)
 
-    def apply(self, event: MatchEvent, xg: float | None, quality: PassQuality | None) -> None:
-        """Update statistics with one event."""
+    def apply(self, event: MatchEvent, xg: float | None, quality: PassQuality | None,
+              threat: ThreatAction | None = None) -> None:
+        """Update statistics with one event; threat (default None) is the xT credit of a completed pass or carry."""
         self._track_possession(event)
         if event.team_id is None:
             return
         _apply_counters(self.teams[event.team_id], event, xg, quality)
         if event.player_id is not None:
             _apply_counters(self.players[event.player_id], event, xg, quality)
+        if threat is not None:
+            _apply_threat(self.teams[threat.team_id], threat)
+            _apply_threat(self.players[threat.player_id], threat)
 
     def _track_possession(self, event: MatchEvent) -> None:
         if event.event_type is EventType.PERIOD_START:

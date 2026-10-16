@@ -139,3 +139,17 @@ def test_producer_traces_every_agent_of_a_produced_moment() -> None:
         agents = [step["agent"] for step in traces[0]["steps"]]
         assert agents[0] == "Intake" and agents[-1] == "Broadcast Translator" and len(agents) == 6
         assert all(step["status"] == "done" and step["note"] for step in traces[0]["steps"])
+
+
+def test_match_detail_snapshot_carries_the_threat_leaders() -> None:
+    with _client() as client:
+        session_id = client.post("/api/matches", json={"home": "kestrel_bay", "away": "ironvale", "seed": 7}).json()[
+            "session_id"]
+        with client.stream("GET", f"/api/matches/{session_id}/stream", params={"persona": "analyst"}) as r:
+            for line in r.iter_lines():
+                if line == "event: end":
+                    break
+        snapshot = client.get(f"/api/matches/{session_id}").json()["snapshot"]
+        leaders = snapshot["threat_leaders"]
+        assert 0 < len(leaders) <= 5 and all(leader["xt_added"] > 0 for leader in leaders)
+        assert snapshot["home"]["stats"]["line_breaking_passes"] > 0

@@ -28,6 +28,9 @@ CONCEPTS: dict[MomentKind, tuple[str, str]] = {
     MomentKind.TACTICAL_PATTERN: ("Tactical pattern",
                                   "A tactical pattern is something a team keeps doing, such as attacking down one "
                                   "side, that the other team has not stopped yet."),
+    MomentKind.THREAT_CREATED: ("Expected threat (xT)",
+                                "xT is how likely a team is to score from where the ball is; a pass that moves it "
+                                "somewhere more dangerous adds threat."),
 }
 
 

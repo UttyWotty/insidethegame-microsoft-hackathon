@@ -55,3 +55,7 @@ class LineNotFoundError(InsideGameError):
 
 class HighlightsNotReadyError(InsideGameError):
     """Raised when a highlights reel is requested before the match has reached that recap stage."""
+
+
+class XtConvergenceError(InsideGameError):
+    """Raised when expected threat (xT) value iteration does not converge within its iteration budget."""

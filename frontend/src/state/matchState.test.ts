@@ -160,3 +160,20 @@ describe("Tactical Scout", () => {
     expect(state.goalFlash?.payoff).toBeNull();
   });
 });
+
+describe("Line-breaking passes", () => {
+  const threatMoment = {
+    moment_id: "m-9", kind: "threat_created", period: 1, match_second: 900, minute: 16, importance: 0.5, team_id: "h",
+    player_ids: ["h-09"], facts: { passer: "Ada Striker", receiver: "Bo Runner", xt_added: 0.031, xt_start: 0.012,
+                                   xt_end: 0.043, opponents_bypassed: 4, lines_broken: "defence", length_m: 22.4 },
+  };
+
+  it("stores the threat flash from an event message and keeps it on later events", () => {
+    const flagged = { ...update(900), moments: [threatMoment] };
+    let state = matchReducer(withSession, { type: "message", name: "event", data: flagged, receivedAt: 500 });
+    expect(state.threatFlash).toMatchObject({ momentId: "m-9", passer: "Ada Striker", side: "home", bypassed: 4, at: 500 });
+    state = matchReducer(state, { type: "message", name: "event", data: update(910), receivedAt: 600 });
+    expect(state.threatFlash?.momentId).toBe("m-9");
+    expect(initialMatchState.threatFlash).toBeNull();
+  });
+});

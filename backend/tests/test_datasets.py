@@ -63,3 +63,17 @@ def test_tracking_rows_sample_every_nth_event_with_all_players_on_the_pitch() ->
 def test_full_rate_tracking_keeps_every_frame() -> None:
     result = simulate_match(build_fixture("brookhaven", "ironvale", 5))
     assert len(tracking_rows(result, sample_every=1)) == len(result.events)
+
+
+def test_event_rows_carry_xt_added_only_for_completed_passes_and_carries() -> None:
+    result = simulate_match(build_fixture("brookhaven", "ironvale", 5))
+    tables = build_tables(result)
+    credited = {EventType.PASS.value, EventType.CARRY.value}
+    for row in tables.events:
+        assert "xt_added" in row
+        expected = row["event_type"] in credited and row["outcome"] == "success"
+        assert (row["xt_added"] is not None) == expected
+    players_xt = sum(float(p["xt_added"]) for p in tables.players)  # type: ignore[arg-type]
+    rows_xt = sum(float(r["xt_added"]) for r in tables.events if r["xt_added"] is not None)  # type: ignore[arg-type]
+    assert abs(players_xt - rows_xt) < 0.05
+    assert all(p["line_breaking_passes"] == 0 for p in tables.players)

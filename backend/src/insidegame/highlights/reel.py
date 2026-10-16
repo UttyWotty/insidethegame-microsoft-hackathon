@@ -25,7 +25,7 @@ KIND_TITLES: dict[MomentKind, str] = {
     MomentKind.SPEED_THRESHOLD: "Thunderous strike", MomentKind.DISTANCE_THRESHOLD: "Long-range play",
     MomentKind.DIFFICULT_PASS: "Defence-splitting pass", MomentKind.MOMENTUM_SWING: "Momentum swing",
     MomentKind.CHAOS_SPELL: "Chaotic spell", MomentKind.MILESTONE: "Milestone",
-    MomentKind.TACTICAL_PATTERN: "Tactical Scout flag",
+    MomentKind.TACTICAL_PATTERN: "Tactical Scout flag", MomentKind.THREAT_CREATED: "Line-breaking pass",
 }
 UNCLIPPED_KINDS: frozenset[MomentKind] = frozenset({MomentKind.TACTICAL_PATTERN})
 

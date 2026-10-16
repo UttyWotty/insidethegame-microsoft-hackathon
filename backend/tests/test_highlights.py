@@ -72,3 +72,10 @@ def test_reels_never_clip_a_tactical_scout_flag() -> None:
     for stage in (RecapStage.HALF_TIME, RecapStage.FULL_TIME):
         assert [m.moment_id for m in select_moments([flag, goal], stage)] == ["g1"]
     assert build_reel([flag], RecapStage.FULL_TIME, [_frame(1, 600.0)], {}) == []
+
+
+def test_line_breaking_passes_are_clipped_with_their_title() -> None:
+    threat = KeyMoment("x1", MomentKind.THREAT_CREATED, 1, 600.0, 0.5, "home", facts={"passer": "Zane Soler"})
+    reel = build_reel([threat], RecapStage.FULL_TIME, [_frame(1, 598.0)], {})
+    assert [c.title for c in reel] == ["Line-breaking pass"]
+    assert reel[0].narration.text == "11' Line-breaking pass: Zane Soler."

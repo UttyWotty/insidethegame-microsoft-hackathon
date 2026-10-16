@@ -1,12 +1,14 @@
 /**
  * Pure reducer folding server-sent stream messages into the UI's match state.
  * It tracks the ball and recent trail, player positions with their glide time and the latest sprinter, sampled
- * momentum, received overlay cues, a commentary ticker, recaps, the latest Tactical Scout flag, and goal payoffs.
+ * momentum, received overlay cues, a commentary ticker, recaps, the latest Tactical Scout flag, goal payoffs, and the
+ * latest line-breaking pass for the expected threat (xT) card.
  * Wall-clock time arrives inside actions so the reducer stays deterministic and testable.
  */
 import { DEFAULT_MOVE_MS, moveDuration, type ReceivedSprint } from "../lib/motion";
 import { ballAfter, minuteLabel, toScreen } from "../lib/pitch";
 import { goalPayoffLabel, scoutFlagFrom, type ScoutFlag } from "../lib/scout";
+import { threatFlash, type ThreatFlash } from "../lib/threat";
 import type {
   EventUpdate, MatchEvent, OverlayCue, Point, Recap, Rhythm, SessionInfo, ShotCardInfo, Snapshot, WinProbability,
 } from "../types";
@@ -72,6 +74,8 @@ export interface MatchState {
   goalFlash: GoalFlash | null;
   /** The latest Tactical Scout flag, or null before the first. */
   scoutFlag: ScoutFlag | null;
+  /** The latest line-breaking pass that raised a threat_created moment, or null before the first. */
+  threatFlash: ThreatFlash | null;
 }
 
 export type StreamAction =
@@ -82,7 +86,7 @@ export type StreamAction =
 export const initialMatchState: MatchState = {
   session: null, snapshot: null, lastEvent: null, ball: null, players: {}, moveMs: DEFAULT_MOVE_MS, lastEventAt: null,
   sprint: null, win: null, trail: [], rhythm: null, momentum: [], cues: [],
-  ticker: [], recaps: [], ended: false, lastShot: null, goalFlash: null, scoutFlag: null,
+  ticker: [], recaps: [], ended: false, lastShot: null, goalFlash: null, scoutFlag: null, threatFlash: null,
 };
 
 function playerName(state: MatchState, playerId: string | null): string {
@@ -157,7 +161,7 @@ function applyEvent(state: MatchState, update: EventUpdate, at: number): MatchSt
            win: update.win ?? state.win,
            trail, rhythm: update.rhythm, momentum, ticker,
            lastShot: shotTrace(state, update, at), goalFlash: goalFlash(state, update, at),
-           scoutFlag: scoutFlag(state, update, at) };
+           scoutFlag: scoutFlag(state, update, at), threatFlash: threatFlash(update, homeId, at) ?? state.threatFlash };
 }
 
 function addTicker(state: MatchState, item: TickerItem): TickerItem[] {

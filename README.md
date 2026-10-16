@@ -30,8 +30,8 @@ As of 2026-10-13 (develop at PR #58, release v0.1.0 on main):
 - Stage 1 (Ingest): synthetic match engine calibrated against top-flight reference bands (13 of 13 metrics within
   band over 480 matches, see [docs/CALIBRATION.md](docs/CALIBRATION.md)), with home advantage, a weak defensive
   flank per club, and speed-limited tracking for all 22 players.
-- Stage 2 (Interpret): streaming analytics implemented (xG, pass difficulty, stats, rhythm, key moments, and
-  tactical pattern mining that links later goals to earlier flags).
+- Stage 2 (Interpret): streaming analytics implemented (xG, expected threat (xT) with line-breaking passes, pass
+  difficulty, stats, rhythm, key moments, and tactical pattern mining that links later goals to earlier flags).
 - Stages 3-5 (Explain, Render, Personalize): eight-agent workflow, including the Tactical Scout, with fact-checking, overlay cues, persona recaps,
   and a Match Companion implemented; validated on a local model through the evaluation harness.
 - Live API: real-time replay with personalized server-sent event streams, moment backpressure, and rate limits.
@@ -91,7 +91,7 @@ JSON Lines tables across every fixture pairing:
 | File | Contents |
 |---|---|
 | `matches.jsonl` | Clubs, styles, score, possession, xG, key moment count |
-| `events.jsonl` | Every event with absolute coordinates, xG, pass difficulty, momentum, rhythm state, triggered moments |
+| `events.jsonl` | Every event with absolute coordinates, xG, pass difficulty, `xt_added` (expected threat added by completed passes and carries), momentum, rhythm state, triggered moments |
 | `players.jsonl` | Per-player match statistics |
 | `moments.jsonl` | Labelled key moments with importance and facts |
 | `tracking.jsonl` | Ball, all 22 player positions in the absolute home frame, and any sprinter, sampled every fifth event |
@@ -101,7 +101,8 @@ Realism is measured, not claimed: `python -m insidegame.datasets.calibrate --mat
 shots, accuracy, conversion, and home, draw, and away shares with approximate top-flight bands, and every dataset
 card carries the same table. The current report ([docs/CALIBRATION.md](docs/CALIBRATION.md)) has all 10 metrics
 inside their band. Home advantage comes from a shot-volume factor, so goals stay consistent with the independent
-xG model.
+xG model. The report ends with an expected threat (xT) sanity section: the grid's peak cell lies in the penalty
+area, value rises third by third, teams add positive xT per match, and most completed passes and carries add threat.
 
 Twelve matches (about 30,000 events) generate in under two seconds. A two-match sample is committed in
 [`data/sample/`](data/sample/README.md). The files load directly into Microsoft Fabric lakehouses, notebooks,
@@ -132,6 +133,26 @@ or training pipelines.
   pattern within 15 minutes, it carries `flagged_minute` and `flagged_summary`, so the broadcast can say "Scout
   flagged 31'". Over seeds 1 to 30 of Kestrel Bay vs Ironvale, about 95% of wide flank flags point at the defending
   club's configured weak flank.
+- **Expected threat (xT):** every completed pass and carry is credited with the expected threat it added (xT where
+  the ball ended minus xT where it started) to the player and team (`xt_added`). The 12 x 8 grid is fitted to our
+  own synthetic league, never a published grid: `python -m insidegame.datasets.xt_fit --matches 480 --start-seed 1
+  --out backend/src/insidegame/analytics/xt_grid.py` simulates every pairing, counts shots (valued by our xG
+  model), moves, and completed transitions per cell in the acting team's frame (tackles count as failed moves of the
+  tackled team), solves `xT = shot share x mean xG + move share x sum of transition share x xT` by value iteration,
+  and averages mirrored rows so neither flank is favoured. The committed `analytics/xt_grid.py` is generated (no
+  date, so it regenerates byte for byte) and must be refitted whenever the simulator changes. Values run from about
+  0.007 at the own goal line to 0.053 in the central cells of the penalty area: flatter than grids fitted to real
+  leagues, because simulated possessions take many actions per shot. About 66% of completed passes and carries add
+  threat, and a team adds about 1.3 xT per match.
+- **Line-breaking passes:** in the live pipeline, each completed pass is checked against the opponents' tracked
+  positions from the frame before it (goalkeeper excluded): `opponents_bypassed` counts outfield opponents nearer
+  goal at the start than at the end, and a midfield or defensive line is broken only when the pass starts behind
+  every player in that line and ends beyond every one (about 16% of completed passes). Tracking positions are
+  synthetic formation shapes, not motion capture, so these counts are illustrative; dataset files carry no line
+  breaks because generation does not run tracking. A line-breaking pass adding 0.025 xT or more raises a
+  `threat_created` key moment (importance 0.50, at most one per 5 minutes of a half, about 3 per match) whose facts
+  (`xt_added`, `xt_start`, `xt_end`, `opponents_bypassed`, `lines_broken`) agents can cite; difficult and long
+  passes also carry `xt_added`. The snapshot ranks the top five players by xT added (`threat_leaders`).
 
 ## Agents and Personas (Stages 3-5)
 
@@ -251,6 +272,7 @@ live session registry with the UI:
 | `get_match_state` | Score, clock, team stats, rhythm, standout players |
 | `get_key_moments` | Recent key moments with importance and facts |
 | `get_player_stats` | Live statistics for one player |
+| `get_threat_leaderboard` | Expected threat (xT) added per team and the danger leaderboard of players, with line-breaking passes |
 | `get_recaps` | Half-time and full-time recaps |
 | `ask_match_companion` | Question the Match Companion agent in any persona and language |
 
@@ -303,7 +325,12 @@ React + TypeScript (Vite, no UI library) broadcast interface:
 - **Win probability and live stats:** a home win, draw, and away win bar under the score bug moves with every
   goal, chance, and minute (a Poisson model blending typical top-flight scoring and home advantage with each team's
   live xG rate); pop-ups flash TACKLE WON, INTERCEPTION, or SAVE over the player; and a Physical leaderboard ranks
-  distance covered and top speed from the tracking.
+  distance covered and top speed from the tracking, with a Danger leaderboard beside it ranking expected threat (xT)
+  added.
+- **Line-breaker card:** when a pass breaks the opponent's lines and adds enough expected threat, a LINE BREAKER
+  card takes the shot card's top-right slot for 6 seconds with passer, receiver, opponents bypassed, and lines
+  broken; analysts also see the xT added and the zone values, and their match stats panel adds xT and
+  line-breaking pass rows.
 - **Tactics overlay:** on the 2D and 3D pitch, the defending block with its depth and width, the offside line
   (second-deepest defender), a pressure ring when opponents close in on the ball carrier, and arrows to the
   carrier's three best passing options with a completion chance from distance and opponents near the lane
@@ -421,7 +448,8 @@ backend/
     core/         constants, pitch geometry and zones, domain exceptions
     domain/       immutable event, team, and match models
     simulation/   seeded synthetic match engine with per-club weak flanks (stage 1 source)
-    analytics/    streaming interpretation: xG, pass quality, stats, rhythm, key moments, tactical patterns (stage 2)
+    analytics/    streaming interpretation: xG, expected threat (xT) and line breaks, pass quality, stats, rhythm,
+                  key moments, tactical patterns (stage 2)
     tracking/     synthetic 22-player positions with speed-limited motion and sprint detection
     highlights/   automated highlights reels: clip selection, frame windows, narration (pure)
     studio/       studio visuals: heat and pressing grids, pass networks, space control, theme to visual (pure)
@@ -433,7 +461,7 @@ backend/
     api/          FastAPI app, routers, server-sent events (viewer and producer streams), MCP server
     adapters/     model client (MLX, Ollama, Foundry, offline), Azure AI Speech client, and telemetry setup
     evaluation/   agent evaluation harness
-    datasets/     synthetic dataset tables, dataset card, generator CLI
+    datasets/     synthetic dataset tables, dataset card, generator, calibration, and xT fit (xt_fit) CLIs
     foundry/      hosted agent definition and registration for Foundry Agent Service
   tests/          unit and integration tests
 frontend/

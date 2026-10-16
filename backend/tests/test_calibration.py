@@ -6,6 +6,7 @@ without simulating matches. A generated dataset's card must include the calibrat
 
 from pathlib import Path
 
+from insidegame.datasets.calibrate import report
 from insidegame.datasets.calibration import BENCHMARKS, calibrate, calibration_table
 from insidegame.datasets.generate import generate
 
@@ -50,3 +51,10 @@ def test_generated_card_reports_calibration(tmp_path: Path) -> None:
     generate(2, 1, tmp_path)
     card = (tmp_path / "README.md").read_text(encoding="utf-8")
     assert "## Calibration" in card and "| Pass accuracy (%) |" in card
+
+
+def test_report_appends_the_xt_sanity_section_after_the_bands() -> None:
+    text = report(4, 1)
+    assert text.index("| Metric | Synthetic |") < text.index("## Expected threat (xT) sanity")
+    section = text[text.index("## Expected threat (xT) sanity"):]
+    assert section.count("| yes |") + section.count("| no |") == 4

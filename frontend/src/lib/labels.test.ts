@@ -10,6 +10,7 @@ describe("momentLabel", () => {
   it("maps known kinds and spaces unknown ones", () => {
     expect(momentLabel("distance_threshold")).toBe("Long-range play");
     expect(momentLabel("tactical_pattern")).toBe("Tactical Scout flag");
+    expect(momentLabel("threat_created")).toBe("Line-breaking pass");
     expect(momentLabel("new_kind")).toBe("new kind");
   });
 });

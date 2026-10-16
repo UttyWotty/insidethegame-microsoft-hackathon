@@ -28,3 +28,16 @@ home and away pairing of the 4 fictional clubs). 13 of 13 metrics fall inside th
 Reference bands are approximate typical ranges for top European leagues, used as sanity checks rather than exact
 targets. Home advantage comes from a shot-volume factor (home sides create more chances), so goals stay in line
 with the independent xG model.
+
+## Expected threat (xT) sanity
+
+The xT grid (12 x 8 cells) is fitted by value iteration to 480 of our own simulated matches with
+`python -m insidegame.datasets.xt_fit`; it is flatter than grids fitted to real leagues because simulated
+possessions take many actions per shot. 4 of 4 checks hold.
+
+| Check | Synthetic | Expectation | Holds |
+|---|---|---|---|
+| xT peak cell | 0.053 at 100.6 m, 29.8 m | inside the attacked penalty area | yes |
+| xT mean cell value by third (defensive, middle, final) | 0.007, 0.012, 0.022 | rises from defensive to final third | yes |
+| xT added per team per match | 1.267 | positive | yes |
+| Completed passes and carries adding xT (%) | 66.3 | above 50 | yes |
