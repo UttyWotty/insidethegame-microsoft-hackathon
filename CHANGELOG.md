@@ -15,6 +15,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Tactical Scout: a deterministic pattern miner (`analytics/patterns.py`, pure rules in
+  `analytics/pattern_rules.py`, shared pitch zones in `core/zones.py`) watches a rolling 15-minute window of
+  final-third entries and ball wins and raises a new `tactical_pattern` key moment for a flank exposed (6 or more
+  completed entries down one wide channel at 85% or more, naming the beaten full-back), a channel overload (7 or more
+  successful entries, 60% of them down one channel), or a turnover zone (5 or more ball wins in one zone outside the
+  winner's defensive third). Flags are at least 10 minutes apart and the same pattern cools down for 15 minutes,
+  about 7 per match. A goal or big chance that comes from a flagged pattern within 15 minutes carries
+  `flagged_minute`, `flagged_moment_id`, `flagged_pattern`, and `flagged_summary`. An eighth agent, the Tactical
+  Scout (`tactical_scout`), explains the flags: the workflow routes `tactical_pattern` jobs from intake to the
+  `scout` executor instead of the Match Analyst, with the same narrator, personalizer, fact-check, and template
+  fallback path, and the producer console trace names it. Templates, the newcomer glossary, and recaps know the new
+  kind, and the highlights reel never clips a flag. The broadcast shows a Scout card (bottom-right, 8 seconds), the
+  flagged zone on the 2D and 3D pitch (15 seconds), and "Scout flagged 31': ..." on the goal banner of a linked goal.
+
 - Live win probability and stat graphics: pure `analytics/win_probability.py` gives home win, draw, and away win
   after every event (`win` in the event message) from the score, the time left, and Poisson goal rates that blend
   a prior (1.55 home, 1.25 away per match) with each team's xG rate so far, weighted by time played; kick-off odds
@@ -113,6 +127,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tracked player, and a broadcast camera mode tilting the pitch like a TV angle (with a flat tactical mode).
 
 ### Changed
+
+- Every club now has a weak defensive flank (Brookhaven and Kestrel Bay left, Ironvale and Silverlake right,
+  `TeamStyle.weak_flank`): in the attacking half, opponents' passes drift 5 m toward it, passes into it in the final
+  third complete 4 points more often, and tackles on dribbles down it succeed 2 points less often
+  (`simulation/flanks.py`), without changing the number of random draws per action. This gives the Tactical Scout
+  real signal: over Kestrel Bay vs Ironvale seeds 1 to 30, about 95% of wide flank flags point at the configured weak
+  flank. Every seeded match changes, so seed 20 is no longer the 3-2 demo match; the demo match is now seed 201
+  (`DEMO_SEED`), a 4-3 Kestrel Bay comeback whose 35' and 77' goals are linked to Scout flags at 31' and 69'. The
+  calibration report (now 13 of 13 metrics in band over 480 matches), README table, and `data/sample/` are
+  regenerated.
+- Agent trace handoffs in the producer console only name executors that ran for the moment, so a Scout flag shows
+  Intake to Tactical Scout and a goal shows Intake to Match Analyst.
 
 - Demo script and submission text cover the 3D broadcast view, studio visuals, live agent trace, and automated
   highlights, with current test counts (194 backend, 52 frontend).

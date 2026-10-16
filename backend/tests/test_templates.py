@@ -108,3 +108,11 @@ def test_commentary_energy_follows_the_moment(
 def test_commentary_speaks_measurements_and_reacts_to_long_passes() -> None:
     assert spoken_units("Moreau finds Wexley from 40.5 m") == "Moreau finds Wexley from 41 metres"
     assert spoken_units("strikes at 112.4 km/h") == "strikes at 112 kilometres an hour"
+
+
+def test_tactical_flags_have_a_concept_and_a_readable_label() -> None:
+    from insidegame.agents.glossary import concept_for
+    from insidegame.agents.templates import KIND_LABELS
+    term, meaning = concept_for(MomentKind.TACTICAL_PATTERN)
+    assert term and meaning
+    assert KIND_LABELS[MomentKind.TACTICAL_PATTERN.value] == "Tactical Scout flag"

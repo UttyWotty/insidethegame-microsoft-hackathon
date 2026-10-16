@@ -1,4 +1,4 @@
-"""One resilient operation per agent role: explain, narrate, personalize, and translate.
+"""One resilient operation per agent role: explain, scout, narrate, personalize, and translate.
 
 Each step builds its prompt, evidence, validator, and fallback, then delegates to run_resilient.
 Orchestration executors call these steps so workflow wiring stays separate from agent behaviour.
@@ -17,6 +17,7 @@ from insidegame.agents.prompts import (
     personalizer_prompt,
     recap_prompt,
     recap_take_prompt,
+    scout_prompt,
     translator_prompt,
 )
 from insidegame.agents.question_context import QuestionContext
@@ -64,6 +65,17 @@ async def explain(
     tools = build_analyst_tools(analyzer, ledger, as_of=context)
     validator = explanation_validator(lambda: [context.to_prompt_dict(), ledger.entries])
     return await run_resilient(suite.analyst, analyst_prompt(context), Explanation, validator,
+                               lambda: explanation_template(context), policy, tools)
+
+
+async def scout_explain(
+    suite: AgentSuite, context: MomentContext, analyzer: MatchAnalyzer, policy: RunPolicy
+) -> AgentOutcome[Explanation]:
+    """Ask the Tactical Scout why a flagged pattern matters, allowing statistics tool calls."""
+    ledger = EvidenceLedger()
+    tools = build_analyst_tools(analyzer, ledger, as_of=context)
+    validator = explanation_validator(lambda: [context.to_prompt_dict(), ledger.entries])
+    return await run_resilient(suite.scout, scout_prompt(context), Explanation, validator,
                                lambda: explanation_template(context), policy, tools)
 
 

@@ -133,3 +133,30 @@ describe("action effects", () => {
     expect(state.goalFlash).toMatchObject({ scorer: "Ada Striker", side: "home", score: "1-0", at: 700 });
   });
 });
+
+describe("Tactical Scout", () => {
+  const flagMoment = {
+    moment_id: "m-6", kind: "tactical_pattern", period: 1, match_second: 1850, minute: 31, importance: 0.62,
+    team_id: "h", player_ids: [], facts: { pattern: "channel_overload", channel: "left", third: "final", count: 7,
+                                           share_pct: 64, summary: "Home sent 7 of 11 final-third entries down the left" },
+  };
+
+  it("stores the latest Scout flag from the event's moments and keeps it on later events", () => {
+    const flagged = { ...update(1850), moments: [flagMoment] };
+    let state = matchReducer(withSession, { type: "message", name: "event", data: flagged, receivedAt: 900 });
+    expect(state.scoutFlag).toMatchObject({ momentId: "m-6", minute: "31'", channel: "left", sharePct: 64, at: 900 });
+    state = matchReducer(state, { type: "message", name: "event", data: update(1860), receivedAt: 950 });
+    expect(state.scoutFlag?.momentId).toBe("m-6");
+  });
+
+  it("puts the payoff on the goal flash only when the goal moment links to a flag", () => {
+    const goalMoment = { ...flagMoment, moment_id: "m-7", kind: "goal",
+                         facts: { scorer: "Ada Striker", flagged_minute: "31'", flagged_summary: "7 of 11 down the left" } };
+    const linked = { ...update(2100, "goal"), moments: [goalMoment] };
+    let state = matchReducer(withSession, { type: "message", name: "event", data: linked, receivedAt: 1000 });
+    expect(state.goalFlash?.payoff).toBe("Scout flagged 31': 7 of 11 down the left");
+    const plain = { ...update(2200, "goal"), moments: [{ ...goalMoment, facts: { scorer: "Ada Striker" } }] };
+    state = matchReducer(state, { type: "message", name: "event", data: plain, receivedAt: 1100 });
+    expect(state.goalFlash?.payoff).toBeNull();
+  });
+});

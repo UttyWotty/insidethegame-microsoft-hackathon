@@ -5,6 +5,7 @@
 import { lazy, Suspense, type ReactNode } from "react";
 import type { Point } from "../types";
 import type { ShotTrace, TrailPoint } from "../state/matchState";
+import type { ScoutZoneInfo } from "../lib/scout";
 import type { Tactics } from "../lib/tactics";
 import { Pitch, type BallAnchor, type PlayerDot } from "./Pitch";
 
@@ -20,17 +21,20 @@ interface PitchViewProps {
   replay?: { zoom: [number, number, number, number]; behindGoal: "left" | "right" } | null;
   /** Live tactical overlay; omitted or null draws none. */
   tactics?: Tactics | null;
+  /** Zone flagged by the Tactical Scout; omitted or null draws none. */
+  scoutZone?: ScoutZoneInfo | null;
 }
 
-export function PitchView({ camera, children, replay = null, tactics = null, ...rest }: PitchViewProps) {
+export function PitchView({ camera, children, replay = null, tactics = null, scoutZone = null, ...rest }: PitchViewProps) {
   if (camera !== "3d") {
-    return <Pitch camera={camera} zoom={replay?.zoom ?? null} tactics={tactics} {...rest}>{children}</Pitch>;
+    return <Pitch camera={camera} zoom={replay?.zoom ?? null} tactics={tactics} scoutZone={scoutZone} {...rest}>{children}</Pitch>;
   }
   const { ball, players, moveMs, homeColor, awayColor, label, onBallAnchor } = rest;
   return (
     <Suspense fallback={<div className="pitch-wrap pitch3d-loading">Loading the 3D view...</div>}>
       <Pitch3D ball={ball} players={players} moveMs={moveMs} homeColor={homeColor} awayColor={awayColor} label={label}
-        onBallAnchor={onBallAnchor} behindGoal={replay?.behindGoal ?? null} tactics={tactics}>{children}</Pitch3D>
+        onBallAnchor={onBallAnchor} behindGoal={replay?.behindGoal ?? null} tactics={tactics}
+        scoutZone={scoutZone}>{children}</Pitch3D>
     </Suspense>
   );
 }

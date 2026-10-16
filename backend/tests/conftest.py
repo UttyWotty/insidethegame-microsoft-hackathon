@@ -34,3 +34,9 @@ def analysed_match() -> tuple[MatchAnalyzer, dict[MomentKind, MomentContext]]:
 def goal_context(analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]]) -> MomentContext:
     """Context for the first goal of the fixture match."""
     return analysed_match[1][MomentKind.GOAL]
+
+
+@pytest.fixture(scope="session")
+def tactical_context(analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]]) -> MomentContext:
+    """Context for the first Tactical Scout flag of the fixture match."""
+    return analysed_match[1][MomentKind.TACTICAL_PATTERN]

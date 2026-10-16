@@ -36,7 +36,20 @@ FACT_LABELS: dict[str, str] = {
     "distance_m": "Distance (m)", "difficulty": "Pass difficulty", "length_m": "Pass length (m)",
     "momentum": "Momentum", "turnovers_per_minute": "Turnovers per min",
     "carry_distance_m": "Distance carried (m)", "ball_speed_kmh": "Ball speed (km/h)",
+    "count": "Count", "share_pct": "Share (%)", "window_minutes": "Window (min)",
 }
+PATTERN_HEADLINES: dict[str, str] = {
+    "flank_exposed": "{team} keep getting in behind down {flank_label}",
+    "channel_overload": "{team} are loading the {channel}",
+    "turnover_zone": "{team} keep winning the ball in {flank_label}",
+}
+PATTERN_THEMES: dict[str, TacticalTheme] = {
+    "flank_exposed": TacticalTheme.CONTROL, "channel_overload": TacticalTheme.CONTROL,
+    "turnover_zone": TacticalTheme.PRESSURE_SHIFT,
+}
+PATTERN_WARNING: str = "The Tactical Scout expects more danger from it until {opponent} find an answer."
+PAYOFF_HEADLINE: str = ", just as the Scout flagged at {minute}"
+PAYOFF_SENTENCE: str = " The Tactical Scout flagged it at {minute}: {summary}."
 SUPERFAN_OWN_PREFIX: str = "Get in! "
 SUPERFAN_SETBACK_PREFIX: str = "So close! "
 SUPERFAN_RIVAL_PREFIX: str = "Stay strong. "
@@ -64,21 +77,32 @@ def _vary(options: tuple[str, ...], c: MomentContext) -> str:
     return options[zlib.crc32(c.moment.moment_id.encode()) % len(options)]
 
 
+def _payoff(facts: dict[str, FactValue]) -> tuple[str, str]:
+    """Headline suffix and sentence linking a goal or chance to an earlier Scout flag, or empty strings."""
+    if not facts.get("flagged_minute"):
+        return "", ""
+    minute, summary = _f(facts, "flagged_minute"), _f(facts, "flagged_summary")
+    return PAYOFF_HEADLINE.format(minute=minute), PAYOFF_SENTENCE.format(minute=minute, summary=summary)
+
+
 def _goal(c: MomentContext) -> ExplanationParts:
     f = c.moment.facts
     phrase = GAME_STATE_PHRASES.get(_f(f, "game_state_change"), "scores")
-    return (f"{_f(f, 'scorer')} {phrase}",
+    suffix, sentence = _payoff(f)
+    return (f"{_f(f, 'scorer')} {phrase}{suffix}",
             f"{c.team_name} {phrase}, making it {c.home_name} {c.score_home}-{c.score_away} {c.away_name}. "
-            f"The finish came from a chance worth {_f(f, 'xg')} xG.",
+            f"The finish came from a chance worth {_f(f, 'xg')} xG.{sentence}",
             [f"xG {_f(f, 'xg')}", f"Distance {_f(f, 'distance_m')} m"], TacticalTheme.CLINICAL_FINISHING)
 
 
 def _big_chance(c: MomentContext) -> ExplanationParts:
     f = c.moment.facts
     player = _f(f, "player")
+    suffix, sentence = _payoff(f)
     return (_vary((f"Big chance missed by {player}", f"{player} should have scored there",
-                   f"A golden chance goes begging for {player}", f"{player} cannot believe that stayed out"), c),
-            f"A chance worth {_f(f, 'xg')} xG went begging. Chances of this quality usually change the scoreline.",
+                   f"A golden chance goes begging for {player}", f"{player} cannot believe that stayed out"), c) + suffix,
+            f"A chance worth {_f(f, 'xg')} xG went begging. Chances of this quality usually change the scoreline."
+            f"{sentence}",
             [f"xG {_f(f, 'xg')}", f"Distance {_f(f, 'distance_m')} m"], TacticalTheme.MISSED_OPPORTUNITY)
 
 
@@ -147,11 +171,22 @@ def _milestone(c: MomentContext) -> ExplanationParts:
             [label], TacticalTheme.MILESTONE)
 
 
+def _tactical(c: MomentContext) -> ExplanationParts:
+    f = c.moment.facts
+    pattern = _f(f, "pattern")
+    headline = PATTERN_HEADLINES.get(pattern, "{team} have found a pattern").format(
+        team=_f(f, "team"), flank_label=_f(f, "flank_label"), channel=_f(f, "channel"))
+    return (headline, f"{_f(f, 'summary')}. " + PATTERN_WARNING.format(opponent=_f(f, "opponent")),
+            [f"{_f(f, 'count')} of {_f(f, 'total')}", f"Share {_f(f, 'share_pct')}%"],
+            PATTERN_THEMES.get(pattern, TacticalTheme.CONTROL))
+
+
 EXPLAINERS: dict[MomentKind, Callable[[MomentContext], ExplanationParts]] = {
     MomentKind.GOAL: _goal, MomentKind.BIG_CHANCE_MISSED: _big_chance, MomentKind.GREAT_SAVE: _great_save,
     MomentKind.SPEED_THRESHOLD: _speed, MomentKind.DISTANCE_THRESHOLD: _distance,
     MomentKind.DIFFICULT_PASS: _difficult_pass,
     MomentKind.MOMENTUM_SWING: _momentum, MomentKind.CHAOS_SPELL: _chaos, MomentKind.MILESTONE: _milestone,
+    MomentKind.TACTICAL_PATTERN: _tactical,
 }
 
 
@@ -234,7 +269,7 @@ KIND_LABELS: dict[str, str] = {
     MomentKind.GREAT_SAVE.value: "great save", MomentKind.SPEED_THRESHOLD.value: "thunderous strike",
     MomentKind.DISTANCE_THRESHOLD.value: "long-range play", MomentKind.DIFFICULT_PASS.value: "defence-splitting pass",
     MomentKind.MOMENTUM_SWING.value: "momentum swing", MomentKind.CHAOS_SPELL.value: "chaotic spell",
-    MomentKind.MILESTONE.value: "milestone",
+    MomentKind.MILESTONE.value: "milestone", MomentKind.TACTICAL_PATTERN.value: "Tactical Scout flag",
 }
 
 

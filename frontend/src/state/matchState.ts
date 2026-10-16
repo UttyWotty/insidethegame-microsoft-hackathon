@@ -1,11 +1,12 @@
 /**
  * Pure reducer folding server-sent stream messages into the UI's match state.
  * It tracks the ball and recent trail, player positions with their glide time and the latest sprinter, sampled
- * momentum, received overlay cues, a commentary ticker, and recaps.
+ * momentum, received overlay cues, a commentary ticker, recaps, the latest Tactical Scout flag, and goal payoffs.
  * Wall-clock time arrives inside actions so the reducer stays deterministic and testable.
  */
 import { DEFAULT_MOVE_MS, moveDuration, type ReceivedSprint } from "../lib/motion";
 import { ballAfter, minuteLabel, toScreen } from "../lib/pitch";
+import { goalPayoffLabel, scoutFlagFrom, type ScoutFlag } from "../lib/scout";
 import type {
   EventUpdate, MatchEvent, OverlayCue, Point, Recap, Rhythm, SessionInfo, ShotCardInfo, Snapshot, WinProbability,
 } from "../types";
@@ -32,7 +33,11 @@ export interface ShotTrace {
   /** Placement, keeper, speed, distance, and angle for the shot card, when the server sent them. */
   card: ShotCardInfo | null;
 }
-export interface GoalFlash { id: string; scorer: string; side: "home" | "away"; score: string; at: number }
+export interface GoalFlash {
+  id: string; scorer: string; side: "home" | "away"; score: string; at: number;
+  /** "Scout flagged 38': ..." when the goal fulfils an earlier Tactical Scout flag, else null. */
+  payoff: string | null;
+}
 export interface TickerItem {
   id: string; minute: string; text: string; tone: "commentary" | "goal" | "info" | "play"; language: string;
   /** How excited the line should sound: normal play, raised for close calls, peak for goals. */
@@ -65,6 +70,8 @@ export interface MatchState {
   ended: boolean;
   lastShot: ShotTrace | null;
   goalFlash: GoalFlash | null;
+  /** The latest Tactical Scout flag, or null before the first. */
+  scoutFlag: ScoutFlag | null;
 }
 
 export type StreamAction =
@@ -75,7 +82,7 @@ export type StreamAction =
 export const initialMatchState: MatchState = {
   session: null, snapshot: null, lastEvent: null, ball: null, players: {}, moveMs: DEFAULT_MOVE_MS, lastEventAt: null,
   sprint: null, win: null, trail: [], rhythm: null, momentum: [], cues: [],
-  ticker: [], recaps: [], ended: false, lastShot: null, goalFlash: null,
+  ticker: [], recaps: [], ended: false, lastShot: null, goalFlash: null, scoutFlag: null,
 };
 
 function playerName(state: MatchState, playerId: string | null): string {
@@ -112,11 +119,19 @@ function shotTrace(state: MatchState, update: EventUpdate, at: number): ShotTrac
   };
 }
 
-function goalFlash(state: MatchState, event: MatchEvent, at: number): GoalFlash | null {
+function goalFlash(state: MatchState, update: EventUpdate, at: number): GoalFlash | null {
+  const event = update.event;
   if (event.event_type !== "goal") return state.goalFlash;
   const isHome = event.team_id === state.session?.match.home.team_id;
+  const moment = update.moments.find((m) => m.kind === "goal");
   return { id: event.event_id, scorer: playerName(state, event.player_id), side: isHome ? "home" : "away",
-           score: `${event.score.home}-${event.score.away}`, at };
+           score: `${event.score.home}-${event.score.away}`, at, payoff: moment ? goalPayoffLabel(moment.facts) : null };
+}
+
+function scoutFlag(state: MatchState, update: EventUpdate, at: number): ScoutFlag | null {
+  const minute = minuteLabel(update.event.match_second, update.event.period);
+  const flags = update.moments.map((m) => scoutFlagFrom(m, minute, at)).filter((f): f is ScoutFlag => f !== null);
+  return flags[flags.length - 1] ?? state.scoutFlag;
 }
 
 function applyEvent(state: MatchState, update: EventUpdate, at: number): MatchState {
@@ -141,7 +156,8 @@ function applyEvent(state: MatchState, update: EventUpdate, at: number): MatchSt
   return { ...state, lastEvent: event, ball, players, moveMs: moveDuration(state.lastEventAt, at), lastEventAt: at, sprint,
            win: update.win ?? state.win,
            trail, rhythm: update.rhythm, momentum, ticker,
-           lastShot: shotTrace(state, update, at), goalFlash: goalFlash(state, event, at) };
+           lastShot: shotTrace(state, update, at), goalFlash: goalFlash(state, update, at),
+           scoutFlag: scoutFlag(state, update, at) };
 }
 
 function addTicker(state: MatchState, item: TickerItem): TickerItem[] {

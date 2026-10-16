@@ -25,6 +25,9 @@ CONCEPTS: dict[MomentKind, tuple[str, str]] = {
                              "A turnover is when a team loses the ball; many in a row make a match chaotic."),
     MomentKind.MILESTONE: ("Milestones",
                            "A brace is two goals by one player, and a hat-trick is three."),
+    MomentKind.TACTICAL_PATTERN: ("Tactical pattern",
+                                  "A tactical pattern is something a team keeps doing, such as attacking down one "
+                                  "side, that the other team has not stopped yet."),
 }
 
 

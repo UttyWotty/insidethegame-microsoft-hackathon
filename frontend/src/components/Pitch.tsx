@@ -7,7 +7,9 @@
 import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { PITCH_LENGTH, PITCH_WIDTH, RUNOFF_M, RUNOFF_TOP_M, tagPlacement } from "../lib/pitch";
 import type { PlayerDot } from "../lib/playerDots";
+import type { ScoutZoneInfo } from "../lib/scout";
 import type { Tactics } from "../lib/tactics";
+import { ScoutZone } from "./overlays/ScoutZone";
 import { TacticsLayer } from "./overlays/TacticsLayer";
 
 export type { PlayerDot } from "../lib/playerDots";
@@ -49,6 +51,8 @@ interface PitchProps {
   zoom?: [number, number, number, number] | null;
   /** Tactical overlay (lines, shapes, pressure, passing options); null (default) draws none. */
   tactics?: Tactics | null;
+  /** Zone flagged by the Tactical Scout, drawn under the players; null (default) draws none. */
+  scoutZone?: ScoutZoneInfo | null;
 }
 
 export function Markings() {
@@ -120,7 +124,7 @@ function Shot({ shot, color }: { shot: ShotTrace; color: string }) {
 }
 
 export function Pitch({ ball, trail, players, moveMs, homeColor, awayColor, label, camera, shot, onBallAnchor,
-                       children, zoom = null, tactics = null }: PitchProps) {
+                       children, zoom = null, tactics = null, scoutZone = null }: PitchProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const ballRef = useRef<SVGCircleElement>(null);
 
@@ -141,6 +145,7 @@ export function Pitch({ ball, trail, players, moveMs, homeColor, awayColor, labe
           : `${-RUNOFF_M} ${-RUNOFF_TOP_M} ${PITCH_LENGTH + 2 * RUNOFF_M} ${PITCH_WIDTH + RUNOFF_TOP_M + RUNOFF_M}`}
         style={{ "--move-ms": `${moveMs}ms` } as CSSProperties}>
         <Markings />
+        {scoutZone && <ScoutZone zone={scoutZone.zone} color={scoutZone.color} label={scoutZone.label} />}
         {trail.length > 1 && (
           <polyline fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth={0.22}
             points={trail.map((p) => `${p.x},${p.y}`).join(" ")} />

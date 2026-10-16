@@ -64,3 +64,11 @@ def test_narration_prefers_the_viewer_cue_then_the_desk_then_the_facts() -> None
 def test_instant_replays_cut_a_short_window_around_the_action() -> None:
     frames = [_frame(1, 100.0 - REPLAY_LEAD_S - 0.5), _frame(1, 97.0), _frame(1, 100.0 + REPLAY_TAIL_S), _frame(2, 100.0)]
     assert [(f.period, f.match_second) for f in replay_frames(frames, 1, 100.0)] == [(1, 97.0), (1, 102.5)]
+
+
+def test_reels_never_clip_a_tactical_scout_flag() -> None:
+    flag = _moment("t1", MomentKind.TACTICAL_PATTERN, 1, 600.0, 0.99)
+    goal = _moment("g1", MomentKind.GOAL, 1, 700.0, 0.9)
+    for stage in (RecapStage.HALF_TIME, RecapStage.FULL_TIME):
+        assert [m.moment_id for m in select_moments([flag, goal], stage)] == ["g1"]
+    assert build_reel([flag], RecapStage.FULL_TIME, [_frame(1, 600.0)], {}) == []

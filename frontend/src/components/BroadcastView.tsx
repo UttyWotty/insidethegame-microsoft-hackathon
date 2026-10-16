@@ -10,6 +10,7 @@ import { eventPopup } from "../lib/broadcastStats";
 import { sprintSpeed } from "../lib/motion";
 import { playerDots } from "../lib/playerDots";
 import { earnsReplay, REPLAY_DELAY_MS } from "../lib/replay";
+import { SCOUT_CARD_MS, SCOUT_ZONE_MS, scoutZoneFor, stillVisible } from "../lib/scout";
 import { analyseFrame, carrierAfter } from "../lib/tactics";
 import { teamColor } from "../lib/teams";
 import { useNow } from "../lib/useNow";
@@ -56,6 +57,7 @@ import { MomentumChart } from "./MomentumChart";
 import { PhysicalPanel } from "./PhysicalPanel";
 import { OverlayLayer } from "./overlays/OverlayLayer";
 import { GoalBanner } from "./overlays/Overlays";
+import { ScoutCard } from "./overlays/ScoutCard";
 import { ShotCard } from "./overlays/ShotCard";
 import { HighlightsPlayer } from "./HighlightsPlayer";
 import { ReplayPlayer } from "./ReplayPlayer";
@@ -85,6 +87,13 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   const tactics = useMemo(() => (showTactics && state.lastEvent
     ? analyseFrame(dots, carrierAfter(state.lastEvent), state.lastEvent.period) : null),
   [showTactics, dots, state.lastEvent]);
+  const flag = state.scoutFlag;
+  const zoneShown = flag !== null && stillVisible(flag.at, now, SCOUT_ZONE_MS);
+  const sessionMatch = state.session?.match;
+  const scoutZone = useMemo(() => (flag && zoneShown && sessionMatch
+    ? scoutZoneFor(flag, sessionMatch.home.team_id, teamColor(sessionMatch.home.team_id, true),
+      teamColor(sessionMatch.away.team_id, false))
+    : null), [flag, zoneShown, sessionMatch]);
   const [replayShot, setReplayShot] = useState<ShotTrace | null>(null);
   const lastShot = state.lastShot;
   const replayTimers = useRef<number[]>([]);
@@ -137,6 +146,7 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   const shot = state.lastShot && now - state.lastShot.at < SHOT_VISIBLE_MS ? state.lastShot : null;
   const cardShot = state.lastShot && now - state.lastShot.at < SHOT_CARD_MS ? state.lastShot : null;
   const goal = state.goalFlash && now - state.goalFlash.at < GOAL_VISIBLE_MS ? state.goalFlash : null;
+  const scoutCard = flag && stillVisible(flag.at, now, SCOUT_CARD_MS) ? flag : null;
 
   return (
     <>
@@ -150,13 +160,15 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
             homeColor={homeColor} awayColor={awayColor} camera={camera} voiceOn={voiceOn} onClose={() => setReelStage(null)} />
         ) : (
           <PitchView ball={state.ball} trail={state.trail} players={dots} moveMs={state.moveMs} homeColor={homeColor} awayColor={awayColor}
-            camera={camera} shot={shot} onBallAnchor={onBallAnchor} tactics={tactics}
+            camera={camera} shot={shot} onBallAnchor={onBallAnchor} tactics={tactics} scoutZone={scoutZone}
             label={`Live pitch: ${match.home.name} versus ${match.away.name}`}>
             <ScoreBug home={match.home} away={match.away} homeColor={homeColor} awayColor={awayColor} lastEvent={state.lastEvent}
               win={state.win} />
             <OverlayLayer active={goal || cardShot?.card ? null : active} anchor={anchor} teamColor={cueTeamIsAway ? awayColor : homeColor} />
-            {goal && <GoalBanner key={goal.id} scorer={goal.scorer} score={goal.score}
+            {goal && <GoalBanner key={goal.id} scorer={goal.scorer} score={goal.score} payoff={goal.payoff}
               teamColor={goal.side === "home" ? homeColor : awayColor} />}
+            {scoutCard && !goal && <ScoutCard key={scoutCard.momentId} flag={scoutCard}
+              color={scoutCard.teamId === match.home.team_id ? homeColor : awayColor} />}
             {cardShot?.card && <ShotCard key={cardShot.id} card={cardShot.card}
               color={cardShot.side === "home" ? homeColor : awayColor}
               shooter={[...match.home.players, ...match.away.players].find((p) => p.player_id === cardShot.shooter)?.name ?? ""} />}
@@ -164,6 +176,7 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
         )}
         <p className="visually-hidden" aria-live="assertive">
           {state.goalFlash ? `Goal, ${state.goalFlash.scorer}. ${state.goalFlash.score}` : ""}
+          {state.goalFlash?.payoff ? ` ${state.goalFlash.payoff}` : ""}
         </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)", alignItems: "center" }}>
           {status === "open" && !state.ended && <span className="chip chip--live">LIVE</span>}

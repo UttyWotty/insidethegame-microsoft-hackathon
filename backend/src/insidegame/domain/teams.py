@@ -7,6 +7,7 @@ Team exposes lookup helpers used by the simulator and analytics layers.
 from dataclasses import asdict, dataclass
 
 from insidegame.core.exceptions import RosterError
+from insidegame.core.zones import Channel
 from insidegame.domain.enums import Position
 
 
@@ -44,12 +45,14 @@ class TeamStyle:
     directness: preference for long forward passes over short circulation.
     pressing: intensity of pressure applied without the ball.
     risk: willingness to shoot from lower-probability positions.
+    weak_flank: the defensive flank (LEFT or RIGHT, in the team's own frame) that opponents tend to exploit.
     """
 
     label: str
     directness: float
     pressing: float
     risk: float
+    weak_flank: Channel
 
 
 @dataclass(frozen=True)

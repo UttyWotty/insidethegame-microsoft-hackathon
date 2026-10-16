@@ -1,7 +1,8 @@
 """Agent Framework executors forming the per-moment multi-agent workflow.
 
-Intake writes the job to shared state, the analyst explains, the narrator and personalizer run in parallel, the
-fact-checker verifies (and sends rejected cards back for revision), and the assembler translates and builds cues.
+Intake writes the job to shared state, the analyst (or the Tactical Scout, for tactical flags) explains, the narrator
+and personalizer run in parallel, the fact-checker verifies (and sends rejected cards back for revision), and the
+assembler translates and builds cues.
 """
 
 import asyncio
@@ -13,8 +14,9 @@ from insidegame.agents.factory import AgentSuite
 from insidegame.agents.personas import DEFAULT_LANGUAGE
 from insidegame.agents.runner import AgentOutcome, OutputSource, RunPolicy
 from insidegame.agents.schemas import Explanation
-from insidegame.agents.steps import explain, narrate, personalize, translate, translate_line
+from insidegame.agents.steps import explain, narrate, personalize, scout_explain, translate, translate_line
 from insidegame.analytics.analyzer import MatchAnalyzer
+from insidegame.analytics.moments import MomentKind
 from insidegame.orchestration.cues import MomentBroadcast, build_cue
 from insidegame.orchestration.fact_checking import FactCheckStage
 from insidegame.orchestration.messages import (
@@ -38,7 +40,7 @@ class IntakeExecutor(Executor):
 
     @handler
     async def accept(self, job: MomentJob, ctx: WorkflowContext[MomentJob]) -> None:
-        """Record the job and forward it to the analyst."""
+        """Record the job and forward it to the analyst or the Tactical Scout."""
         ctx.set_state(JOB_STATE_KEY, job)
         await ctx.send_message(job)
 
@@ -54,6 +56,31 @@ class AnalystExecutor(Executor):
     async def run(self, job: MomentJob, ctx: WorkflowContext[ExplainedMoment]) -> None:
         """Explain the moment and share the explanation."""
         outcome = await explain(self.suite, job.context, self.analyzer, self.policy)
+        ctx.set_state(EXPLANATION_STATE_KEY, outcome)
+        await ctx.send_message(ExplainedMoment(job, outcome))
+
+
+def is_tactical(job: object) -> bool:
+    """Edge condition: True for a tactical_pattern job, which the Tactical Scout explains instead of the analyst."""
+    return isinstance(job, MomentJob) and job.context.moment.kind is MomentKind.TACTICAL_PATTERN
+
+
+def is_not_tactical(job: object) -> bool:
+    """Edge condition: True for every job the Match Analyst explains."""
+    return isinstance(job, MomentJob) and not is_tactical(job)
+
+
+class ScoutExecutor(Executor):
+    """Runs the Tactical Scout agent on tactical_pattern moments."""
+
+    def __init__(self, suite: AgentSuite, analyzer: MatchAnalyzer, policy: RunPolicy) -> None:
+        super().__init__(id="scout")
+        self.suite, self.analyzer, self.policy = suite, analyzer, policy
+
+    @handler
+    async def run(self, job: MomentJob, ctx: WorkflowContext[ExplainedMoment]) -> None:
+        """Explain the flagged pattern and share the explanation, exactly as the analyst would."""
+        outcome = await scout_explain(self.suite, job.context, self.analyzer, self.policy)
         ctx.set_state(EXPLANATION_STATE_KEY, outcome)
         await ctx.send_message(ExplainedMoment(job, outcome))
 

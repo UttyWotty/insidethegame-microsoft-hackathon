@@ -1,6 +1,7 @@
 """Rule-based detection of key moments from the interpreted event stream.
 
-MomentDetector watches shots, goals, saves, passes, and rhythm readings and emits KeyMoment records.
+MomentDetector watches shots, goals, saves, passes, and rhythm readings and emits KeyMoment records, and its
+PatternMiner raises tactical patterns and links later goals and big chances back to them.
 Every rule threshold is a named constant so moments are reproducible and explainable.
 """
 
@@ -10,7 +11,10 @@ from enum import StrEnum
 
 from insidegame.analytics.moments import FactValue, KeyMoment, MomentKind
 from insidegame.analytics.pass_quality import PassQuality
+from insidegame.analytics.pattern_rules import TacticalPattern
+from insidegame.analytics.patterns import FlagRecord, PatternMiner
 from insidegame.analytics.rhythm import RhythmReading
+from insidegame.analytics.tactical_facts import tactical_evidence
 from insidegame.core.constants import SECONDS_PER_MINUTE
 from insidegame.core.geometry import distance_to_goal
 from insidegame.domain.enums import EventType, Outcome, Side
@@ -49,6 +53,7 @@ PASS_MILESTONE_IMPORTANCE: float = 0.30
 GOAL_MILESTONES: dict[int, tuple[str, float]] = {2: ("brace", 0.70), 3: ("hat_trick", 0.90)}
 FACT_DECIMALS: int = 2
 SPEED_DECIMALS: int = 1
+TACTICAL_IMPORTANCE: float = 0.62
 
 
 class GameStateChange(StrEnum):
@@ -93,8 +98,10 @@ class MomentDetector:
     momentum_side: Side | None = None
     period_start_s: float = 0.0
     count: int = 0
+    miner: PatternMiner = field(init=False)
 
     def __post_init__(self) -> None:
+        self.miner = PatternMiner(self.metadata)
         for team in (self.metadata.home, self.metadata.away):
             self.names.update({p.player_id: p.name for p in team.players})
 
@@ -107,7 +114,8 @@ class MomentDetector:
             self.last_rhythm_moment_s.clear()
             self.momentum_side = None
             self.period_start_s = event.match_second
-        moments: list[KeyMoment] = []
+        pattern = self.miner.observe(event)
+        moments: list[KeyMoment] = [self._on_pattern(event, pattern)] if pattern is not None else []
         if kind is EventType.PASS and quality is not None:
             moments += self._on_pass(event, quality)
         elif kind is EventType.SHOT and xg is not None:
@@ -131,6 +139,18 @@ class MomentDetector:
             team_id=team_id,
             player_ids=player_ids, event_ids=event_ids, facts=facts,
         )
+
+    def _on_pattern(self, event: MatchEvent, pattern: TacticalPattern) -> KeyMoment:
+        evidence = tactical_evidence(pattern, self.metadata)
+        moment = self._moment(MomentKind.TACTICAL_PATTERN, event, pattern.team_id, TACTICAL_IMPORTANCE,
+                              evidence.player_ids, (event.event_id,), evidence.facts)
+        self.miner.record_flag(FlagRecord(pattern, moment.moment_id, moment.period, moment.match_second,
+                                          moment.minute_label, str(evidence.facts["summary"])))
+        return moment
+
+    def _payoff_facts(self, event: MatchEvent) -> dict[str, FactValue]:
+        link = self.miner.payoff(event)
+        return link.facts() if link is not None else {}
 
     def _on_pass(self, event: MatchEvent, quality: PassQuality) -> list[KeyMoment]:
         if event.outcome is not Outcome.SUCCESS or event.player_id is None or event.receiver_id is None:
@@ -180,7 +200,8 @@ class MomentDetector:
                                         BIG_CHANCE_BASE + BIG_CHANCE_XG_WEIGHT * xg, (event.player_id,),
                                         (event.event_id,), {"player": self.names[event.player_id], "xg": xg,
                                                             "result": event.shot_result.value if event.shot_result else None,
-                                                            "distance_m": round(distance_to_goal(event.start), FACT_DECIMALS)}))
+                                                            "distance_m": round(distance_to_goal(event.start), FACT_DECIMALS),
+                                                            **self._payoff_facts(event)}))
         return moments
 
     def _on_goal(self, event: MatchEvent) -> list[KeyMoment]:
@@ -201,6 +222,7 @@ class MomentDetector:
             "xg": shot.xg, "shot_speed_kmh": round(shot.event.ball_speed_kmh or 0.0, SPEED_DECIMALS),
             "distance_m": round(distance_to_goal(shot.event.start), FACT_DECIMALS) if shot.event.start else None,
             "game_state_change": change.value, "score_home": event.score_home, "score_away": event.score_away,
+            **self._payoff_facts(event),
         }
         moments = [self._moment(MomentKind.GOAL, event, event.team_id, importance, players, (shot.event.event_id, event.event_id), facts)]
         milestone = GOAL_MILESTONES.get(self.goals_by_player[event.player_id])

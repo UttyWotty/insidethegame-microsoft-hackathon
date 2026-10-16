@@ -82,11 +82,16 @@ export function ExplainerCard({ cue }: { cue: OverlayCue }) {
   );
 }
 
-export function GoalBanner({ scorer, score, teamColor }: { scorer: string; score: string; teamColor: string }) {
+export function GoalBanner({ scorer, score, teamColor, payoff = null }: {
+  scorer: string; score: string; teamColor: string;
+  /** "Scout flagged 38': ..." when the goal fulfils a Tactical Scout flag; null (default) shows no third line. */
+  payoff?: string | null;
+}) {
   return (
     <section className="goal-banner" aria-hidden="true" style={{ "--team-color": teamColor } as CSSProperties}>
       <span className="goal-word">GOAL</span>
       <span className="goal-detail">{scorer} <span className="num">{score}</span></span>
+      {payoff && <span className="goal-payoff">{payoff}</span>}
     </section>
   );
 }
