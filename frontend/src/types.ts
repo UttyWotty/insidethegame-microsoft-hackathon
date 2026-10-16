@@ -142,12 +142,20 @@ export interface HighlightFrame {
   positions: TrackingFrame;
 }
 
-/** One replayed key moment of the automated highlights reel. */
-export interface HighlightClip {
+/** Fields every replayed key moment of the automated highlights reel carries. */
+export interface HighlightClipBase {
   moment_id: string; kind: string; minute: string; period: number; match_second: number; title: string;
   /** Main player named in the moment's facts (scorer, shooter, passer), or null. */
-  actor: string | null; commentary: string; language: string; intensity: "normal" | "raised" | "peak"; frames: HighlightFrame[];
+  actor: string | null; commentary: string; language: string; intensity: "normal" | "raised" | "peak";
 }
+
+/**
+ * One replayed key moment of the automated highlights reel. A shot clip ("story") carries the shot's instant-replay
+ * keyframes (build-up and the ball's flight); any other clip ("frames") carries the stored frames around the moment.
+ */
+export type HighlightClip =
+  | (HighlightClipBase & { playback: "frames"; frames: HighlightFrame[] })
+  | (HighlightClipBase & { playback: "story"; frames: ReplayKeyframe[] });
 
 /** One instant-replay keyframe in the absolute home frame: a build-up action, the strike, or the ball's arrival. */
 export interface ReplayKeyframe extends HighlightFrame {

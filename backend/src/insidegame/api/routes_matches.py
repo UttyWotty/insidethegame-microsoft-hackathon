@@ -75,7 +75,7 @@ async def highlights(
     stage: RecapStage = Query(description="half_time or full_time; available once that recap is published."),
     segment: str | None = Query(default=None, description="Viewer segment id whose commentary narrates the reel."),
 ) -> dict[str, object]:
-    """Automated highlights reel: key moments with tracking frames and narration, replayable on the pitch."""
+    """Automated highlights reel: shot clips carry replay-story keyframes (playback "story"), others stored frames."""
     return _registry(request).get(session_id).highlights(stage, segment)
 
 

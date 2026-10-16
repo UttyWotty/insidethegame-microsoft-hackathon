@@ -31,9 +31,20 @@ Copilot-through-MCP recording, the demo video, then the submission steps. Fabric
   then evaluator.
   Resolved 2026-10-16: built on `feature/analysis-replay` (replay story, analysis card, shot cone, build-up path).
 -->
+<!--
 - Follow-up (separate task): the highlights reel has the same ball-flight bug; fix it with the replay builder.
+  Resolved 2026-10-16: built on `feature/reel-real-action` (shot clips replay the story keyframes, `playback`).
+-->
+- Follow-up (separate task): non-shot reel clips (distance thresholds, difficult or line-breaking passes, pass and
+  carry milestones, momentum swings, chaos spells) still play stored frames, so the ball runs ahead of the players
+  on passes (seed 194's 15' momentum swing). Needs keyframes for single passes and carries and a new story kind.
 - Follow-up (separate task): a qualifying replay is dropped, not queued, while another replay is playing (seed 194's
   65' save, xG 0.55, got no replay), and the full-time recap opens over a replay that starts after 90 minutes.
+- Follow-up (separate task): in the default broadcast camera the highlights caption covers the bottom strip of the
+  pitch, hiding the start of the 77' build-up (the assist starts near that touchline). Move or shrink the caption
+  during story clips, or frame the camera higher.
+- Follow-up (separate task): `highlights/reel.py` imports `agents.recap_context` (a higher layer); move
+  `MIN_TURNING_POINT_IMPORTANCE`, `RecapStage`, and `moment_actor` down a layer.
 <!--
 - Follow-up (separate task): a saved shot in the replay still flies to its spot on the goal line with no keeper
   interaction, so it can look like it went in; stop it at the keeper the way blocked shots stop at the blocker.
