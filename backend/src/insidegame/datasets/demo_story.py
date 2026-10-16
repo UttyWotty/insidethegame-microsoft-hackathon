@@ -1,10 +1,12 @@
 """Pure demo-story scorer: does a simulated match tell the Tactical Scout story the demo video needs, and how well.
 
 score_story applies eight hard rules (flag count, a flagged go-ahead home goal down a flank, a later dropped shape
-shift with falling control, a replayed big save, a passing build-up, and an auto replay that is not dropped).
+shift with falling control, a big save, a passing build-up, and an arc-goal auto replay that plays under the
+frontend's replay queue rules, which played_replays mirrors).
 It returns a DemoStory with the facts the demo script quotes and a preference score, or None when any rule fails.
 """
 
+from bisect import bisect_right
 from collections.abc import Sequence
 from dataclasses import dataclass
 
@@ -21,12 +23,18 @@ DEMO_SPEED: float = 30.0
 REPLAY_DELAY_S: float = 3.5
 REPLAY_ROLL_S: float = 17.0
 REPLAY_MIN_XG: float = 0.25
+# Mirrors frontend/src/lib/replayQueue.ts: replays waiting behind the rolling one, and the most a queued shot may
+# trail the live match clock (match seconds) and still be replayed.
+REPLAY_QUEUE_MAX: int = 2
+REPLAY_MAX_LAG_MATCH_S: float = 600.0
+# Mirrors insidegame.live.pacing.HALF_TIME_BREAK_MATCH_S: the live stream's half-time pause, in match seconds.
+HALF_TIME_BREAK_MATCH_S: float = 60.0
 
 GO_AHEAD: str = "go_ahead"
 DROPPED: str = "dropped"
 WENT_AHEAD: str = "went_ahead"
 FLANK_CHANNELS: frozenset[str] = frozenset({Channel.LEFT.value, Channel.RIGHT.value})
-NOT_ROLLING: float = float("-inf")
+NO_LIVE_CLOCK: float = float("-inf")
 
 WINNER_POINTS: int = 3
 COMEBACK_POINTS: int = 2
@@ -87,22 +95,79 @@ class DemoStory:
     score: int
 
 
-def played_replays(shots: Sequence[tuple[int, float]], speed: float, delay_s: float, roll_s: float) -> list[bool]:
-    """Whether each (period, match second) shot's auto replay plays, in order, under the frontend's drop rule.
+@dataclass(frozen=True)
+class ReplayCandidate:
+    """A shot that earns an auto replay: when the broadcast shows it (stream seconds), its match second, and goal."""
 
-    A replay is due delay_s * speed match seconds after its shot and is dropped while an earlier played replay of
-    the same period is still rolling (roll_s * speed match seconds after it was due).
+    stream_s: float
+    match_second: float
+    goal: bool
+
+
+def stream_times(events: Sequence[tuple[int, float]]) -> list[float]:
+    """Stream time, in match seconds of wall clock at speed 1, at which each (period, match second) event is shown.
+
+    Within a period the stream advances with the match clock (never backwards); a period change adds the live
+    service's half-time break (HALF_TIME_BREAK_MATCH_S), as insidegame.live.pacing does.
     """
-    played: list[bool] = []
-    busy_until, period = NOT_ROLLING, None
-    for shot_period, second in shots:
-        if shot_period != period:
-            busy_until, period = NOT_ROLLING, shot_period
-        due = second + delay_s * speed
-        plays = due >= busy_until
-        if plays:
-            busy_until = due + roll_s * speed
-        played.append(plays)
+    times: list[float] = []
+    previous: tuple[int, float] | None = None
+    for period, second in events:
+        gap = 0.0 if previous is None else (
+            HALF_TIME_BREAK_MATCH_S if period != previous[0] else max(0.0, second - previous[1]))
+        times.append((times[-1] if times else 0.0) + gap)
+        previous = (period, second)
+    return times
+
+
+def _enqueue(queue: list[int], index: int, goals: Sequence[bool]) -> list[int]:
+    """Queue cap: a goal replaces the oldest non-goal when full, a non-goal arriving at a full queue is dropped."""
+    if len(queue) < REPLAY_QUEUE_MAX:
+        return [*queue, index]
+    oldest = next((i for i, queued in enumerate(queue) if not goals[queued]), None)
+    if not goals[index] or oldest is None:
+        return queue
+    return [*queue[:oldest], *queue[oldest + 1:], index]
+
+
+def played_replays(shots: Sequence[ReplayCandidate], clock: Sequence[tuple[float, float]], speed: float,
+                   delay_s: float, roll_s: float) -> list[bool]:
+    """Whether each shot's auto replay plays, in order, under the frontend's queue rules (lib/replayQueue.ts).
+
+    A replay is due delay_s * speed stream seconds after its shot and rolls for roll_s * speed. One due while
+    another rolls joins a queue of REPLAY_QUEUE_MAX (goal priority); when a replay ends, queued shots more than
+    REPLAY_MAX_LAG_MATCH_S behind the live match second are dropped. clock lists (stream seconds, match second) for
+    every event in order, so the live match second at any stream time is that of the latest event shown.
+    """
+    stamps = [t for t, _ in clock]
+    goals = [shot.goal for shot in shots]
+    played = [False] * len(shots)
+    queue: list[int] = []
+    rolling_until: float | None = None
+
+    def live_second(at: float) -> float:
+        found = bisect_right(stamps, at)
+        return clock[found - 1][1] if found else NO_LIVE_CLOCK
+
+    def advance(to: float) -> None:
+        nonlocal queue, rolling_until
+        while rolling_until is not None and rolling_until <= to:
+            live = live_second(rolling_until)
+            queue = [i for i in queue if live - shots[i].match_second <= REPLAY_MAX_LAG_MATCH_S]
+            if not queue:
+                rolling_until = None
+                break
+            played[queue.pop(0)] = True
+            rolling_until += roll_s * speed
+
+    for index, shot in enumerate(shots):
+        due = shot.stream_s + delay_s * speed
+        advance(due)
+        if rolling_until is None:
+            played[index], rolling_until = True, due + roll_s * speed
+        else:
+            queue = _enqueue(queue, index, goals)
+    advance(float("inf"))
     return played
 
 
@@ -134,10 +199,13 @@ def _shift_ok(shift: KeyMoment | None, arc: KeyMoment, home_id: str) -> bool:
 
 def _replay_plays(events: Sequence[MatchEvent]) -> dict[str, bool]:
     """Auto-replay outcome at DEMO_SPEED for every goal and every shot of at least REPLAY_MIN_XG, by event id."""
-    eligible = [e for e in events if e.event_type is EventType.SHOT
+    times = stream_times([(e.period, e.match_second) for e in events])
+    eligible = [(e, t) for e, t in zip(events, times, strict=True) if e.event_type is EventType.SHOT
                 and (e.shot_result is ShotResult.GOAL or _shot_xg(e) >= REPLAY_MIN_XG)]
-    plays = played_replays([(e.period, e.match_second) for e in eligible], DEMO_SPEED, REPLAY_DELAY_S, REPLAY_ROLL_S)
-    return {e.event_id: p for e, p in zip(eligible, plays, strict=True)}
+    shots = [ReplayCandidate(t, e.match_second, e.shot_result is ShotResult.GOAL) for e, t in eligible]
+    clock = [(t, e.match_second) for e, t in zip(events, times, strict=True)]
+    plays = played_replays(shots, clock, DEMO_SPEED, REPLAY_DELAY_S, REPLAY_ROLL_S)
+    return {e.event_id: p for (e, _), p in zip(eligible, plays, strict=True)}
 
 
 def _lead_minutes(arc: KeyMoment, flag: KeyMoment) -> float:

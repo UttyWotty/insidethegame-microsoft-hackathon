@@ -21,7 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the winner's auto replay not dropped at 30x, using the frontend's replay drop rule) and scores preferences
   (held winner, comeback, late goal, quick payoff, exploited weak flank, save replay, build-up). The CLI
   `python -m insidegame.datasets.demo_search --start-seed 1 --end-seed 4000 --top 10` prints a deterministic
-  Markdown table of the passing seeds; 3 of 4000 pass, and seed 1407 is the demo seed.
+  Markdown table of the passing seeds; 3 of 4000 passed under the old replay drop rule (6 under the replay queue),
+  and seed 1407 is the demo seed.
 - `tests/test_finishing_realism.py`: permanent realism checks over seeds 1-60 (carry stop bound, walk-in shots at
   most 1% of shots and 2% of goals, goal share under 6 m at most 25%, 6-18 m at least 60%) and a tracked check
   over seeds 1-20 that the keeper stands nearer the goal line than a close shooter (99.0% of shots within 20 m).
@@ -174,6 +175,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Auto replays queue instead of being dropped: a goal or big chance whose replay comes due while another replay is
+  rolling waits in a queue of at most 2 (`REPLAY_QUEUE_MAX`; a goal replaces the oldest non-goal when it is full, a
+  non-goal is dropped), and a queued replay is skipped, goals included, if its shot is more than 600 match seconds
+  behind live by its turn (`REPLAY_MAX_LAG_MATCH_S`). Pure rules in `frontend/src/lib/replayQueue.ts`. Turning Auto
+  replays off clears the queue; "Back to live" skips only the replay on screen. A recap that arrives while a replay
+  is rolling, queued, or scheduled opens once none is left (opening a recap from its chip is unchanged). Seed
+  1407 now replays its 34' equaliser after the 28' opener.
+- `datasets/demo_story.py` models the replay queue (`played_replays` with the same constants, timed on the live
+  stream clock with the half-time break) instead of the drop rule; seed 1407 still passes every rule, and 6 of
+  seeds 1-4000 now pass (3 before).
 - Realistic finishing: forward carries no longer pile up at the old `CARRY_MAX_X_M` limit (x = 103, 2 m out); a
   carry that would end beyond 93 m stops at a depth drawn from `CARRY_STOP_X_M` (93 to 102 m, 3 to 12 m from the
   goal line) and never moves behind its start (`carry_stop_x`). Over seeds 1-60 of Kestrel Bay vs Ironvale, shots

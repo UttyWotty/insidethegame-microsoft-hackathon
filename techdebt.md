@@ -38,8 +38,14 @@ Copilot-through-MCP recording, the demo video, then the submission steps. Fabric
 - Follow-up (separate task): non-shot reel clips (distance thresholds, difficult or line-breaking passes, pass and
   carry milestones, momentum swings, chaos spells) still play stored frames, so the ball runs ahead of the players
   on passes (seed 194's 15' momentum swing). Needs keyframes for single passes and carries and a new story kind.
+<!--
 - Follow-up (separate task): a qualifying replay is dropped, not queued, while another replay is playing (seed 194's
   65' save, xG 0.55, got no replay), and the full-time recap opens over a replay that starts after 90 minutes.
+  Resolved 2026-10-17: built on `feature/replay-queue` (replays queue, at most 2, goals first, none over 10 match
+  minutes behind live; an arriving recap waits until no replay is rolling, queued, or scheduled).
+-->
+- Follow-up (separate task): an auto replay can start while a recap dialog is still open (seed 194's 47' save over
+  the half-time recap); hold due replays in the queue while a recap dialog is open.
 - Follow-up (separate task): in the default broadcast camera the highlights caption covers the bottom strip of the
   pitch, hiding the start of the 77' build-up (the assist starts near that touchline). Move or shrink the caption
   during story clips, or frame the camera higher.
