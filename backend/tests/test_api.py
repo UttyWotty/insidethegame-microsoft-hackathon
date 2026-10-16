@@ -105,9 +105,18 @@ def test_highlights_wait_for_the_recap_then_replay_key_moments() -> None:
         assert len(reel["clips"][0]["frames"][0]["positions"]) == 22
         assert client.get(f"/api/matches/{session_id}/highlights", params={"stage": "extra"}).status_code == 422
         goal = next(c for c in reel["clips"] if c["kind"] == "goal")
-        replay = client.get(f"/api/matches/{session_id}/replay",
-                            params={"period": goal["period"], "at": goal["match_second"]}).json()
-        assert replay["frames"] and all(f["period"] == goal["period"] for f in replay["frames"])
+        response = client.get(f"/api/matches/{session_id}/replay",
+                              params={"period": goal["period"], "at": goal["match_second"]})
+        assert response.status_code == 200
+        replay = response.json()
+        assert set(replay) == {"period", "at", "frames", "analysis"}
+        frame_keys = {"period", "match_second", "event_type", "player_id", "ball", "positions", "phase"}
+        assert replay["frames"] and all(frame_keys <= set(f) and f["period"] == goal["period"] for f in replay["frames"])
+        assert replay["frames"][-1]["phase"] == "flight" and replay["analysis"]["card"]["result"] == "goal"
+        missing = client.get(f"/api/matches/{session_id}/replay",
+                             params={"period": goal["period"], "at": goal["match_second"] + 5})
+        assert missing.status_code == 404
+        assert client.get("/api/matches/unknown/replay", params={"period": 1, "at": 1}).status_code == 404
         assert client.get(f"/api/matches/{session_id}/replay", params={"period": 3, "at": 1}).status_code == 422
 
 

@@ -185,6 +185,19 @@ main:focus { outline: none; }
 .replay-loading { padding: var(--space-6); text-align: center; color: var(--color-fg-muted); }
 @keyframes replay-wipe { from { clip-path: polygon(8% 0, 8% 0, 0 100%, 0 100%); } }
 @media (prefers-reduced-motion: reduce) { .replay-bug { animation: none; } }
+.replay-stage .ball { transition: cx var(--move-ms, 50ms) linear, cy var(--move-ms, 50ms) linear; }
+.replay-analysis { position: absolute; top: var(--space-4); left: var(--space-4); max-width: min(320px, calc(50% - 2 * var(--space-4))); padding: var(--space-2) var(--space-3); border-top: 4px solid var(--color-warning); font-size: var(--text-sm); }
+/* The card and caption keep to the half of the view away from the attacked goal; the card clears the REPLAY bug. */
+.replay-analysis.side-right { left: auto; right: var(--space-4); top: calc(2 * var(--space-4) + 2.5rem); }
+.replay-caption.side-right { left: auto; right: var(--space-5); }
+.replay-analysis dl { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); margin: 0; }
+.replay-analysis dl div { display: contents; }
+.replay-analysis dt { color: var(--color-fg-muted); text-transform: uppercase; font-size: var(--text-xs); align-self: center; }
+.replay-analysis dd { margin: 0; font: 700 var(--text-sm) var(--font-display); }
+.replay-chip { display: grid; gap: var(--space-1); border-top: none; border-left: 6px solid var(--color-warning); }
+.replay-cone { fill-opacity: 0.18; stroke-width: 0.3; stroke-dasharray: 1 0.6; }
+.replay-path { fill: none; stroke-width: 0.5; stroke-linecap: round; stroke-linejoin: round; stroke-opacity: 0.9; }
+@media (prefers-reduced-motion: reduce) { .replay-stage .ball { transition: none; } }
 .modal-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .highlight-caption { position: absolute; left: var(--space-5); right: var(--space-5); bottom: var(--space-4); display: grid; gap: var(--space-1); padding: var(--space-3) var(--space-4); border-left: 6px solid var(--color-warning); }
 .highlight-title { font-size: var(--text-lg); text-transform: uppercase; }

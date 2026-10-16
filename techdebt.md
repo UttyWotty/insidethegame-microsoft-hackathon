@@ -12,6 +12,7 @@ Copilot-through-MCP recording, the demo video, then the submission steps. Fabric
 
 ## Next up (first thing next session)
 
+<!--
 - Analysis replay (planned 2026-10-16, not started; branch `feature/analysis-replay`, PR open). The instant replay
   looks like the scorer walks the ball into the goal. Measured on seed 201:
   - The shot and the goal share a `match_second`, so the frame with the ball in the goal is skipped, and the goal
@@ -28,7 +29,11 @@ Copilot-through-MCP recording, the demo video, then the submission steps. Fabric
   pitch draws the shot cone and the build-up path; the live broadcast is unchanged outside the replay. Full plan
   with 10 acceptance criteria: `.loop/analysis-replay/plan.md` (local). Run it through the agent loop: builder, QA,
   then evaluator.
+  Resolved 2026-10-16: built on `feature/analysis-replay` (replay story, analysis card, shot cone, build-up path).
+-->
 - Follow-up (separate task): the highlights reel has the same ball-flight bug; fix it with the replay builder.
+- Follow-up (separate task): a saved shot in the replay still flies to its spot on the goal line with no keeper
+  interaction, so it can look like it went in; stop it at the keeper the way blocked shots stop at the blocker.
 - Follow-up (separate task, needs regenerated xT grid, calibration doc, and sample data): 4 of the 7 seed-201 goals
   (15', 19', 52', 62') come from dribbles that stop at the `CARRY_MAX_X_M` limit (x = 103.0, 2 to 3 m out), with
   the tracked keeper level or behind. Across 60 seeds these shots are 8.3% of shots but 35% of goals. The new

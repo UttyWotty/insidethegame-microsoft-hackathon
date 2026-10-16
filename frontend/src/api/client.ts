@@ -4,7 +4,7 @@
  * The base path is configurable at build time for deployments behind a different host.
  */
 import type {
-  ClubInfo, CompanionReply, HighlightReel, PersonaInfo, ProducerSummary, ReplayFrames, SessionInfo, StudioPayload,
+  ClubInfo, CompanionReply, HighlightReel, PersonaInfo, ProducerSummary, ReplayStory, SessionInfo, StudioPayload,
   ViewerSettings,
 } from "../types";
 
@@ -46,7 +46,7 @@ export const api = {
     return request<HighlightReel>(`/matches/${encodeURIComponent(sessionId)}/highlights?${query}`);
   },
   replay: (sessionId: string, period: number, at: number) =>
-    request<ReplayFrames>(`/matches/${encodeURIComponent(sessionId)}/replay?period=${period}&at=${at}`),
+    request<ReplayStory>(`/matches/${encodeURIComponent(sessionId)}/replay?period=${period}&at=${at}`),
   studio: (sessionId: string, window: StudioPayload["window"]) =>
     request<StudioPayload>(`/matches/${encodeURIComponent(sessionId)}/studio?window=${window}`),
   producer: (sessionId: string) => request<ProducerSummary>(`/matches/${encodeURIComponent(sessionId)}/producer`),

@@ -26,13 +26,15 @@ interface PitchViewProps {
   scoutZone?: ScoutZoneInfo | null;
   /** Shape shift lines for the 2D pitch; omitted or null draws none (the 3D view does not draw them). */
   shapeShift?: ShapeShiftFlash | null;
+  /** Extra SVG for the 2D pitch (the replay's cone and path); omitted or null draws none, and 3D ignores it. */
+  annotations?: ReactNode;
 }
 
 export function PitchView({ camera, children, replay = null, tactics = null, scoutZone = null, shapeShift = null,
-                            ...rest }: PitchViewProps) {
+                            annotations = null, ...rest }: PitchViewProps) {
   if (camera !== "3d") {
     return <Pitch camera={camera} zoom={replay?.zoom ?? null} tactics={tactics} scoutZone={scoutZone}
-      shapeShift={shapeShift} {...rest}>{children}</Pitch>;
+      shapeShift={shapeShift} annotations={annotations} {...rest}>{children}</Pitch>;
   }
   const { ball, players, moveMs, homeColor, awayColor, label, onBallAnchor } = rest;
   return (

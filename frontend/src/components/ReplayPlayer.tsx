@@ -1,16 +1,22 @@
 /**
- * Instant replay of a goal or big chance: the stored frames around the shot play again in slow motion from
- * another angle (behind the goal in 3D, a zoomed crop in 2D), under a REPLAY bug, with a short commentator line,
- * then hand back to the live broadcast. Viewers can skip back to live at any time.
+ * Instant replay of a goal or big chance as a story from the server: the build-up passes and carries at real pace,
+ * the strike and the ball's flight into the goal mouth in slow motion, then a hold on the analysis card.
+ * The 2D crop frames the whole action and draws the build-up path and shot cone under the players; the REPLAY bug,
+ * a short commentator line, and the "Back to live" button stay, and the live broadcast resumes when the replay ends.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
+import { toScreen } from "../lib/pitch";
 import { playerDots } from "../lib/playerDots";
-import { clipLengthMs, frameBall, frameIndexAt, framePositions, glideMs, type Playable } from "../lib/reel";
-import { goalEnd, REPLAY_MAX_GLIDE_MS, REPLAY_RATE, replayLine, zoomBox } from "../lib/replay";
+import { goalEnd, REPLAY_SPEECH_RATE, replayLine } from "../lib/replay";
+import { coneScreen, pathScreen } from "../lib/replayAnalysis";
+import { cardSide, replayCrop } from "../lib/replayFraming";
+import { clockAt, replayLengthMs, replayStage, sampleAt } from "../lib/replayTimeline";
 import { speakLine, stopSpeaking } from "../lib/speakLine";
 import type { ShotTrace } from "../state/matchState";
-import type { MatchMetadata } from "../types";
+import type { MatchMetadata, PersonaKey, Point, ReplayStory } from "../types";
+import { ReplayAnalysisCard } from "./overlays/ReplayAnalysisCard";
+import { ReplayAnalysisLayer } from "./overlays/ReplayAnalysisLayer";
 import { type BallAnchor } from "./Pitch";
 import { PitchView, type Camera } from "./PitchView";
 
@@ -20,12 +26,12 @@ const RESULT_TITLES: Record<string, string> = { goal: "Goal", saved: "Saved", of
 
 interface ReplayPlayerProps {
   sessionId: string; shot: ShotTrace; match: MatchMetadata; homeColor: string; awayColor: string; camera: Camera;
-  voiceOn: boolean; language: string; onDone: () => void;
+  voiceOn: boolean; language: string; persona: PersonaKey; onDone: () => void;
 }
 
 export function ReplayPlayer(props: ReplayPlayerProps) {
-  const { sessionId, shot, match, homeColor, awayColor, camera, voiceOn, language, onDone } = props;
-  const [clip, setClip] = useState<Playable | null>(null);
+  const { sessionId, shot, match, homeColor, awayColor, camera, voiceOn, language, persona, onDone } = props;
+  const [story, setStory] = useState<ReplayStory | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const done = useRef(onDone);
   done.current = onDone;
@@ -34,47 +40,70 @@ export function ReplayPlayer(props: ReplayPlayerProps) {
   useEffect(() => {
     let live = true;
     api.replay(sessionId, shot.period, shot.second)
-      .then((r) => { if (live) (r.frames.length ? setClip({ frames: r.frames }) : done.current()); })
+      .then((r) => { if (live) (r.frames.length ? setStory(r) : done.current()); })
       .catch(() => live && done.current());
-    if (voiceOn) speakLine(replayLine(shot), language, "normal", REPLAY_RATE);
+    if (voiceOn) speakLine(replayLine(shot), language, "normal", REPLAY_SPEECH_RATE);
     return () => { live = false; stopSpeaking(); };
   }, [sessionId, shot, voiceOn, language]);
 
   useEffect(() => {
-    if (!clip) return undefined;
+    if (!story) return undefined;
     const id = window.setInterval(() => setElapsed((ms) => ms + TICK_MS), TICK_MS);
     return () => window.clearInterval(id);
-  }, [clip]);
+  }, [story]);
 
   useEffect(() => {
-    if (clip && elapsed >= clipLengthMs(clip, REPLAY_RATE)) done.current();
-  }, [clip, elapsed]);
+    if (story && elapsed >= replayLengthMs(story.frames)) done.current();
+  }, [story, elapsed]);
 
-  const index = clip ? frameIndexAt(clip, elapsed, REPLAY_RATE) : 0;
-  const frame = clip?.frames[index];
-  const framing = useMemo(() => (clip ? {
-    zoom: zoomBox(frameBall(clip.frames[clip.frames.length - 1])), behindGoal: goalEnd(clip.frames),
-  } : null), [clip]);
-  const dots = useMemo(() => (frame
-    ? playerDots(match, framePositions(frame), { actor: frame.player_id, receiver: null }, null, NO_SPRINT) : []),
-  [match, frame]);
-  const shooter = [...match.home.players, ...match.away.players].find((p) => p.player_id === shot.shooter)?.name;
+  const names = useMemo(() => Object.fromEntries([...match.home.players, ...match.away.players]
+    .map((p) => [p.player_id, p.name])), [match]);
+  const framing = useMemo(() => {
+    if (!story) return null;
+    const { analysis: a, frames: keys, period: half } = story;
+    const last = keys[keys.length - 1];
+    const landing = toScreen({ x: last.ball[0], y: last.ball[1] }, true, half);
+    const strike = coneScreen(a, half);
+    const goal = goalEnd(keys);
+    const action = [...pathScreen(a, half, a.build_up.path.length), ...strike, landing];
+    return { zoom: replayCrop(action, [...strike, landing], goal), behindGoal: goal };
+  }, [story]);
 
-  if (!clip || !frame) return <div className="pitch-wrap replay-loading">Cueing the replay...</div>;
+  const frames = story?.frames ?? [];
+  const sample = frames.length ? sampleAt(frames, clockAt(frames, elapsed)) : null;
+  const period = story?.period ?? shot.period;
+  const screen = (p: Point) => toScreen(p, true, period);
+
+  if (!story || !sample || !framing) return <div className="pitch-wrap replay-loading">Cueing the replay...</div>;
+  const positions = Object.fromEntries(sample.positions.map(([id, x, y]) => [id, screen({ x, y })]));
+  const focus = { actor: sample.actor, receiver: frames[sample.index].receiver_id };
+  const dots = playerDots(match, positions, focus, null, NO_SPRINT);
+  const analysis = story.analysis;
+  const stage = replayStage(frames, elapsed);
+  const ball = screen(sample.ball);
+  const color = analysis.team_id === match.home.team_id ? homeColor : awayColor;
+  const path = stage === "build_up" ? [...pathScreen(analysis, period, sample.index), ball]
+    : pathScreen(analysis, period, analysis.build_up.path.length);
+  const annotations = camera !== "3d"
+    ? <ReplayAnalysisLayer cone={stage === "build_up" ? null : coneScreen(analysis, period)} path={path} color={color} />
+    : null;
+  const shooter = names[shot.shooter ?? ""];
+  const title = RESULT_TITLES[shot.result] ?? "Chance";
+  const side = cardSide(framing.behindGoal);
   return (
-    <section className="stack" aria-label="Instant replay">
-      <PitchView camera={camera} ball={frameBall(frame)} trail={[]} players={dots}
-        moveMs={glideMs(clip, index, REPLAY_RATE, REPLAY_MAX_GLIDE_MS)} homeColor={homeColor} awayColor={awayColor}
-        shot={null} onBallAnchor={onBallAnchor} replay={framing}
-        label={`Instant replay: ${RESULT_TITLES[shot.result] ?? "Chance"}${shooter ? `, ${shooter}` : ""}`}>
+    <section className="stack replay-stage" aria-label="Instant replay">
+      <PitchView camera={camera} ball={ball} trail={[]} players={dots} moveMs={TICK_MS} homeColor={homeColor}
+        awayColor={awayColor} shot={null} onBallAnchor={onBallAnchor} replay={framing} annotations={annotations}
+        label={`Instant replay: ${title}${shooter ? `, ${shooter}` : ""}`}>
         <div className="replay-bug" aria-hidden="true">REPLAY</div>
-        <div className="glass replay-caption" aria-live="polite">
-          <strong className="display">{RESULT_TITLES[shot.result] ?? "Chance"}{shooter ? ` - ${shooter}` : ""}</strong>
-          {shot.xg !== null && <span>xG {shot.xg.toFixed(2)}</span>}
+        <ReplayAnalysisCard stage={stage} analysis={analysis} persona={persona} names={names} color={color}
+          side={side} />
+        <div className={`glass replay-caption side-${side}`} aria-live="polite">
+          <strong className="display">{title}{shooter ? ` - ${shooter}` : ""}</strong>
         </div>
       </PitchView>
       <div className="highlight-controls">
-        <span className="chip">Slow motion</span>
+        <span className="chip">{stage === "shot" ? "Slow motion" : stage === "analysis" ? "Analysis" : "Build-up"}</span>
         <button className="button-primary" onClick={() => done.current()}>Back to live</button>
       </div>
     </section>

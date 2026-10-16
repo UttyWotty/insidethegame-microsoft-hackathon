@@ -149,8 +149,29 @@ export interface HighlightClip {
   actor: string | null; commentary: string; language: string; intensity: "normal" | "raised" | "peak"; frames: HighlightFrame[];
 }
 
-/** Stored frames around one action, for an instant replay. */
-export interface ReplayFrames { period: number; at: number; frames: HighlightFrame[] }
+/** One instant-replay keyframe in the absolute home frame: a build-up action, the strike, or the ball's arrival. */
+export interface ReplayKeyframe extends HighlightFrame {
+  phase: "build_up" | "shot" | "flight"; receiver_id: string | null;
+}
+
+/** The last completed pass to the shooter; threat fields are null or empty when no threat was stored. */
+export interface ReplayAssist {
+  passer_id: string; length_m: number; difficulty: number | null; xt_added: number | null;
+  opponents_bypassed: number | null; lines_broken: string[]; breaks_line: boolean;
+}
+
+/** The shooting team's possession: completed passes, seconds, xT built, and the drawn ball path (absolute frame). */
+export interface ReplayBuildUp { passes: number; duration_s: number; xt_added: number; path: [number, number][] }
+
+/** Shot analysis of an instant replay, mirroring ShotAnalysis.to_dict(); cone points are in the absolute frame. */
+export interface ReplayAnalysis {
+  shot_event_id: string; shooter_id: string; team_id: string; card: ShotCardInfo; xg: number; goal_chance_pct: number;
+  under_pressure: boolean; cone: [number, number][]; defenders_in_cone: number; keeper_in_cone: boolean;
+  build_up: ReplayBuildUp; assist: ReplayAssist | null;
+}
+
+/** The instant replay story of one shot: keyframes plus analysis. */
+export interface ReplayStory { period: number; at: number; frames: ReplayKeyframe[]; analysis: ReplayAnalysis }
 
 export interface HighlightReel { stage: "half_time" | "full_time"; headline: string; clips: HighlightClip[] }
 

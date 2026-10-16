@@ -163,6 +163,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Analysed instant replay: the replay of a goal or big chance now re-plays the real build-up and the shot instead
+  of the stored frames around it. A pure server builder (`highlights/replay_story.py`) turns the shooting team's
+  last 4 or fewer completed passes and carries (within 12 s), the strike, and the ball's flight to where the shot
+  card says it crossed the line into keyframes, with the ball at each action's true start point. Its analysis block
+  (`highlights/replay_analysis.py`) reuses existing analytics only: xG, goal chance, distance, angle, shot speed, the
+  shot cone to both posts (`analytics/shot_cone.py`) with the defenders and keeper inside it, pressure, the
+  build-up's pass count, time, and xT, and the assist with its xT and line break. `GET /api/matches/{id}/replay`
+  returns the story (`frames` plus `analysis`) and 404 when no played shot matches. The broadcast plays the
+  build-up at real pace and the strike in slow motion, draws the build-up path and the shot cone on the 2D pitch
+  during the replay only, and holds on an analysis card: the full set for the analyst, a plain subset otherwise.
+  The 2D crop (`lib/replayFraming.ts`) grows from the zoomed size to contain every build-up point, the shot
+  origin, the goal mouth, and the final ball with a 3 m margin, keeping the shot cone in the half nearest the
+  attacked goal; the card and caption sit on the other half, so they never cover the cone, goal mouth, shooter, or
+  ball. The card shows xG at three decimals, the same value goal chance comes from (xG 0.075, 8% for the 77').
+  A blocked shot's flight stops at the first defender within 1.5 m of the line to goal and at least 0.5 m in front
+  of the shooter (`analytics/shot_block.py`), or 2 m out when nobody is in the lane, instead of flying into the
+  goal. The ball flies at least 0.5 m and always stops at least 1 m short of the goal line.
 - Demo script rewritten around one story: the 69' Scout flag, the 77' winner from there, and two fans' views of it.
 - Tracking protect drop: from 70' a leading team now defends 10 m deeper out of possession
   (`tracking/game_state.py`, sharing `PROTECT_START_SECOND` with the simulator's protect-the-lead rule; keeper and
@@ -226,6 +243,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Instant replays never showed the ball going in: the shot and goal frames share a match second, so the shot's
+  flight was skipped and the goal frame reset the ball to the scorer's feet, while the short window cut off the
+  build-up (the 77' winner's 34.4 m assist was never seen). The new replay story fixes both.
 - Unrealistic shot locations: 55% of simulated shots came from the byline (some from the corner flag at a
   near-zero angle) because shot probability ignored the angle and play piled up against the goal line. Shots are
   now weighted by how square-on the shooter is to goal, wide byline positions produce cutbacks and crosses into the

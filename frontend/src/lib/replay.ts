@@ -9,15 +9,13 @@ import { frameBall } from "./reel";
 
 /** Shots with at least this xG get a replay even when they miss; matches the server's big-chance threshold. */
 export const REPLAY_MIN_XG = 0.25;
-/** Match seconds per real second in a replay: slow motion. */
-export const REPLAY_RATE = 0.6;
+/** Speech speed passed to the commentator's line as a replay rolls, matching the slower replay mood. */
+export const REPLAY_SPEECH_RATE = 0.6;
 /** Wait after the shot before the replay rolls, so the live reaction and goal banner are seen first. */
 export const REPLAY_DELAY_MS = 3500;
-/** Longest glide between replay frames, longer than live because the replay runs slower. */
-export const REPLAY_MAX_GLIDE_MS = 4000;
 /** Size of the 2D replay window in metres, a zoomed TV-style crop. */
-const ZOOM_LENGTH = 52;
-const ZOOM_WIDTH = 34;
+export const ZOOM_LENGTH = 52;
+export const ZOOM_WIDTH = 34;
 const HALFWAY = PITCH_LENGTH / 2;
 const GOAL_LINES = ["Let's see that again.", "Here it is once more.", "Watch this again.", "One more look at that."];
 const MISS_LINES = ["Let's have another look.", "How did that stay out?", "Take another look at this chance."];

@@ -28,6 +28,7 @@ from insidegame.core.exceptions import (
     LineNotFoundError,
     PersonaConfigError,
     RateLimitError,
+    ReplayNotFoundError,
     SessionLimitError,
     SessionNotFoundError,
     SpeechUnavailableError,
@@ -48,6 +49,7 @@ API_VERSION: str = "0.1.0"
 ERROR_STATUS: dict[type[Exception], int] = {
     FixtureError: 400, PersonaConfigError: 400, SessionNotFoundError: 404, SessionLimitError: 429,
     RateLimitError: 429, LineNotFoundError: 404, SpeechUnavailableError: 503, HighlightsNotReadyError: 409,
+    ReplayNotFoundError: 404,
 }
 
 
