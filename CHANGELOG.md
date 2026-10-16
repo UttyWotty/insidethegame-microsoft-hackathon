@@ -163,6 +163,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Demo script rewritten around one story: the 69' Scout flag, the 77' winner from there, and two fans' views of it.
 - Tracking protect drop: from 70' a leading team now defends 10 m deeper out of possession
   (`tracking/game_state.py`, sharing `PROTECT_START_SECOND` with the simulator's protect-the-lead rule; keeper and
   in-possession shapes unchanged), so late leads show up in the back line. Only tracked positions move: events,
