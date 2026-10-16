@@ -399,5 +399,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Template punctuation no longer doubles a trailing period from model headlines.
 - `httpx` pinned below 1.0 to avoid an incompatible pre-release.
 
-[Unreleased]: https://github.com/UttyWotty/inside-the-game/compare/v0.1.0...develop
-[0.1.0]: https://github.com/UttyWotty/inside-the-game/releases/tag/v0.1.0
+[Unreleased]: https://github.com/UttyWotty/insidethegame-microsoft-hackathon/compare/v0.1.0...develop
+[0.1.0]: https://github.com/UttyWotty/insidethegame-microsoft-hackathon/releases/tag/v0.1.0
