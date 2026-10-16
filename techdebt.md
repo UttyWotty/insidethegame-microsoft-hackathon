@@ -32,8 +32,13 @@ Copilot-through-MCP recording, the demo video, then the submission steps. Fabric
   Resolved 2026-10-16: built on `feature/analysis-replay` (replay story, analysis card, shot cone, build-up path).
 -->
 - Follow-up (separate task): the highlights reel has the same ball-flight bug; fix it with the replay builder.
+- Follow-up (separate task): a qualifying replay is dropped, not queued, while another replay is playing (seed 194's
+  65' save, xG 0.55, got no replay), and the full-time recap opens over a replay that starts after 90 minutes.
+<!--
 - Follow-up (separate task): a saved shot in the replay still flies to its spot on the goal line with no keeper
   interaction, so it can look like it went in; stop it at the keeper the way blocked shots stop at the blocker.
+  Resolved 2026-10-16: built on `feature/replay-keeper-save` (saved ball stops at the keeper, keeper shown at the save).
+-->
 - Follow-up (separate task, needs regenerated xT grid, calibration doc, and sample data): 4 of the 7 seed-201 goals
   (15', 19', 52', 62') come from dribbles that stop at the `CARRY_MAX_X_M` limit (x = 103.0, 2 to 3 m out), with
   the tracked keeper level or behind. Across 60 seeds these shots are 8.3% of shots but 35% of goals. The new

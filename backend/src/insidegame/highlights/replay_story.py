@@ -2,7 +2,8 @@
 
 Keyframes are built from events (true start and end points and times) plus the tracking frame stored after each
 event for player positions, so the ball travels along each pass and carry and then into the goal mouth where the
-shot card says it crossed the line, or stops at the blocker for a blocked shot. Coordinates are in the absolute home
+shot card says it crossed the line, stops at the blocker for a blocked shot, or stops in front of the line at the
+keeper for a saved shot, with the keeper shown at the save. Coordinates are in the absolute home
 frame, and only stored analytics are used.
 """
 
@@ -12,10 +13,11 @@ from enum import StrEnum
 
 from insidegame.analytics.shot_block import block_point
 from insidegame.analytics.shot_card import ShotCard
+from insidegame.analytics.shot_save import save_point
 from insidegame.analytics.threat import ThreatAction
 from insidegame.core.constants import GOAL_CENTER_Y_M, PITCH_LENGTH_M
 from insidegame.core.geometry import GOAL_CENTER, Point, distance
-from insidegame.domain.enums import EventType, ShotResult
+from insidegame.domain.enums import EventType, Position, ShotResult
 from insidegame.domain.events import MatchEvent
 from insidegame.domain.match import MatchMetadata
 from insidegame.highlights.replay_analysis import (
@@ -102,14 +104,17 @@ def build_up_actions(events: Sequence[MatchEvent], shot_index: int) -> list[Matc
     return actions[-REPLAY_MAX_ACTIONS:]
 
 
-def flight_end(shot: MatchEvent, card: ShotCard, outfield: Sequence[Point]) -> Point:
+def flight_end(shot: MatchEvent, card: ShotCard, outfield: Sequence[Point], keeper: Point | None) -> Point:
     """Where the ball finishes in the shooter's attacking frame.
 
-    The card's goal-line placement when it has one, else the shot's end. A blocked shot without an end (as the
-    simulator emits them) stops at the blocker among the outfield opponents, or a short way out (block_point);
-    any other shot without an end goes to GOAL_CENTER. The shot must have a start.
+    A saved shot with a card placement stops in front of the line where the keeper meets it (save_point); any other
+    shot with a placement goes to the card's goal-line placement, else to the shot's end. A blocked shot without an
+    end (as the simulator emits them) stops at the blocker among the outfield opponents, or a short way out
+    (block_point); any other shot without an end goes to GOAL_CENTER. The shot must have a start.
     """
     assert shot.start is not None
+    if card.placement_y is not None and shot.shot_result is ShotResult.SAVED:
+        return save_point(shot.start, card.placement_y, keeper)
     if card.placement_y is not None:
         return Point(PITCH_LENGTH_M, GOAL_CENTER_Y_M + card.placement_y)
     if shot.end is not None:
@@ -128,13 +133,29 @@ def _aligned(frame: Frame, player_id: str | None, spot: tuple[float, float]) -> 
     return [(pid, *spot) if pid == player_id else (pid, x, y) for pid, x, y in frame]
 
 
+def _keeper_id(shot: MatchEvent, metadata: MatchMetadata) -> str | None:
+    """The defending goalkeeper's player id, or None when the opponents list no goalkeeper. The shot must have a team."""
+    assert shot.team_id is not None
+    opponents = metadata.team(metadata.side_of(shot.team_id).opponent).players
+    return next((p.player_id for p in opponents if p.position is Position.GOALKEEPER), None)
+
+
+def _flight_positions(shot: MatchEvent, shot_positions: Frame, landing: tuple[float, float],
+                      metadata: MatchMetadata) -> Frame:
+    """The FLIGHT keyframe's positions: the shot frame, with the defending keeper on the ball for a saved shot."""
+    if shot.shot_result is not ShotResult.SAVED:
+        return shot_positions
+    return _aligned(shot_positions, _keeper_id(shot, metadata), landing)
+
+
 def build_keyframes(shot: MatchEvent, actions: Sequence[MatchEvent], frames: Mapping[str, Frame], card: ShotCard,
                     metadata: MatchMetadata) -> list[ReplayKeyframe]:
     """BUILD_UP keyframes for actions with a stored frame, then SHOT and FLIGHT keyframes from the shot's frame.
 
     Each BUILD_UP ball is the action's start; the SHOT ball is the shot's start; the FLIGHT ball is flight_end at
-    the shot time plus flight_seconds. The shooter stays at the shot origin during the flight. The shot must have a
-    team, start, and stored frame.
+    the shot time plus flight_seconds. The shooter stays at the shot origin during the flight; for a saved shot the
+    defending keeper moves onto the save point in the FLIGHT keyframe. The shot must have a team, start, and stored
+    frame.
     """
     assert shot.team_id is not None and shot.start is not None
     team_id = shot.team_id
@@ -148,13 +169,15 @@ def build_keyframes(shot: MatchEvent, actions: Sequence[MatchEvent], frames: Map
                                         _aligned(frames[action.event_id], action.player_id, ball)))
     origin = rounded(to_absolute(shot.start, team_id, metadata), BALL_DECIMALS)
     shot_positions = _aligned(frames[shot.event_id], shot.player_id, origin)
-    end = flight_end(shot, card, shot_opponents(shot, frames[shot.event_id], metadata)[0])
+    outfield, keeper = shot_opponents(shot, frames[shot.event_id], metadata)
+    end = flight_end(shot, card, outfield, keeper)
     landing = rounded(to_absolute(end, team_id, metadata), BALL_DECIMALS)
     arrival = shot.match_second + flight_seconds(shot.start, end, shot.ball_speed_kmh)
     keyframes.append(ReplayKeyframe(shot.period, shot.match_second, ReplayPhase.SHOT, shot.event_type.value,
                                     shot.player_id, None, origin, shot_positions))
     keyframes.append(ReplayKeyframe(shot.period, arrival, ReplayPhase.FLIGHT, shot.event_type.value,
-                                    shot.player_id, None, landing, shot_positions))
+                                    shot.player_id, None, landing,
+                                    _flight_positions(shot, shot_positions, landing, metadata)))
     return keyframes
 
 

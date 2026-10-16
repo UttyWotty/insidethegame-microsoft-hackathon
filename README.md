@@ -365,7 +365,8 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   from another angle (behind the goal in the 3D view, a zoomed crop on the 2D pitch) under a REPLAY bug, with a
   short commentator line, then returns to live. An Auto replays toggle turns them off. The replay re-plays the
   real build-up (the last few passes and carries, at real pace), then the strike and the ball's flight into the
-  goal mouth in slow motion (a blocked shot stops at the blocker). The 2D crop frames the whole action, from the
+  goal mouth in slow motion (a blocked shot stops at the blocker, and a saved shot stops in front of the line
+  with the keeper at the ball). The 2D crop frames the whole action, from the
   first build-up pass to the goal mouth, and draws the build-up path and the shot cone from the shooter to both
   posts; the card and caption sit on the half away from the goal. It ends on an analysis card: xG, goal chance, distance, angle, speed, defenders and keeper in the cone,
   pressure, the build-up's passes, time, and xT, and the assist (the full set for the analyst, a plain subset for
