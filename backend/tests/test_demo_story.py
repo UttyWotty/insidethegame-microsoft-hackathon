@@ -1,7 +1,8 @@
-"""Tests for the demo-story scorer and the auto-replay drop rule it mirrors from the frontend.
+"""Tests for the demo-story scorer and the auto-replay queue rules it mirrors from the frontend.
 
 A hand-built match passes all eight hard rules; each rule is then broken on its own and must reject the story, and
-the preference weights must add up. played_replays drops a replay due while another rolls and resets per period.
+the preference weights must add up. played_replays queues a replay due while another rolls, caps the queue with goal
+priority, drops stale queued replays, and follows the stream clock across the half-time break.
 An integration test checks that the demo seed passes and names the minutes docs/DEMO_SCRIPT.md quotes.
 """
 
@@ -16,16 +17,22 @@ from insidegame.core.geometry import Point
 from insidegame.datasets.demo_search import story_for_seed
 from insidegame.datasets.demo_story import (
     DEMO_SPEED,
+    HALF_TIME_BREAK_MATCH_S,
     REPLAY_DELAY_S,
+    REPLAY_MAX_LAG_MATCH_S,
+    REPLAY_QUEUE_MAX,
     REPLAY_ROLL_S,
     DemoStory,
+    ReplayCandidate,
     StoryCriteria,
     played_replays,
     score_story,
+    stream_times,
 )
 from insidegame.domain.enums import EventType, Outcome, ShotResult
 from insidegame.domain.events import MatchEvent
 from insidegame.domain.match import MatchMetadata
+from insidegame.live.pacing import HALF_TIME_BREAK_MATCH_S as LIVE_HALF_TIME_BREAK_MATCH_S
 from insidegame.simulation.roster import DEMO_AWAY, DEMO_HOME, DEMO_SEED, build_fixture
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -60,7 +67,9 @@ class Scenario:
     control_after_pct: float = 40.0
     save_spot: Point = SAVE_SPOT
     pass_outcome: Outcome = Outcome.SUCCESS
-    chance_before_goal: bool = False
+    chances_before_goal: int = 0
+    chance_lead_s: float = 1.0
+    play_on_s: float = 0.0
     comeback: bool = False
 
 
@@ -83,11 +92,14 @@ def _events(s: Scenario) -> list[MatchEvent]:
     start = s.goal_second - 3 * SHOT_SPACING_S
     events += [_event(f"e-pass{i}", 3 + i, 2, start + i * SHOT_SPACING_S, EventType.PASS, s.goal_team, GOAL_SPOT, 5,
                       before, outcome=s.pass_outcome) for i in range(2)]
-    if s.chance_before_goal:
-        events.append(_event("e-chance", 5, 2, s.goal_second - 1.0, EventType.SHOT, s.goal_team, SAVE_SPOT, 5,
-                             before, shot_result=ShotResult.OFF_TARGET))
+    n = s.chances_before_goal
+    events += [_event(f"e-chance{i}", 5, 2, s.goal_second - s.chance_lead_s * (n - i), EventType.SHOT, s.goal_team,
+                      SAVE_SPOT, 5, before, shot_result=ShotResult.OFF_TARGET) for i in range(n)]
     events.append(_event("e-goal", 6, 2, s.goal_second, EventType.SHOT, s.goal_team, GOAL_SPOT, 5, score,
                          shot_result=ShotResult.GOAL))
+    # Play goes on after the goal (a pass every SHOT_SPACING_S) so the live clock moves and queued replays age.
+    events += [_event(f"e-on{i}", 7 + i, 2, s.goal_second + (i + 1) * SHOT_SPACING_S, EventType.PASS, AWAY, FAR_SPOT,
+                      9, score, outcome=Outcome.SUCCESS) for i in range(int(s.play_on_s // SHOT_SPACING_S))]
     return events
 
 
@@ -144,7 +156,7 @@ def test_the_hand_built_match_passes_with_every_base_preference() -> None:
     pytest.param(Scenario(control_after_pct=55.0), id="5-control-rose"),
     pytest.param(Scenario(save_spot=FAR_SPOT), id="6-no-big-save"),
     pytest.param(Scenario(pass_outcome=Outcome.FAILURE), id="7-no-build-up"),
-    pytest.param(Scenario(chance_before_goal=True), id="8-arc-replay-dropped"),
+    pytest.param(Scenario(chances_before_goal=1, play_on_s=1200.0), id="8-arc-replay-stale-in-the-queue"),
 ])
 def test_each_hard_rule_rejects_on_its_own(broken: Scenario) -> None:
     assert _score(broken) is None
@@ -179,16 +191,64 @@ def test_a_later_equaliser_cancels_the_winner_preference() -> None:
     assert story is not None and not story.winner and story.score == BASE_SCORE - 3
 
 
-def test_played_replays_drops_a_replay_due_while_another_rolls() -> None:
-    roll = REPLAY_ROLL_S * DEMO_SPEED
-    shots = [(1, 100.0), (1, 100.0 + roll - 1.0), (1, 100.0 + roll), (2, 2800.0), (2, 2801.0)]
-    assert played_replays(shots, DEMO_SPEED, REPLAY_DELAY_S, REPLAY_ROLL_S) == [True, False, True, True, False]
+def test_a_chance_just_before_the_arc_goal_only_queues_its_replay() -> None:
+    """The old drop rule rejected this match; with no play after the goal the queued goal replay is never stale."""
+    assert _score(Scenario(chances_before_goal=1)) is not None
 
 
-def test_played_replays_resets_per_period() -> None:
-    shots = [(1, 2690.0), (2, 2700.0)]
-    assert played_replays(shots, DEMO_SPEED, REPLAY_DELAY_S, REPLAY_ROLL_S) == [True, True]
-    assert played_replays([], DEMO_SPEED, REPLAY_DELAY_S, REPLAY_ROLL_S) == []
+ROLL = REPLAY_ROLL_S * DEMO_SPEED
+
+
+def _plays(shots: list[tuple[float, bool]], clock_until: float = 6000.0) -> list[bool]:
+    """Run the queue model on (match second, goal) shots in one period, with a live clock ticking every second."""
+    clock = [(float(t), float(t)) for t in range(int(clock_until))]
+    candidates = [ReplayCandidate(second, second, goal) for second, goal in shots]
+    return played_replays(candidates, clock, DEMO_SPEED, REPLAY_DELAY_S, REPLAY_ROLL_S)
+
+
+def test_a_replay_due_while_another_rolls_is_queued_and_plays_after_it() -> None:
+    assert _plays([(100.0, False), (130.0, True)]) == [True, True]
+    assert _plays([(100.0, False), (100.0 + ROLL, False)]) == [True, True]
+    assert _plays([]) == []
+
+
+def test_the_queue_is_capped_and_a_goal_replaces_the_oldest_non_goal() -> None:
+    assert REPLAY_QUEUE_MAX == 2 and REPLAY_MAX_LAG_MATCH_S == 600.0
+    clock = [(0.0, 0.0)]
+    shots = [ReplayCandidate(s, s, g) for s, g in [(100.0, False), (101.0, False), (102.0, False), (103.0, True)]]
+    assert played_replays(shots, clock, DEMO_SPEED, REPLAY_DELAY_S, REPLAY_ROLL_S) == [True, False, True, True]
+    misses = [ReplayCandidate(s, s, False) for s in (100.0, 101.0, 102.0, 103.0)]
+    assert played_replays(misses, clock, DEMO_SPEED, REPLAY_DELAY_S, REPLAY_ROLL_S) == [True, True, True, False]
+
+
+def test_a_queued_replay_more_than_ten_minutes_behind_live_is_dropped_goals_included() -> None:
+    assert _plays([(100.0, False), (130.0, False), (140.0, True)]) == [True, True, False]
+    assert _plays([(100.0, True), (130.0, True), (140.0, False)]) == [True, True, False]
+    assert _plays([(100.0, False), (101.0, True)]) == [True, False]
+
+
+def test_a_queued_replay_exactly_ten_minutes_behind_live_still_plays() -> None:
+    """The lag rule is inclusive: at exactly REPLAY_MAX_LAG_MATCH_S behind live it plays, half a second more drops it."""
+    finish = REPLAY_DELAY_S * DEMO_SPEED + ROLL
+    on_boundary = finish - REPLAY_MAX_LAG_MATCH_S
+    for goal in (False, True):
+        assert _plays([(0.0, False), (on_boundary, goal)]) == [True, True]
+        assert _plays([(0.0, False), (on_boundary - 0.5, goal)]) == [True, False]
+
+
+def test_stream_times_add_the_live_half_time_break() -> None:
+    assert HALF_TIME_BREAK_MATCH_S == LIVE_HALF_TIME_BREAK_MATCH_S
+    assert stream_times([(1, 10.0), (1, 40.0), (1, 30.0), (2, 2700.0), (2, 2710.0)]) == [
+        0.0, 30.0, 30.0, 30.0 + HALF_TIME_BREAK_MATCH_S, 40.0 + HALF_TIME_BREAK_MATCH_S]
+    assert stream_times([]) == []
+
+
+def test_a_first_half_replay_queued_over_the_break_plays_in_the_second_half() -> None:
+    events = [(1, 2690.0), (1, 2700.0), (2, 2700.0), (2, 3300.0)]
+    times = stream_times(events)
+    clock = [(t, second) for t, (_, second) in zip(times, events, strict=True)]
+    shots = [ReplayCandidate(times[0], 2690.0, False), ReplayCandidate(times[1], 2700.0, True)]
+    assert played_replays(shots, clock, DEMO_SPEED, REPLAY_DELAY_S, REPLAY_ROLL_S) == [True, True]
 
 
 def _script_minute(pattern: str) -> str:

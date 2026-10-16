@@ -1,7 +1,8 @@
 /**
  * The main broadcast experience: the live pitch with persona overlays, score bug, shot and line-breaker cards,
  * shape-shift lines, stats, physical and danger leaderboards, momentum, and commentary.
- * It subscribes to the viewer's personalized stream and opens the recap dialog when a new recap arrives.
+ * It subscribes to the viewer's personalized stream and opens the recap dialog when a new recap arrives, holding it
+ * while an auto replay is rolling, queued, or scheduled (see lib/replayQueue for the queue rules).
  * Changing persona or language reconnects to a different segment of the same live match.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -11,6 +12,9 @@ import { eventPopup } from "../lib/broadcastStats";
 import { sprintSpeed } from "../lib/motion";
 import { playerDots } from "../lib/playerDots";
 import { earnsReplay, REPLAY_DELAY_MS } from "../lib/replay";
+import {
+  emptyReplayQueue, holdsRecap, replayDue, replayFinished, replaysOff, replayScheduled,
+} from "../lib/replayQueue";
 import { SCOUT_CARD_MS, SCOUT_ZONE_MS, scoutZoneFor, stillVisible } from "../lib/scout";
 import { SHAPE_SHIFT_MS } from "../lib/shape";
 import { THREAT_CARD_MS } from "../lib/threat";
@@ -99,19 +103,29 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
     ? scoutZoneFor(flag, sessionMatch.home.team_id, teamColor(sessionMatch.home.team_id, true),
       teamColor(sessionMatch.away.team_id, false))
     : null), [flag, zoneShown, sessionMatch]);
-  const [replayShot, setReplayShot] = useState<ShotTrace | null>(null);
+  const [replays, setReplays] = useState(emptyReplayQueue);
+  const replayShot: ShotTrace | null = replays.current;
   const lastShot = state.lastShot;
   const replayTimers = useRef<number[]>([]);
-  // A qualifying shot's replay is not cancelled by later shots; it only waits for any replay already rolling.
+  const liveSecond = useRef<number | null>(null);
+  liveSecond.current = state.lastEvent?.match_second ?? null;
+  // A qualifying shot's replay is not cancelled by later shots; it queues behind any replay already rolling.
   useEffect(() => {
     if (!autoReplay || !lastShot || !earnsReplay(lastShot)) return;
-    replayTimers.current.push(window.setTimeout(() => setReplayShot((current) => current ?? lastShot), REPLAY_DELAY_MS));
+    setReplays(replayScheduled);
+    replayTimers.current.push(window.setTimeout(() => setReplays((s) => replayDue(s, lastShot)), REPLAY_DELAY_MS));
   }, [autoReplay, lastShot]);
   useEffect(() => {
     const timers = replayTimers.current;
-    if (!autoReplay) timers.splice(0).forEach((id) => window.clearTimeout(id));
+    if (!autoReplay) {
+      timers.splice(0).forEach((id) => window.clearTimeout(id));
+      setReplays(replaysOff);
+    }
     return () => timers.splice(0).forEach((id) => window.clearTimeout(id));
   }, [autoReplay]);
+  const onReplayDone = useCallback(() => setReplays((s) => replayFinished(s, liveSecond.current)), []);
+  const recapHeld = holdsRecap(replays);
+  const [heldRecap, setHeldRecap] = useState<Recap | null>(null);
   const [seenStages, setSeenStages] = useState<Set<string>>(() => new Set());
   const [voiceOn, setVoiceOn] = useState(savedVoicePreference);
   const [neuralVoice, setNeuralVoice] = useState(false);
@@ -130,10 +144,18 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   useEffect(() => {
     const fresh = state.recaps.find((r) => !seenStages.has(r.stage));
     if (fresh) {
-      if (!isTyping()) setOpenRecap(fresh);
+      if (recapHeld) setHeldRecap(fresh);
+      else if (!isTyping()) setOpenRecap(fresh);
       setSeenStages((current) => new Set(current).add(fresh.stage));
     }
-  }, [state.recaps, seenStages]);
+  }, [state.recaps, seenStages, recapHeld]);
+
+  // A recap that arrived during a replay opens once no replay is rolling, queued, or scheduled.
+  useEffect(() => {
+    if (recapHeld || !heldRecap) return;
+    if (!isTyping()) setOpenRecap(heldRecap);
+    setHeldRecap(null);
+  }, [recapHeld, heldRecap]);
 
   useEffect(() => {
     if (openRecap?.stage !== "half_time") return undefined;
@@ -163,7 +185,7 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
           <ReplayPlayer key={replayShot.id} sessionId={sessionId} shot={replayShot} match={match} homeColor={homeColor}
             awayColor={awayColor} camera={camera} voiceOn={voiceOn} language={viewer.language}
             persona={viewer.persona}
-            onDone={() => setReplayShot(null)} />
+            onDone={onReplayDone} />
         ) : reelStage ? (
           <HighlightsPlayer sessionId={sessionId} stage={reelStage} segment={state.cues[0]?.cue.viewer_id} match={match}
             homeColor={homeColor} awayColor={awayColor} camera={camera} voiceOn={voiceOn} onClose={() => setReelStage(null)} />

@@ -115,8 +115,8 @@ The demo seed is chosen by a tool, not by hand: `python -m insidegame.datasets.d
 --end-seed 4000 --top 10` simulates Kestrel Bay vs Ironvale per seed and prints a Markdown table of the seeds whose
 match tells the demo story (a home go-ahead goal from 6 m or more linked to a Tactical Scout flank flag 3 to 12
 minutes earlier, a later dropped shape shift with falling control, a big save, a passing build-up, and an auto replay
-that is not dropped), ranked by preferences such as a held winner, a comeback, or a late goal. The demo seed (1407)
-is one of the three seeds in 1 to 4000 that pass every rule.
+for that goal that plays under the frontend's replay queue rules), ranked by preferences such as a held winner, a
+comeback, or a late goal. The demo seed (1407) passes every rule.
 
 Twelve matches (about 30,000 events) generate in under two seconds. A two-match sample is committed in
 [`data/sample/`](data/sample/README.md). The files load directly into Microsoft Fabric lakehouses, notebooks,
@@ -373,7 +373,10 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   keeper dived, with the result, shooter, xG, shot speed, distance, and angle (persona overlays step aside meanwhile).
 - **Instant replays:** a few seconds after every goal and every big chance (xG 0.25 or more), the action replays
   from another angle (behind the goal in the 3D view, a zoomed crop on the 2D pitch) under a REPLAY bug, with a
-  short commentator line, then returns to live. An Auto replays toggle turns them off. The replay re-plays the
+  short commentator line, then returns to live. An Auto replays toggle turns them off. A replay that comes due
+  while another is rolling waits in a queue of at most two (a goal replaces the oldest non-goal when it is full) and
+  is skipped if its shot is more than 10 match minutes behind live by its turn; "Back to live" skips only the
+  replay on screen. A recap that arrives during a replay opens once no replay is rolling, queued, or about to start. The replay re-plays the
   real build-up (the last few passes and carries, at real pace), then the strike and the ball's flight into the
   goal mouth in slow motion (a blocked shot stops at the blocker, and a saved shot stops in front of the line
   with the keeper at the ball). The 2D crop frames the whole action, from the
