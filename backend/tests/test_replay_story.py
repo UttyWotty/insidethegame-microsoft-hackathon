@@ -1,34 +1,41 @@
 """Tests for the pure instant-replay story: shot lookup, build-up selection, keyframes, flight, and shot analysis.
 
 Events, tracking frames, and threat assessments are built by hand, so every keyframe and number can be checked exactly.
-They cover tolerance matching, possession and lead filtering, ball alignment, away mirroring, and the analysis rules.
+They cover tolerance matching, possession and lead filtering, ball alignment, away mirroring, saved shots stopping at
+the keeper (non-saved flights unchanged), and the analysis rules.
 """
 
 import pytest
 
+from insidegame.analytics.analyzer import MatchAnalyzer
 from insidegame.analytics.line_breaks import DefensiveLine, LineBreak
 from insidegame.analytics.pass_quality import assess_pass
 from insidegame.analytics.shot_block import BLOCK_FALLBACK_M
 from insidegame.analytics.shot_card import shot_card
+from insidegame.analytics.shot_save import SAVE_MAX_DEPTH_M, SAVE_MIN_DEPTH_M
 from insidegame.analytics.threat import ThreatAction
 from insidegame.analytics.xg import expected_goals
+from insidegame.core.constants import PITCH_LENGTH_M
 from insidegame.core.geometry import Point, distance, mirror
-from insidegame.domain.enums import EventType, Outcome, ShotResult
+from insidegame.domain.enums import EventType, Outcome, Position, ShotResult, Side
 from insidegame.domain.events import MatchEvent
 from insidegame.domain.match import MatchMetadata
+from insidegame.domain.teams import Team
 from insidegame.highlights.reel import FrameRecord
 from insidegame.highlights.replay_analysis import analyse_shot
 from insidegame.highlights.replay_story import (
     MIN_FLIGHT_S,
     REPLAY_MAX_ACTIONS,
     ReplayPhase,
+    ReplayStory,
     build_story,
     build_up_actions,
     find_shot,
     flight_seconds,
 )
+from insidegame.simulation.engine import simulate_match
 from insidegame.simulation.roster import build_fixture
-from insidegame.tracking.model import Frame
+from insidegame.tracking.model import LOOKAHEAD_EVENTS, Frame, TrackingModel
 
 HOME, AWAY = "kba", "irv"
 POSSESSION = 5
@@ -332,3 +339,109 @@ def test_blocked_shot_with_only_a_defender_on_top_of_the_shooter_still_leaves_th
     closer = metadata.away.players[4].player_id
     story = build_story(events, _frames(metadata, events, {closer: (95.02, 34.0)}), {}, metadata, 1, SHOT_AT)
     assert story is not None and story.keyframes[-1].ball == (95.0 + BLOCK_FALLBACK_M, 34.0)
+
+
+def _keeper(team: Team) -> str:
+    """The team's goalkeeper player id."""
+    return next(p.player_id for p in team.players if p.position is Position.GOALKEEPER)
+
+
+def _positions(frame: Frame) -> dict[str, tuple[float, float]]:
+    """Each player's (x, y) in a frame, by player id."""
+    return {pid: (x, y) for pid, x, y in frame}
+
+
+SAVE_KEEPER_SPOT = (103.5, 34.0)
+SAVE_BLOCKER_SPOT = (98.0, 34.6)
+
+
+def _story_with_keeper(metadata: MatchMetadata, shot: MatchEvent) -> ReplayStory:
+    """A home possession ending in shot, with the away keeper 1.5 m off the line and a defender in the lane."""
+    events = _home_events()
+    events[9] = shot
+    overrides = {_keeper(metadata.away): SAVE_KEEPER_SPOT,
+                 metadata.away.players[4].player_id: SAVE_BLOCKER_SPOT}
+    story = build_story(events, _frames(metadata, events, overrides), {}, metadata, 1, SHOT_AT)
+    assert story is not None
+    return story
+
+
+def test_saved_shot_stops_short_of_the_line_at_the_keeper_who_moves_onto_the_save(metadata: MatchMetadata) -> None:
+    story = _story_with_keeper(metadata, _shot(result=ShotResult.SAVED))
+    shot, flight = story.keyframes[-2:]
+    assert story.analysis.card.result == "saved" and story.analysis.card.placement_y == -1.63
+    assert flight.ball == (103.5, 32.0)
+    assert flight.ball[0] <= 105.0 - SAVE_MIN_DEPTH_M
+    assert _positions(flight.positions)[_keeper(metadata.away)] == flight.ball
+    assert _positions(shot.positions)[_keeper(metadata.away)] == SAVE_KEEPER_SPOT
+    assert _positions(flight.positions)["kba-11"] == shot.ball
+    moved = {pid for pid, spot in _positions(flight.positions).items() if _positions(shot.positions)[pid] != spot}
+    assert moved == {_keeper(metadata.away)}
+    expected = max(distance(Point(95.0, 30.0), Point(103.5, 32.0)) / (SHOT_SPEED_KMH / 3.6), MIN_FLIGHT_S)
+    assert flight.match_second == pytest.approx(SHOT_AT + expected, abs=0.01)
+
+
+def test_away_saved_shot_stops_short_of_the_left_goal_line_at_the_home_keeper(metadata: MatchMetadata) -> None:
+    events = [_shot(team=AWAY, player="irv-11", result=ShotResult.SAVED)]
+    keeper = _keeper(metadata.home)
+    story = build_story(events, _frames(metadata, events, {keeper: (1.5, 34.0)}), {}, metadata, 1, SHOT_AT)
+    assert story is not None
+    flight = story.keyframes[-1]
+    assert SAVE_MIN_DEPTH_M <= flight.ball[0] == 1.5
+    assert _positions(flight.positions)[keeper] == flight.ball
+
+
+def test_saved_shot_without_the_keeper_in_the_frame_stops_the_default_depth_out(metadata: MatchMetadata) -> None:
+    events = [_shot(result=ShotResult.SAVED)]
+    keeper = _keeper(metadata.away)
+    frames = {"s": [row for row in _frame(metadata) if row[0] != keeper]}
+    story = build_story(events, frames, {}, metadata, 1, SHOT_AT)
+    assert story is not None
+    shot, flight = story.keyframes
+    assert flight.ball[0] == 104.0 and flight.positions == shot.positions
+
+
+@pytest.mark.parametrize(("shot", "ball", "arrival"), [
+    (_shot(), (105.0, 34.3), 99.5442655601818),
+    (_shot(result=ShotResult.OFF_TARGET, end=(105.0, 42.0)), (105.0, 36.9), 99.60634066332385),
+    (_event("s", SHOT_AT, EventType.SHOT, HOME, "kba-11", (95.0, 34.0), None, outcome=None,
+            shot_result=ShotResult.BLOCKED, ball_speed_kmh=SHOT_SPEED_KMH), (98.0, 34.0), 99.4),
+], ids=["goal", "off_target", "blocked"])
+def test_goal_off_target_and_blocked_flights_are_unchanged(metadata: MatchMetadata, shot: MatchEvent,
+                                                           ball: tuple[float, float], arrival: float) -> None:
+    """The FLIGHT keyframe of every non-saved shot equals the values recorded before saves stopped at the keeper."""
+    story = _story_with_keeper(metadata, shot)
+    strike, flight = story.keyframes[-2:]
+    expected = {"period": 1, "match_second": arrival, "phase": "flight", "event_type": "shot", "player_id": "kba-11",
+                "receiver_id": None, "ball": list(ball), "positions": [list(p) for p in strike.positions]}
+    assert flight.to_dict() == expected
+    assert _positions(strike.positions)[_keeper(metadata.away)] == SAVE_KEEPER_SPOT
+
+
+SIMULATED_SAVE_SEED = 194
+BALL_ROUNDING_M = 0.05
+
+
+def test_every_simulated_saved_shot_stops_short_of_its_goal_line_with_the_keeper_on_the_ball() -> None:
+    """Seed 194 replays saved shots at both goals; each stops in front of the line and the keeper meets the ball."""
+    result = simulate_match(build_fixture("kestrel_bay", "ironvale", SIMULATED_SAVE_SEED))
+    sim = result.metadata
+    analyzer, tracking = MatchAnalyzer(sim), TrackingModel(sim)
+    frames: dict[str, Frame] = {}
+    goals_seen: set[bool] = set()
+    for index, event in enumerate(result.events):
+        analyzer.ingest(event, tracking.previous or None)
+        frames[event.event_id] = tracking.frame(event, result.events[index + 1:index + 1 + LOOKAHEAD_EVENTS])
+        if event.event_type is not EventType.SHOT or event.shot_result is not ShotResult.SAVED:
+            continue
+        assert event.team_id is not None
+        story = build_story(result.events[:index + 1], frames, {}, sim, event.period, event.match_second)
+        assert story is not None
+        flight = story.keyframes[-1]
+        attacks_right = sim.side_of(event.team_id) is Side.HOME
+        depth = PITCH_LENGTH_M - flight.ball[0] if attacks_right else flight.ball[0]
+        goals_seen.add(attacks_right)
+        assert SAVE_MIN_DEPTH_M - BALL_ROUNDING_M <= depth <= SAVE_MAX_DEPTH_M + BALL_ROUNDING_M
+        keeper = _keeper(sim.team(sim.side_of(event.team_id).opponent))
+        assert _positions(flight.positions)[keeper] == flight.ball
+    assert goals_seen == {True, False}

@@ -180,6 +180,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   A blocked shot's flight stops at the first defender within 1.5 m of the line to goal and at least 0.5 m in front
   of the shooter (`analytics/shot_block.py`), or 2 m out when nobody is in the lane, instead of flying into the
   goal. The ball flies at least 0.5 m and always stops at least 1 m short of the goal line.
+- Saved shots in the instant replay stop at the keeper: the ball flies along the line to the shot card's placement
+  but stops where it reaches the keeper's distance off the line in the shot frame (clamped to 0.3 to 3 m, 1 m when
+  the keeper is not tracked; at least 0.5 m of flight, never closer than 0.3 m to the line), and the final replay
+  frame shows the defending keeper at the save point (`analytics/shot_save.py`). Previously a save flew to its spot
+  on the goal line and looked like a goal. Goals, off-target, and blocked shots are unchanged.
 - Demo script rewritten around one story: the 69' Scout flag, the 77' winner from there, and two fans' views of it.
 - Tracking protect drop: from 70' a leading team now defends 10 m deeper out of possession
   (`tracking/game_state.py`, sharing `PROTECT_START_SECOND` with the simulator's protect-the-lead rule; keeper and
