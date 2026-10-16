@@ -58,6 +58,8 @@ interface PitchProps {
   scoutZone?: ScoutZoneInfo | null;
   /** Shape shift to draw (back line before and now, block outline); null (default) draws none. */
   shapeShift?: ShapeShiftFlash | null;
+  /** Extra SVG drawn after the tactics and before the players (the replay's cone and path); null (default) none. */
+  annotations?: ReactNode;
 }
 
 export function Markings() {
@@ -129,7 +131,8 @@ function Shot({ shot, color }: { shot: ShotTrace; color: string }) {
 }
 
 export function Pitch({ ball, trail, players, moveMs, homeColor, awayColor, label, camera, shot, onBallAnchor,
-                       children, zoom = null, tactics = null, scoutZone = null, shapeShift = null }: PitchProps) {
+                       children, zoom = null, tactics = null, scoutZone = null, shapeShift = null,
+                       annotations = null }: PitchProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const ballRef = useRef<SVGCircleElement>(null);
 
@@ -166,6 +169,7 @@ export function Pitch({ ball, trail, players, moveMs, homeColor, awayColor, labe
             : <circle key={p.id} cx={p.x} cy={p.y} r={TRAIL_RADIUS} fill={color} opacity={opacity} />;
         })}
         {tactics && <TacticsLayer tactics={tactics} homeColor={homeColor} awayColor={awayColor} />}
+        {annotations}
         {shot && <Shot shot={shot} color={shot.side === "home" ? homeColor : awayColor} />}
         {players.map((dot) => <Player key={dot.id} dot={dot} color={dot.side === "home" ? homeColor : awayColor} />)}
         {ball && (

@@ -255,7 +255,7 @@ skipped.
 | GET | `/api/matches/{id}/stream?persona=&language=&team=&player=` | Personalized SSE feed |
 | GET | `/api/matches/{id}/producer` | Producer console state: timeline, broadcast records, pipeline health |
 | GET | `/api/matches/{id}/producer/stream` | Server-sent events: the producer console state whenever it changes, then `end` |
-| GET | `/api/matches/{id}/replay?period=&at=` | Instant replay: tracking frames from 6 s before to 2.5 s after an action already played |
+| GET | `/api/matches/{id}/replay?period=&at=` | Instant replay story of a played shot (`at` within 0.01 s): build-up, strike, and flight keyframes plus its analysis (xG, goal chance, shot cone, assist, build-up); 404 when no shot matches |
 | GET | `/api/matches/{id}/studio?window=` | Studio visuals for `match` or `last_15`: heat, pressing, and pass maps per team, space control, and the analyst's recommended visual |
 | GET | `/api/matches/{id}/highlights?stage=` | Highlights reel for `half_time` or `full_time` (409 until that recap exists): clips with tracking frames and narration |
 | POST | `/api/matches/{id}/producer/hold`, `/producer/release` | Hold AI overlays for approval; release one or all |
@@ -362,8 +362,14 @@ React + TypeScript (Vite, no UI library) broadcast interface:
 - **Shot card:** right after every shot, a broadcast card shows where it went in the goal mouth and where the
   keeper dived, with the result, shooter, xG, shot speed, distance, and angle (persona overlays step aside meanwhile).
 - **Instant replays:** a few seconds after every goal and every big chance (xG 0.25 or more), the action replays
-  in slow motion from another angle (behind the goal in the 3D view, a zoomed crop on the 2D pitch) under a
-  REPLAY bug, with a short commentator line, then returns to live. An Auto replays toggle turns them off.
+  from another angle (behind the goal in the 3D view, a zoomed crop on the 2D pitch) under a REPLAY bug, with a
+  short commentator line, then returns to live. An Auto replays toggle turns them off. The replay re-plays the
+  real build-up (the last few passes and carries, at real pace), then the strike and the ball's flight into the
+  goal mouth in slow motion (a blocked shot stops at the blocker). The 2D crop frames the whole action, from the
+  first build-up pass to the goal mouth, and draws the build-up path and the shot cone from the shooter to both
+  posts; the card and caption sit on the half away from the goal. It ends on an analysis card: xG, goal chance, distance, angle, speed, defenders and keeper in the cone,
+  pressure, the build-up's passes, time, and xT, and the assist (the full set for the analyst, a plain subset for
+  other personas). Cone counts come from the synthetic tracking positions and are illustrative.
 - **Studio:** a pundit screen with four analysis visuals on the pitch: space control (each area owned by the
   nearest team, with the players), pass networks, heat maps, and pressing maps, per team, for the whole match or
   the last 15 minutes. By default it follows the Match Analyst: the tactical theme of the newest explanation picks
@@ -473,9 +479,10 @@ backend/
     domain/       immutable event, team, and match models
     simulation/   seeded synthetic match engine with per-club weak flanks (stage 1 source)
     analytics/    streaming interpretation: xG, expected threat (xT) and line breaks, pass quality, stats, rhythm,
-                  key moments, tactical patterns, team shape and shape shifts (stage 2)
+                  key moments, tactical patterns, team shape and shape shifts, shot cones and blocks (stage 2)
     tracking/     synthetic 22-player positions with speed-limited motion, sprint detection, and the late protect drop
-    highlights/   automated highlights reels: clip selection, frame windows, narration (pure)
+    highlights/   automated highlights reels (clip selection, frame windows, narration) and instant replay
+                  stories (build-up and flight keyframes, shot analysis) (pure)
     studio/       studio visuals: heat and pressing grids, pass networks, space control, theme to visual (pure)
     speech/       neural voice choice and SSML for spoken commentary (pure)
     commentary/   deterministic play-by-play lines with intensity for goals and close calls

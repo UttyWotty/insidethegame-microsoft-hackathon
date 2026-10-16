@@ -57,5 +57,9 @@ class HighlightsNotReadyError(InsideGameError):
     """Raised when a highlights reel is requested before the match has reached that recap stage."""
 
 
+class ReplayNotFoundError(InsideGameError):
+    """Raised when an instant replay is requested for a period and second that match no shot played so far."""
+
+
 class XtConvergenceError(InsideGameError):
     """Raised when expected threat (xT) value iteration does not converge within its iteration budget."""

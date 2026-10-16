@@ -162,6 +162,7 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
         {replayShot && !reelStage ? (
           <ReplayPlayer key={replayShot.id} sessionId={sessionId} shot={replayShot} match={match} homeColor={homeColor}
             awayColor={awayColor} camera={camera} voiceOn={voiceOn} language={viewer.language}
+            persona={viewer.persona}
             onDone={() => setReplayShot(null)} />
         ) : reelStage ? (
           <HighlightsPlayer sessionId={sessionId} stage={reelStage} segment={state.cues[0]?.cue.viewer_id} match={match}

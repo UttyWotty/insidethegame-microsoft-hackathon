@@ -3,7 +3,7 @@
 Interpretation runs inline so the event feed keeps match pace, while agent workflows and recaps run as background
 tasks that publish when ready. Moments wait in order for a limited number of production slots, and non-goal moments
 that go stale while waiting are skipped. Cues are routed only to subscribers of the segment they were personalized for.
-Every tracking frame is kept so half-time and full-time highlights can be replayed.
+Every tracking frame and threat assessment is kept so highlights and instant shot replays can be rebuilt.
 """
 
 import asyncio
@@ -23,12 +23,14 @@ from insidegame.agents.recap_takes import template_take
 from insidegame.agents.schemas import MatchRecap, RecapTake
 from insidegame.agents.runner import OutputSource
 from insidegame.agents.templates import recap_template
+from insidegame.analytics.threat import ThreatAction
 from insidegame.commentary.play_by_play import PlayByPlay, line_gap_for_speed
-from insidegame.core.exceptions import HighlightsNotReadyError, SessionLimitError
+from insidegame.core.exceptions import HighlightsNotReadyError, ReplayNotFoundError, SessionLimitError
 from insidegame.domain.enums import Intensity
 from insidegame.domain.events import MatchEvent
 from insidegame.domain.match import MatchResult
-from insidegame.highlights.reel import FrameRecord, build_reel, replay_frames
+from insidegame.highlights.reel import FrameRecord, build_reel
+from insidegame.highlights.replay_story import build_story
 from insidegame.live.highlight_lines import clip_narrations
 from insidegame.live.pacing import replay_delay_s
 from insidegame.live.studio_view import StudioWindow, studio_payload
@@ -138,6 +140,8 @@ class MatchSession:
         self.clock: tuple[int, float] = (1, 0.0)
         self.commentary: deque[dict[str, object]] = deque(maxlen=COMMENTARY_HISTORY)
         self.frames: list[FrameRecord] = []
+        self.event_frames: dict[str, Frame] = {}
+        self.threats: dict[str, ThreatAction] = {}
         self.played = 0
         self.clock_s = clock
         self.traces: dict[str, AgentTrace] = {}
@@ -286,8 +290,12 @@ class MatchSession:
         return {"stage": stage.value, "headline": headline, "clips": [c.to_dict() for c in clips]}
 
     def replay(self, period: int, at: float) -> dict[str, object]:
-        """Stored frames around an action already played, for an instant replay."""
-        return {"period": period, "at": at, "frames": [f.to_dict() for f in replay_frames(self.frames, period, at)]}
+        """The instant replay story of a shot already played; ReplayNotFoundError when no played shot matches."""
+        story = build_story(self.result.events[:self.played], self.event_frames, self.threats, self.result.metadata,
+                            period, at)
+        if story is None:
+            raise ReplayNotFoundError(f"No played shot in period {period} at {at}s to replay")
+        return story.to_dict()
 
     def studio(self, window: StudioWindow) -> dict[str, object]:
         """Studio analysis visuals over the events played so far, with the analyst's recommended visual."""
@@ -349,9 +357,10 @@ class MatchSession:
             self.publish(LiveMessage(MessageType.END, {"session_id": self.session_id}))
 
     def _keep_frame(self, event: MatchEvent, positions: Frame | None) -> None:
-        """Store the tracking frame for highlights replays."""
+        """Store the tracking frame for highlights reels and, by event id, for shot replays."""
         if positions is None:
             return
+        self.event_frames[event.event_id] = positions
         ball = self.service.tracking.ball_home_frame
         self.frames.append(FrameRecord(event.period, event.match_second, event.event_type.value, event.player_id,
                                        (round(ball.x, BALL_DECIMALS), round(ball.y, BALL_DECIMALS)), positions))
@@ -365,6 +374,8 @@ class MatchSession:
             interpretation = self.service.interpret(event, upcoming)
             sprint = interpretation.sprint
             self._keep_frame(event, interpretation.positions)
+            if interpretation.update.threat is not None:
+                self.threats[event.event_id] = interpretation.update.threat
             self.played = index + 1
             payload = interpretation.update.to_dict() | {
                 "positions": interpretation.positions,

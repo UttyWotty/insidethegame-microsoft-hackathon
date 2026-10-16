@@ -83,9 +83,12 @@ async def highlights(
 async def replay(
     session_id: str, request: Request,
     period: int = Query(ge=1, le=2, description="Period of the action to replay."),
-    at: float = Query(ge=0, description="Match second of the action; frames run from shortly before to just after."),
+    at: float = Query(ge=0, description="Match second of a shot already played (matched within 0.01 s)."),
 ) -> dict[str, object]:
-    """Instant replay: the tracking frames around an action that has already been played."""
+    """Instant replay story of a played shot: build-up, strike, and flight keyframes plus the shot analysis.
+
+    Returns 404 when no played shot matches period and at, or the session is unknown.
+    """
     return _registry(request).get(session_id).replay(period, at)
 
 
