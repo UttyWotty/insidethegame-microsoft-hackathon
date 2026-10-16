@@ -27,6 +27,7 @@ Copilot-through-MCP recording, the demo video, then the submission steps. Fabric
   commentator verbs, eval coverage of every persona, fact-check issues in the report, and "In production" status
   in the producer console.
   Still open:
+  <!--
   1. Live UI check. The 2026-10-13 attempt (seed 7, speed 20, analyst and Spanish casual viewers) produced no
      broadcast record in 12 minutes: all 18 detected moments started at once and shared the single local model
      slot, so none finished, and a `godot` process from another project was saturating the machine at the same
@@ -36,6 +37,13 @@ Copilot-through-MCP recording, the demo video, then the submission steps. Fabric
      MODEL_BASE_URL=http://127.0.0.1:8081/v1 MODEL_TIMEOUT_S=240 MODEL_MAX_CONCURRENCY=1 API_PORT=8000
      .venv/bin/python -m insidegame.main`, then confirm the chips show AI (not Template) and the producer console
      shows model sources and fact-check verdicts.
+  -->
+     Done 2026-10-16 (seed 201, speed 10, one analyst viewer, Qwen3.8 27B 6-bit on 8081, browser closed after
+     kick-off and checked through the producer API): the 15' goal aired with explanation, commentary, and card all
+     from the model and a model fact-check approval with no issues; the 1' long-pass card aired with model
+     commentary and card, a model fact-check approval, and a fallback explanation after the Match Analyst hit the
+     240 s timeout. No tracebacks; backpressure skipped 2 moments. Local latency is 4 to 11 minutes per card, so
+     the local model cannot keep up with a live match at any useful speed; record the video on Foundry.
   2. Rerun the evaluation once to read `fact_check_issues` and judge whether the 4 revisions were real catches.
 
 ## Azure go-live (needs a personal Azure subscription)
