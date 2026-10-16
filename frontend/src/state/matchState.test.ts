@@ -177,3 +177,19 @@ describe("Line-breaking passes", () => {
     expect(initialMatchState.threatFlash).toBeNull();
   });
 });
+
+describe("Shape shifts", () => {
+  const shiftMoment = {
+    moment_id: "m-12", kind: "shape_shift", period: 1, match_second: 1500, minute: 26, importance: 0.56, team_id: "a",
+    player_ids: [], facts: { direction: "dropped", line_before_m: 31.1, line_after_m: 20.0, block_after: "low" },
+  };
+
+  it("stores the shape shift from an event message and keeps it on later events", () => {
+    const shifted = { ...update(1500), moments: [shiftMoment] };
+    let state = matchReducer(withSession, { type: "message", name: "event", data: shifted, receivedAt: 700 });
+    expect(state.shapeShift).toMatchObject({ momentId: "m-12", side: "away", lineBeforeM: 31.1, lineAfterM: 20, at: 700 });
+    state = matchReducer(state, { type: "message", name: "event", data: update(1510), receivedAt: 800 });
+    expect(state.shapeShift?.momentId).toBe("m-12");
+    expect(initialMatchState.shapeShift).toBeNull();
+  });
+});

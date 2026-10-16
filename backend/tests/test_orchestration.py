@@ -9,16 +9,20 @@ import json
 import re
 
 from agent_framework import AgentFrameworkException
+import pytest
 from fakes import CallbackChatClient
+from shape_helpers import shape_moment
 
-from insidegame.agents.context import MomentContext, ViewerContext
+from insidegame.agents.context import MomentContext, ViewerContext, build_moment_context
 from insidegame.agents.factory import create_agent_suite
 from insidegame.agents.personas import PersonaKey, ViewerProfile
 from insidegame.agents.runner import OutputSource, RunPolicy
 from insidegame.analytics.analyzer import MatchAnalyzer
 from insidegame.analytics.moments import KeyMoment, MomentKind
+from insidegame.analytics.shape_tracker import ShiftDirection
 from insidegame.domain.enums import EventType
 from insidegame.orchestration.cues import CUE_DELAY_S, TIME_DECIMALS
+from insidegame.orchestration.executors import SCOUT_KINDS, is_not_tactical, is_tactical
 from insidegame.orchestration.messages import MomentJob
 from insidegame.orchestration.producer import MIN_GAP_S, ProducerPolicy
 from insidegame.orchestration.service import MatchIntelligenceService
@@ -197,3 +201,43 @@ def test_broken_model_on_a_tactical_job_falls_back_to_the_scout_template(
     assert broadcast.explanation.source is OutputSource.FALLBACK
     assert broadcast.explanation.value == explanation_template(tactical_context)
     assert all(c.body for c in broadcast.cues)
+
+
+@pytest.fixture(scope="module")
+def shape_context(analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]]) -> MomentContext:
+    """A dropped shape_shift moment with a goal trigger, in the fixture match's context."""
+    analyzer = analysed_match[0]
+    return build_moment_context(shape_moment(analyzer.metadata, ShiftDirection.DROPPED, True), analyzer)
+
+
+def test_shape_shift_job_runs_the_scout_and_never_the_analyst(
+    shape_context: MomentContext, analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
+) -> None:
+    calls, broadcast, _ = _route(shape_context, analysed_match[0])
+    assert calls[0].startswith("You are the Tactical Scout")
+    assert not any(c.startswith("You are the Match Analyst") for c in calls)
+    assert broadcast.explanation.value.headline == REPLIES["Tactical Scout"]["headline"]
+    assert broadcast.explanation.source is OutputSource.MODEL and len(broadcast.cues) == 2
+
+
+def test_shape_shift_routing_edges_send_only_scout_kinds_to_the_scout(
+    shape_context: MomentContext, goal_context: MomentContext,
+    analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
+) -> None:
+    viewers = _viewers(analysed_match[0])
+    assert SCOUT_KINDS == frozenset({MomentKind.TACTICAL_PATTERN, MomentKind.SHAPE_SHIFT})
+    shape_job, goal_job = MomentJob(shape_context, viewers), MomentJob(goal_context, viewers)
+    assert is_tactical(shape_job) and not is_not_tactical(shape_job)
+    assert is_not_tactical(goal_job) and not is_tactical(goal_job)
+
+
+def test_broken_model_on_a_shape_shift_job_falls_back_to_the_shape_template(
+    shape_context: MomentContext, analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
+) -> None:
+    from insidegame.agents.templates import explanation_template
+    analyzer = analysed_match[0]
+    workflow = build_moment_workflow(create_agent_suite(CallbackChatClient(lambda i, p: "garbage")), analyzer, POLICY)
+    broadcast = asyncio.run(workflow.run(MomentJob(shape_context, _viewers(analyzer)))).get_outputs()[0]
+    assert broadcast.explanation.source is OutputSource.FALLBACK
+    assert broadcast.explanation.value == explanation_template(shape_context)
+    assert "back line" in broadcast.explanation.value.headline and all(c.body for c in broadcast.cues)

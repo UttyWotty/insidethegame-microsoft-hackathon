@@ -3,7 +3,8 @@
 At half-time or full-time the reel takes every goal plus the most important other moments up to MAX_CLIPS, in
 match order, and cuts each one a few seconds either side of the moment from the frames recorded during the
 replay (instant replays use a shorter window around a single action). Each clip carries the best available narration: the viewer's own commentary, the produced commentary,
-or a grounded label built from the moment's facts. Tactical Scout flags are never clipped: they have no single action to replay.
+or a grounded label built from the moment's facts. Tactical Scout flags and shape shifts are never clipped: they
+have no single action to replay.
 """
 
 from collections.abc import Mapping, Sequence
@@ -26,8 +27,9 @@ KIND_TITLES: dict[MomentKind, str] = {
     MomentKind.DIFFICULT_PASS: "Defence-splitting pass", MomentKind.MOMENTUM_SWING: "Momentum swing",
     MomentKind.CHAOS_SPELL: "Chaotic spell", MomentKind.MILESTONE: "Milestone",
     MomentKind.TACTICAL_PATTERN: "Tactical Scout flag", MomentKind.THREAT_CREATED: "Line-breaking pass",
+    MomentKind.SHAPE_SHIFT: "Shape shift",
 }
-UNCLIPPED_KINDS: frozenset[MomentKind] = frozenset({MomentKind.TACTICAL_PATTERN})
+UNCLIPPED_KINDS: frozenset[MomentKind] = frozenset({MomentKind.TACTICAL_PATTERN, MomentKind.SHAPE_SHIFT})
 
 
 @dataclass(frozen=True)
@@ -76,7 +78,7 @@ class Clip:
 
 
 def select_moments(moments: Sequence[KeyMoment], stage: RecapStage) -> list[KeyMoment]:
-    """Goals plus the most important other turning points, up to MAX_CLIPS, in match order, never Scout flags.
+    """Goals plus the most important other turning points, up to MAX_CLIPS, in match order, never UNCLIPPED_KINDS.
 
     A half-time reel covers the first half only; a full-time reel covers the whole match.
     """

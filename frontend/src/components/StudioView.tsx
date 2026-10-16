@@ -1,7 +1,8 @@
 /**
  * Studio view for pundit segments: heat maps, pressing maps, pass networks, and space control on the pitch.
  * By default it follows the Match Analyst: the theme of the newest explanation picks the visual, and the
- * explanation sits beside it. Viewers can pick a visual, switch team, or narrow the maps to the last 15 minutes.
+ * explanation sits beside it, above a back-line height timeline with its shape shifts. Viewers can pick a visual,
+ * switch team, or narrow the maps to the last 15 minutes.
  */
 import { useEffect, useState } from "react";
 import { api, ApiError } from "../api/client";
@@ -10,6 +11,7 @@ import { cellRects, describeControl, heatFill, linkWidth, nodeRadius, VISUAL_LAB
 import { teamColor } from "../lib/teams";
 import type { MatchMetadata, SpaceControl, StudioPayload, StudioTeam, StudioVisual } from "../types";
 import { MatchBar } from "./MultiView";
+import { ShapeTimeline } from "./ShapeTimeline";
 import { Markings } from "./Pitch";
 
 const STUDIO_POLL_MS = 4000;
@@ -153,6 +155,7 @@ export function StudioView({ sessionId, match, language }: { sessionId: string; 
             </p>
           </>
         ) : <p className="muted" style={{ margin: 0 }}>The analyst speaks up at the first key moment.</p>}
+        {data.shape && <ShapeTimeline shape={data.shape} match={match} homeColor={homeColor} awayColor={awayColor} />}
       </aside>
     </div></main></>
   );

@@ -2,7 +2,8 @@
 
 MatchAnalyzer.ingest computes xG, pass quality, the expected threat (xT) of completed passes and carries (with line
 breaks when tracking positions are supplied), a broadcast shot card, and live win probability, updates statistics and
-rhythm, and detects key moments.
+rhythm, tracks each team's out-of-possession shape (and its line-height shifts) from those positions, and detects
+key moments.
 snapshot returns the full machine-readable match state for overlays, agents, and APIs.
 """
 
@@ -10,9 +11,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 from insidegame.analytics.detectors import MomentDetector
-from insidegame.analytics.moments import KeyMoment
+from insidegame.analytics.moments import KeyMoment, MomentKind
 from insidegame.analytics.pass_quality import PassQuality, assess_pass
 from insidegame.analytics.rhythm import RhythmReading, RhythmTracker
+from insidegame.analytics.shape_tracker import ShapeTracker
 from insidegame.analytics.shot_card import ShotCard, shot_card
 from insidegame.analytics.threat import ThreatAction, assess_threat
 from insidegame.analytics.threat_board import threat_leaders
@@ -68,6 +70,7 @@ class MatchAnalyzer:
     stats: StatsAccumulator = field(init=False)
     rhythm: RhythmTracker = field(default_factory=RhythmTracker)
     detector: MomentDetector = field(init=False)
+    shape: ShapeTracker = field(init=False)
     moments: list[KeyMoment] = field(default_factory=list)
     last_event: MatchEvent | None = None
     last_reading: RhythmReading | None = None
@@ -75,12 +78,14 @@ class MatchAnalyzer:
     def __post_init__(self) -> None:
         self.stats = StatsAccumulator(self.metadata)
         self.detector = MomentDetector(self.metadata)
+        self.shape = ShapeTracker(self.metadata)
 
     def ingest(self, event: MatchEvent, positions_before: Mapping[str, Point] | None = None) -> AnalysisUpdate:
         """Interpret one event and return the derived update.
 
-        positions_before (default None, no line breaks) holds absolute home-frame player positions before this
-        event, as tracked live, so passes can be assessed for opponents bypassed and lines broken.
+        positions_before (default None, no line breaks and no shape) holds absolute home-frame player positions
+        before this event, as tracked live, so passes can be assessed for opponents bypassed and lines broken and
+        each team's shape can be sampled.
         """
         xg = expected_goals(event.start, event.under_pressure) if (
             event.event_type is EventType.SHOT and event.start) else None
@@ -90,7 +95,8 @@ class MatchAnalyzer:
         side = self.metadata.side_of(event.team_id) if event.team_id else None
         self.stats.apply(event, xg, quality, threat)
         reading = self.rhythm.update(event, side, xg, quality)
-        new_moments = tuple(self.detector.detect(event, xg, quality, reading, threat=threat))
+        shifts = self.shape.observe(event, positions_before)
+        new_moments = tuple(self.detector.detect(event, xg, quality, reading, threat=threat, shifts=shifts))
         self.moments.extend(new_moments)
         self.last_event, self.last_reading = event, reading
         card = shot_card(event, xg) if xg is not None else None
@@ -129,4 +135,18 @@ class MatchAnalyzer:
             "moments": [m.to_dict() for m in self.moments],
             "threat_leaders": [leader.to_dict() for leader in
                                threat_leaders(self.stats.players.values(), THREAT_LEADERS_IN_SNAPSHOT)],
+            "shape": self.shape_readings(),
         }
+
+    def shape_readings(self) -> dict[str, dict[str, object] | None]:
+        """Each side's current shape reading ("home" and "away"), None until it has enough samples."""
+        readings = {side: self.shape.reading(self.metadata.team(side).team_id) for side in (Side.HOME, Side.AWAY)}
+        return {side.value: reading.to_dict() if reading else None for side, reading in readings.items()}
+
+    def shape_studio(self) -> dict[str, object]:
+        """The whole match's line-height timeline and every shape shift, for the studio chart."""
+        shifts = [{"moment_id": m.moment_id, "minute_label": m.minute_label, "period": m.period,
+                   "match_second": m.match_second, "team_id": m.team_id, "direction": m.facts["direction"],
+                   "line_before_m": m.facts["line_before_m"], "line_after_m": m.facts["line_after_m"]}
+                  for m in self.moments if m.kind is MomentKind.SHAPE_SHIFT]
+        return {"timeline": [point.to_dict() for point in self.shape.timeline()], "shifts": shifts}

@@ -15,6 +15,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Team shape and shape shifts: pure shape metrics per team (`analytics/shape.py`: back-line height, length, width,
+  compactness, and a high, mid, or low block) measured out of possession from the tracked positions before each
+  event; a deterministic `ShapeTracker` (`analytics/shape_tracker.py`) that compares the last 10 minutes with the 10
+  before and raises a new `shape_shift` key moment when the back line moves 6 m or more for 4 minutes (15-minute
+  cooldown per team, reset each period; about 1.1 per match over Kestrel Bay vs Ironvale seeds 1-20). Its facts
+  (`analytics/shape_moments.py`) give the line, block, length, and width before and after, the team's space-control
+  and possession shares over the same two windows, the score, the goal that triggered it, and who has momentum; on
+  the demo match Kestrel Bay's back line drops from 30.9 m to 20.2 m at 88' after going ahead at 77'. The Tactical
+  Scout explains shape shifts (routing, one instruction sentence, template, glossary "Defensive line", labels,
+  "Shape shift" reel title, excluded from the reel). The snapshot carries each team's `shape` reading, the new MCP
+  tool `get_team_shape` (also allowed for the Foundry hosted agent) returns both readings and the last five shifts,
+  the Match Companion's context includes each team's line height and block, and the studio payload adds a
+  whole-match `shape` timeline with shift marks. The broadcast draws the back line before and now with the block
+  outline when a shift airs (labels in the mid-pitch band, clear of the shot card and the offside label), the studio
+  shows a back-line height timeline (period-aware, so first-half stoppage minutes sit before the half-time divider),
+  and analysts' match stats add back-line and block rows. The tracker treats an empty positions map like no
+  positions, leaves unknown players and non-finite points out of space control, and returns no reading for a team
+  id outside the match. `docs/DEMO_SCRIPT.md` gains the "Shape shift at 88'" beat.
+
 - Expected threat (xT) possession value: a 12 x 8 grid fitted by value iteration to 480 of our own simulated
   matches (`python -m insidegame.datasets.xt_fit`, generated `analytics/xt_grid.py`, mirror-symmetrised, shots valued
   by our xG model, tackles counted as failed moves) credits every completed pass and carry with the xT it added to
@@ -143,6 +162,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tracked player, and a broadcast camera mode tilting the pitch like a TV angle (with a flat tactical mode).
 
 ### Changed
+
+- Tracking protect drop: from 70' a leading team now defends 10 m deeper out of possession
+  (`tracking/game_state.py`, sharing `PROTECT_START_SECOND` with the simulator's protect-the-lead rule; keeper and
+  in-possession shapes unchanged), so late leads show up in the back line. Only tracked positions move: events,
+  scorelines, the calibration report, and the event, match, player, and moment sample files are unchanged, and
+  `data/sample/tracking.jsonl` regenerates identically because neither sample match has a late lead.
 
 - Every club now has a weak defensive flank (Brookhaven and Kestrel Bay left, Ironvale and Silverlake right,
   `TeamStyle.weak_flank`): in the attacking half, opponents' passes drift 5 m toward it, passes into it in the final

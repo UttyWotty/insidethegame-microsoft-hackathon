@@ -2,6 +2,7 @@
 
 They check frame completeness and bounds, that event actors reach the ball, team shape by phase, that nobody
 runs faster than a human, that sprint tags are occasional, and that distance covered is football-realistic.
+They also check the game-state protect drop: a side leading late defends deeper out of possession, and only then.
 """
 
 import math
@@ -9,9 +10,12 @@ from collections import defaultdict
 
 from insidegame.core.constants import PITCH_LENGTH_M, PITCH_WIDTH_M
 from insidegame.core.geometry import Point, distance, mirror
-from insidegame.domain.enums import EventType, Side
+from insidegame.domain.enums import EventType, Position, Side
+from insidegame.domain.events import MatchEvent
 from insidegame.simulation.engine import simulate_match
 from insidegame.simulation.roster import build_fixture
+from insidegame.simulation.probabilities import PROTECT_START_SECOND
+from insidegame.tracking.game_state import PROTECT_DROP_M, protect_drop_m
 from insidegame.tracking.model import LOOKAHEAD_EVENTS, TrackingModel
 from insidegame.tracking.motion import SPRINT_KMH
 
@@ -108,3 +112,38 @@ def test_physical_stats_report_distance_and_top_speed() -> None:
     outfield = [v for pid, v in physical.items() if not pid.endswith("-01")]
     assert len(physical) == PLAYERS and all(v["top_kmh"] <= HUMAN_TOP_SPEED_KMH for v in physical.values())
     assert DISTANCE_KM_RANGE[0] <= sorted(v["distance_km"] for v in outfield)[len(outfield) // 2] <= DISTANCE_KM_RANGE[1]
+
+
+DROP_TOLERANCE_M = 1.0
+LATE_SECOND = 4500.0
+EARLY_SECOND = 3600.0
+OWN_HALF_BALL = Point(20.0, 34.0)
+
+
+def test_protect_drop_applies_only_when_leading_at_or_after_seventy_minutes() -> None:
+    assert protect_drop_m(1, PROTECT_START_SECOND) == PROTECT_DROP_M == 10.0
+    assert protect_drop_m(2, LATE_SECOND) == PROTECT_DROP_M
+    assert protect_drop_m(1, PROTECT_START_SECOND - 1.0) == 0.0
+    assert protect_drop_m(0, LATE_SECOND) == 0.0 and protect_drop_m(-1, LATE_SECOND) == 0.0
+
+
+def _fresh_frame(second: float, score: tuple[int, int]) -> dict[str, tuple[float, float]]:
+    """One frame from a fresh model: home passes in its own half, so the away side is out of possession."""
+    metadata = build_fixture("kestrel_bay", "ironvale", 7)
+    passer = metadata.home.players_in(Position.MIDFIELDER)[0].player_id
+    event = MatchEvent("e1", metadata.match_id, 1, 2, second, EventType.PASS, metadata.home.team_id, passer, 1,
+                       OWN_HALF_BALL, score[0], score[1])
+    return {pid: (x, y) for pid, x, y in TrackingModel(metadata).frame(event)}
+
+
+def test_a_leading_side_defends_deeper_out_of_possession_only() -> None:
+    metadata = build_fixture("kestrel_bay", "ironvale", 7)
+    level, away_leads, home_leads = (_fresh_frame(LATE_SECOND, s) for s in ((0, 0), (0, 1), (1, 0)))
+    away_defenders = [p.player_id for p in metadata.away.players_in(Position.DEFENDER)]
+    for pid in away_defenders:
+        deeper = away_leads[pid][0] - level[pid][0]
+        assert abs(deeper - PROTECT_DROP_M) <= DROP_TOLERANCE_M, pid
+    keeper = metadata.away.goalkeeper().player_id
+    assert away_leads[keeper] == level[keeper]
+    assert home_leads == level
+    assert _fresh_frame(EARLY_SECOND, (0, 1)) == _fresh_frame(EARLY_SECOND, (0, 0))

@@ -1,7 +1,8 @@
 """Model Context Protocol server exposing live match intelligence as tools for external agents.
 
 GitHub Copilot, Microsoft Foundry agents, or any MCP client can start matches, read live state and key moments,
-look up players, rank the expected threat (xT) danger leaderboard, read recaps, and question the Match Companion;
+look up players, rank the expected threat (xT) danger leaderboard, read team shape and line-height shifts, read
+recaps, and question the Match Companion;
 tools share the API's live session registry.
 """
 
@@ -16,6 +17,7 @@ from insidegame.agents.personas import DEFAULT_LANGUAGE
 from insidegame.agents.question_context import build_question_context
 from insidegame.agents.steps import answer_question
 from insidegame.analytics.analyzer import MatchAnalyzer
+from insidegame.analytics.moments import MomentKind
 from insidegame.analytics.threat import XT_DECIMALS
 from insidegame.analytics.threat_board import threat_leaders
 from insidegame.live.pacing import DEFAULT_SPEED
@@ -26,13 +28,15 @@ from insidegame.simulation.roster import CLUB_PRESETS
 SERVER_NAME: str = "inside-the-game"
 SERVER_INSTRUCTIONS: str = (
     "Live, explainable football match intelligence on synthetic matches. Start a match with start_match, then "
-    "read get_match_state, get_key_moments, get_player_stats, get_threat_leaderboard, and get_recaps, or ask "
+    "read get_match_state, get_key_moments, get_player_stats, get_threat_leaderboard, get_team_shape, and "
+    "get_recaps, or ask "
     "ask_match_companion a question."
 )
 DEFAULT_MOMENTS: int = 5
 MAX_MOMENTS: int = 30
 DEFAULT_THREAT_LEADERS: int = 5
 MAX_THREAT_LEADERS: int = 22
+SHAPE_SHIFTS_RETURNED: int = 5
 DEFAULT_PERSONA: str = "analyst"
 MCP_CLIENT_KEY: str = "mcp"  # MCP callers share one creation budget; the endpoint is guarded by MCP_API_KEY
 
@@ -48,6 +52,12 @@ def threat_leaderboard(analyzer: MatchAnalyzer, limit: int) -> dict[str, object]
              for team in (analyzer.metadata.home, analyzer.metadata.away)]
     players = threat_leaders(analyzer.stats.players.values(), limit)
     return {"teams": teams, "players": [leader.to_dict() for leader in players]}
+
+
+def team_shape_report(analyzer: MatchAnalyzer) -> dict[str, object]:
+    """Each team's current shape reading (None without one) and the last SHAPE_SHIFTS_RETURNED shape_shift moments."""
+    shifts = [m.to_dict() for m in analyzer.moments if m.kind is MomentKind.SHAPE_SHIFT][-SHAPE_SHIFTS_RETURNED:]
+    return {**analyzer.shape_readings(), "shifts": shifts}
 
 
 def _register_session_tools(server: MCPServer, registry: RegistryGetter) -> None:
@@ -74,7 +84,7 @@ def _register_session_tools(server: MCPServer, registry: RegistryGetter) -> None
 
 
 def _register_read_tools(server: MCPServer, registry: RegistryGetter) -> None:
-    """Tools that read live match state, moments, player statistics, the danger leaderboard, and recaps."""
+    """Tools that read live match state, moments, player statistics, the danger leaderboard, shape, and recaps."""
 
     @server.tool(description="Current score, clock, team statistics, rhythm, and standout players.")
     async def get_match_state(session_id: str) -> dict[str, object]:
@@ -102,6 +112,11 @@ def _register_read_tools(server: MCPServer, registry: RegistryGetter) -> None:
                                     le=MAX_THREAT_LEADERS)] = DEFAULT_THREAT_LEADERS,
     ) -> dict[str, object]:
         return threat_leaderboard(registry().get(session_id).service.analyzer, limit)
+
+    @server.tool(description="Each team's current back-line height, length, width, compactness, and high, mid, or "
+                             "low block, with the latest shape shifts and their before and after numbers.")
+    async def get_team_shape(session_id: str) -> dict[str, object]:
+        return team_shape_report(registry().get(session_id).service.analyzer)
 
     @server.tool(description="Half-time and full-time recaps written so far by the Match Editor agent.")
     async def get_recaps(session_id: str) -> list[dict[str, object]]:

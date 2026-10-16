@@ -17,7 +17,7 @@ from insidegame.api.mcp_auth import BearerTokenGuard
 
 MCP_HEADERS = {"accept": "application/json, text/event-stream", "content-type": "application/json"}
 EXPECTED_TOOLS = {"list_clubs", "start_match", "list_matches", "get_match_state", "get_key_moments",
-                  "get_player_stats", "get_recaps", "ask_match_companion", "get_threat_leaderboard"}
+                  "get_player_stats", "get_recaps", "ask_match_companion", "get_threat_leaderboard", "get_team_shape"}
 
 
 def _structured(result: object) -> object:
@@ -117,3 +117,34 @@ def test_threat_leaderboard_rejects_a_limit_outside_one_to_twenty_two() -> None:
             body = client.post("/mcp/", json=call, headers=MCP_HEADERS).json()
             assert body["result"]["isError"] is True
             assert "validation error" in body["result"]["content"][0]["text"]
+
+
+def test_team_shape_tool_reports_readings_and_shifts_of_a_live_session() -> None:
+    with _client() as client:
+        session_id = client.post("/api/matches", json={"home": "kestrel_bay", "away": "ironvale", "seed": 201}).json()[
+            "session_id"]
+        with client.stream("GET", f"/api/matches/{session_id}/stream", params={"persona": "analyst"}) as r:
+            for line in r.iter_lines():
+                if line == "event: end":
+                    break
+        mcp = client.app.state.mcp  # type: ignore[attr-defined]
+
+        async def scenario() -> object:
+            return _structured(await mcp.call_tool("get_team_shape", {"session_id": session_id}))
+
+        shape = client.portal.call(scenario)  # type: ignore[union-attr]
+        assert set(shape) == {"home", "away", "shifts"}  # type: ignore[arg-type]
+        assert shape["home"]["block"] in {"high", "mid", "low"}  # type: ignore[index]
+        assert shape["away"]["team_id"] == "irv"  # type: ignore[index]
+        shifts = shape["shifts"]  # type: ignore[index]
+        assert 0 < len(shifts) <= 5 and all(s["kind"] == "shape_shift" and "line_before_m" in s["facts"] for s in shifts)
+
+
+def test_team_shape_for_an_unknown_session_is_an_mcp_error_result() -> None:
+    with _client() as client:
+        _initialise(client)
+        call = {"jsonrpc": "2.0", "id": 5, "method": "tools/call",
+                "params": {"name": "get_team_shape", "arguments": {"session_id": "missing"}}}
+        body = client.post("/mcp/", json=call, headers=MCP_HEADERS).json()
+        assert body["result"]["isError"] is True
+        assert client.get("/api/health").json()["status"] == "ok"

@@ -2,14 +2,17 @@
  * SVG pitch rendering the synthetic match: markings, all 22 tracked players, the ball, and a trail of recent actions.
  * Players glide between tracking frames over the real time between events, players involved in the latest action
  * get live name tags, a sprinting player shows their speed, and the broadcast camera tilts the pitch like a TV angle.
- * The ball's on-screen position is reported to the parent so overlays can anchor to it in either camera mode.
+ * The ball's on-screen position is reported to the parent so overlays can anchor to it in either camera mode, and
+ * a shape shift draws the team's back line before and now with its block, under the players.
  */
 import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { PITCH_LENGTH, PITCH_WIDTH, RUNOFF_M, RUNOFF_TOP_M, tagPlacement } from "../lib/pitch";
 import type { PlayerDot } from "../lib/playerDots";
 import type { ScoutZoneInfo } from "../lib/scout";
+import type { ShapeShiftFlash } from "../lib/shape";
 import type { Tactics } from "../lib/tactics";
 import { ScoutZone } from "./overlays/ScoutZone";
+import { ShapeShiftLayer } from "./overlays/ShapeShiftLayer";
 import { TacticsLayer } from "./overlays/TacticsLayer";
 
 export type { PlayerDot } from "../lib/playerDots";
@@ -53,6 +56,8 @@ interface PitchProps {
   tactics?: Tactics | null;
   /** Zone flagged by the Tactical Scout, drawn under the players; null (default) draws none. */
   scoutZone?: ScoutZoneInfo | null;
+  /** Shape shift to draw (back line before and now, block outline); null (default) draws none. */
+  shapeShift?: ShapeShiftFlash | null;
 }
 
 export function Markings() {
@@ -124,7 +129,7 @@ function Shot({ shot, color }: { shot: ShotTrace; color: string }) {
 }
 
 export function Pitch({ ball, trail, players, moveMs, homeColor, awayColor, label, camera, shot, onBallAnchor,
-                       children, zoom = null, tactics = null, scoutZone = null }: PitchProps) {
+                       children, zoom = null, tactics = null, scoutZone = null, shapeShift = null }: PitchProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const ballRef = useRef<SVGCircleElement>(null);
 
@@ -146,6 +151,8 @@ export function Pitch({ ball, trail, players, moveMs, homeColor, awayColor, labe
         style={{ "--move-ms": `${moveMs}ms` } as CSSProperties}>
         <Markings />
         {scoutZone && <ScoutZone zone={scoutZone.zone} color={scoutZone.color} label={scoutZone.label} />}
+        {shapeShift && <ShapeShiftLayer flash={shapeShift} players={players}
+          color={shapeShift.side === "home" ? homeColor : awayColor} />}
         {trail.length > 1 && (
           <polyline fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth={0.22}
             points={trail.map((p) => `${p.x},${p.y}`).join(" ")} />

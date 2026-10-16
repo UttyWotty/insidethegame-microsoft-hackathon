@@ -30,6 +30,7 @@ class MomentKind(StrEnum):
     MILESTONE = "milestone"
     TACTICAL_PATTERN = "tactical_pattern"
     THREAT_CREATED = "threat_created"
+    SHAPE_SHIFT = "shape_shift"
 
 
 @dataclass(frozen=True)

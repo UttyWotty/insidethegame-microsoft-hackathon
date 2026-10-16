@@ -1,8 +1,8 @@
 """Synthetic player tracking: formation-aware positions for all 22 players after every event.
 
 Teams in possession push up and spread; teams out of possession compact, shift toward the ball, and press higher
-when their style says so. Players involved in the event are targeted at the ball, players about to act start
-running so they arrive on time, and a small deterministic sway keeps movement natural. Every player moves toward their target no faster than their pace-based top speed allows in
+when their style says so; a team leading late defends deeper (see tracking/game_state.py). Players involved in
+the event are targeted at the ball, players about to act start running so they arrive on time, and a small deterministic sway keeps movement natural. Every player moves toward their target no faster than their pace-based top speed allows in
 the elapsed match time (formations reset at kick-offs), the fastest sprinter of each frame is reported, and each
 player's distance covered and top speed accumulate for the physical leaderboard.
 Positions are returned in the absolute home frame (home attacking toward x = 105).
@@ -19,6 +19,7 @@ from insidegame.domain.events import MatchEvent
 from insidegame.domain.match import MatchMetadata
 from insidegame.domain.teams import Team
 from insidegame.tracking.formation import DEFENDER_INDICES, FORWARD_INDICES, GOALKEEPER_INDEX, SLOTS
+from insidegame.tracking.game_state import protect_drop_m
 from insidegame.tracking.motion import fastest_sprinter, speed_kmh, step_toward, timed_target, top_speed_kmh
 
 POSITION_DECIMALS: int = 1
@@ -61,8 +62,13 @@ def _sway(sequence: int, index: int) -> tuple[float, float]:
     return SWAY_M * math.cos(math.radians(angle)), SWAY_M * math.sin(math.radians(angle))
 
 
-def _shape(team: Team, ball: Point, in_possession: bool, sequence: int) -> list[Point]:
-    """Formation positions for one team in its own attacking frame."""
+def _shape(team: Team, ball: Point, in_possession: bool, sequence: int, drop_m: float) -> list[Point]:
+    """Formation positions for one team in its own attacking frame.
+
+    drop_m moves every outfield player that many metres toward their own goal when out of possession (the
+    game-state protect drop); the keeper and in-possession shapes ignore it.
+    """
+    depth = 0.0 if in_possession else drop_m
     if in_possession:
         push, width, y_shift = _clamp((ball.x - ATTACK_PIVOT_X) * ATTACK_PUSH_FACTOR, ATTACK_PUSH_RANGE), ATTACK_WIDTH, 0.0
     else:
@@ -77,7 +83,7 @@ def _shape(team: Team, ball: Point, in_possession: bool, sequence: int) -> list[
         factor = DEFENDER_LINE_FACTOR if index in DEFENDER_INDICES else (
             FORWARD_DEFENDING_FACTOR if index in FORWARD_INDICES and not in_possession else 1.0)
         dx, dy = _sway(sequence, index)
-        x = slot.x + push * factor + dx
+        x = slot.x + push * factor + dx - depth
         y = GOAL_CENTER_Y_M + (slot.y - GOAL_CENTER_Y_M) * width + y_shift + dy
         points.append(clamp_to_pitch(Point(x, y)))
     return points
@@ -191,10 +197,12 @@ class TrackingModel:
         """
         self._update_ball(event)
         positions: dict[str, Point] = {}
+        home_lead = event.score_home - event.score_away
         for side in (Side.HOME, Side.AWAY):
             team = self.metadata.team(side)
             ball = self._to_home(self.ball_home_frame, side)
-            for player, point in zip(team.players, _shape(team, ball, side is self.possessing, event.sequence),
+            drop = protect_drop_m(home_lead if side is Side.HOME else -home_lead, event.match_second)
+            for player, point in zip(team.players, _shape(team, ball, side is self.possessing, event.sequence, drop),
                                      strict=True):
                 positions[player.player_id] = self._to_home(point, side)
         self._close_down(positions, event)

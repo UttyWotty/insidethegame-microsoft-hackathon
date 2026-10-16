@@ -37,3 +37,9 @@ def test_agent_can_read_the_threat_leaderboard() -> None:
     assert "get_threat_leaderboard" in ALLOWED_TOOLS
     tool = build_agent_definition(HostedAgentSettings("m", MCP_URL)).tools[0]
     assert "get_threat_leaderboard" in tool.allowed_tools
+
+
+def test_agent_can_read_team_shape() -> None:
+    assert "get_team_shape" in ALLOWED_TOOLS
+    tool = build_agent_definition(HostedAgentSettings("m", MCP_URL)).tools[0]
+    assert "get_team_shape" in tool.allowed_tools

@@ -2,11 +2,12 @@
 
 MomentDetector watches shots, goals, saves, passes, and rhythm readings and emits KeyMoment records, and its
 PatternMiner raises tactical patterns and links later goals and big chances back to them; line-breaking passes that
-add enough expected threat (xT) raise threat_created moments.
+add enough expected threat (xT) raise threat_created moments, and sustained back-line shifts raise shape_shift moments.
 Every rule threshold is a named constant so moments are reproducible and explainable.
 """
 
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 
@@ -15,6 +16,8 @@ from insidegame.analytics.pass_quality import PassQuality
 from insidegame.analytics.pattern_rules import TacticalPattern
 from insidegame.analytics.patterns import FlagRecord, PatternMiner
 from insidegame.analytics.rhythm import RhythmReading
+from insidegame.analytics.shape_moments import SHAPE_SHIFT_IMPORTANCE, shape_facts
+from insidegame.analytics.shape_tracker import ShapeShift
 from insidegame.analytics.tactical_facts import tactical_evidence
 from insidegame.analytics.threat import ThreatAction
 from insidegame.analytics.threat_moments import THREAT_IMPORTANCE, ThreatMomentRule, pass_threat_facts, threat_facts
@@ -111,12 +114,13 @@ class MomentDetector:
 
     def detect(
         self, event: MatchEvent, xg: float | None, quality: PassQuality | None, reading: RhythmReading,
-        threat: ThreatAction | None = None,
+        threat: ThreatAction | None = None, shifts: Sequence[ShapeShift] = (),
     ) -> list[KeyMoment]:
         """Return the key moments triggered by this event, possibly none.
 
         threat (default None) is the xT credit of a completed pass or carry; it adds xT facts to pass moments and
-        can raise a threat_created moment.
+        can raise a threat_created moment. shifts (default empty) are the shape shifts this event completed, each
+        raising a shape_shift moment.
         """
         kind = event.event_type
         if kind is EventType.PERIOD_START:
@@ -137,6 +141,7 @@ class MomentDetector:
             moments += self._on_carry(event)
         if threat is not None:
             moments += self._on_threat(event, threat)
+        moments += [self._on_shape(event, shift, reading) for shift in shifts]
         return moments + self._on_rhythm(event, reading)
 
     def _moment(
@@ -158,6 +163,10 @@ class MomentDetector:
         self.miner.record_flag(FlagRecord(pattern, moment.moment_id, moment.period, moment.match_second,
                                           moment.minute_label, str(evidence.facts["summary"])))
         return moment
+
+    def _on_shape(self, event: MatchEvent, shift: ShapeShift, reading: RhythmReading) -> KeyMoment:
+        return self._moment(MomentKind.SHAPE_SHIFT, event, shift.team_id, SHAPE_SHIFT_IMPORTANCE, (),
+                            (event.event_id,), shape_facts(shift, self.metadata, reading))
 
     def _payoff_facts(self, event: MatchEvent) -> dict[str, FactValue]:
         link = self.miner.payoff(event)

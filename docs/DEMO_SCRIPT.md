@@ -11,6 +11,9 @@ broadcast camera on, Voice on (the commentator speaks from kick-off and lifts fo
 chip must show **AI**, not **Template**, before recording. VS Code open with GitHub
 Copilot agent mode and the project's MCP server configured (`.vscode/mcp.json`, see README).
 No real club names, crests, footage, or copyrighted music.
+Shape shift at 88': after going ahead at 77', Kestrel Bay Athletic's back line drops from 30.9 m to 20.2 m; over
+the same 10 minutes their share of the pitch goes from 52.7% to 48.2% and their possession from 65.1% to 49.8%. It
+airs about two minutes before full time, so capture it before the full-time recap opens.
 
 | Time | Screen | Action | Voice-over |
 |---|---|---|---|
@@ -22,5 +25,6 @@ No real club names, crests, footage, or copyrighted music.
 | 0:56-1:06 | Studio view | Follow the Analyst switches the visual; show the pressing map or pass network beside the explanation | "In the studio, the Analyst's own reasoning picks the evidence: a pressure shift shows the pressing map, chaos shows who controls the space." |
 | 1:06-1:18 | Producer console, agent trace | A Scout flag's trace fills in live (Intake to Tactical Scout to Commentator and Producer); toggle "Holding AI overlays for approval", then "Release to air" | "The control room shows the agents handing work to each other, with every output's source and fact-check verdict, and a human who can hold AI overlays before they air." |
 | 1:18-1:28 | VS Code, Copilot agent mode | Ask "Who is on top in the live match, and why?" | "The same intelligence is an MCP server, so GitHub Copilot or a Foundry hosted agent can query the live match as a tool." |
-| 1:28-1:44 | Half-time highlights in 3D | Watch highlights from the recap; the goal replays with spoken commentary, in Spanish for a Spanish viewer | "At half-time and full-time the highlights package is cut automatically, narrated in each viewer's language." |
-| 1:44-1:56 | Architecture diagram, then app | Show the diagram, end on the 3D broadcast with an overlay | "Agent Framework, Foundry, Azure AI Speech, MCP, and Azure Container Apps: explainable, personalized match intelligence, ready for live broadcast." |
+| 1:28-1:40 | Half-time highlights in 3D | Watch highlights from the recap; the goal replays with spoken commentary, in Spanish for a Spanish viewer | "At half-time and full-time the highlights package is cut automatically, narrated in each viewer's language." |
+| 1:40-1:48 | Broadcast view, 2D pitch, then studio | At 88' the shape shift layer draws Kestrel Bay's back line "Before 30.9 m" and "Now 20.2 m" with the low block outlined; cut to the studio line-height timeline with the 88' marker | "Ahead at 77', Kestrel Bay sit deeper: the back line drops eleven metres, and over the same ten minutes their share of the pitch and the ball falls with it." |
+| 1:48-1:56 | Architecture diagram, then app | Show the diagram, end on the 3D broadcast with an overlay | "Agent Framework, Foundry, Azure AI Speech, MCP, and Azure Container Apps: explainable, personalized match intelligence, ready for live broadcast." |
