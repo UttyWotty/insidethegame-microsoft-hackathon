@@ -17,10 +17,12 @@ FAILED: str = "executor_failed"
 AGENTS: dict[str, str] = {
     "intake": "Intake", "analyst": "Match Analyst", "narrator": "Lead Commentator",
     "personalizer": "Personalization Producer", "fact_checker": "Standards Editor", "assembler": "Broadcast Translator",
+    "scout": "Tactical Scout",
 }
 HANDOFFS: tuple[tuple[str, str], ...] = (
     ("intake", "analyst"), ("analyst", "narrator"), ("analyst", "personalizer"), ("narrator", "fact_checker"),
-    ("personalizer", "fact_checker"), ("fact_checker", "assembler"),
+    ("personalizer", "fact_checker"), ("fact_checker", "assembler"), ("intake", "scout"), ("scout", "narrator"),
+    ("scout", "personalizer"),
 )
 NOTHING_TO_CHECK: str = "nothing to check (templates)"
 MODEL_SOURCES: frozenset[str] = frozenset({"model", "model_retry"})
@@ -109,6 +111,7 @@ def step_notes(cues: Sequence[dict[str, object]]) -> dict[str, str]:
     return {
         "intake": f"{len(cues)} audience{'s' if len(cues) != 1 else ''}" if cues else "",
         "analyst": _source_note(role("explanation")[:1]),
+        "scout": _source_note(role("explanation")[:1]),
         "narrator": _source_note(role("commentary")[:1]),
         "personalizer": _source_note(role("card")),
         "fact_checker": ", ".join(f"{n} {v}" for v, n in sorted(verdicts.items()))

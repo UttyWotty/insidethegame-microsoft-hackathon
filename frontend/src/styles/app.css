@@ -285,3 +285,16 @@ main:focus { outline: none; }
 .pillar p { margin: 0; font-size: var(--text-sm); color: var(--color-fg-muted); }
 .landing-cta { padding: 0 var(--space-6); }
 @media (prefers-reduced-motion: reduce) { .goal-banner, .shot-trace { animation: none; } }
+
+/* Tactical Scout: the flag card (bottom-right, above the lower third), the flagged zone, and the goal payoff line. */
+.scout-card { position: absolute; right: var(--space-3); bottom: 26%; width: min(300px, 38%); padding: var(--space-3); border-left: 4px solid var(--team-color, var(--color-accent)); display: grid; gap: var(--space-1); animation: scout-card-in var(--duration-medium) var(--ease-out); }
+.scout-card-head { display: flex; justify-content: space-between; gap: var(--space-2); align-items: baseline; font-size: var(--text-sm); }
+.scout-kicker { color: var(--color-accent); font-weight: 700; letter-spacing: 0.08em; }
+.scout-headline { font-size: var(--text-lg); text-transform: uppercase; }
+.scout-summary { margin: 0; font-size: var(--text-sm); }
+.scout-stat { font-weight: 700; color: var(--team-color, var(--color-accent)); }
+@keyframes scout-card-in { from { opacity: 0; transform: translateX(8px); } }
+@media (prefers-reduced-motion: reduce) { .scout-card { animation: none; } }
+@media (max-width: 640px) { .scout-card { width: 55%; bottom: 30%; } }
+.scout-zone-label { font: 700 1.8px var(--font-display); fill: #ffffff; text-transform: uppercase; paint-order: stroke; stroke: #0b1220; stroke-width: 0.4px; }
+.goal-payoff { font-size: var(--text-sm); font-weight: 600; max-width: 80%; text-align: center; }

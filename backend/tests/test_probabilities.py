@@ -7,6 +7,7 @@ Only the choose_action test uses randomness, through a seeded generator.
 import random
 
 from insidegame.core.geometry import Point
+from insidegame.core.zones import Channel
 from insidegame.domain.teams import PlayerAttributes, TeamStyle
 from insidegame.simulation.probabilities import (
     ActionKind,
@@ -21,7 +22,7 @@ from insidegame.simulation.probabilities import (
 )
 
 AVERAGE = PlayerAttributes(pace=0.5, passing=0.5, finishing=0.5, tackling=0.5)
-STYLE = TeamStyle(label="balanced", directness=0.5, pressing=0.5, risk=0.5)
+STYLE = TeamStyle(label="balanced", directness=0.5, pressing=0.5, risk=0.5, weak_flank=Channel.LEFT)
 LATE_SECOND = 80 * 60
 EARLY_SECOND = 10 * 60
 

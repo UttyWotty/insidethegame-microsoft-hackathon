@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 from insidegame.core.constants import ATTRIBUTE_MAX, ATTRIBUTE_MIN
 from insidegame.core.exceptions import FixtureError
+from insidegame.core.zones import Channel
 from insidegame.domain.enums import Position
 from insidegame.domain.match import MatchMetadata
 from insidegame.domain.teams import Player, PlayerAttributes, Team, TeamStyle
@@ -16,6 +17,9 @@ from insidegame.domain.teams import Player, PlayerAttributes, Team, TeamStyle
 DEFAULT_COMPETITION: str = "Inside the Game Synthetic League"
 DEFAULT_KICKOFF_UTC: str = "2026-10-24T14:00:00Z"
 ATTRIBUTE_SPREAD: float = 0.12
+DEMO_HOME: str = "kestrel_bay"
+DEMO_AWAY: str = "ironvale"
+DEMO_SEED: int = 201
 
 FORMATION: tuple[Position, ...] = (
     (Position.GOALKEEPER,) + (Position.DEFENDER,) * 4 + (Position.MIDFIELDER,) * 3 + (Position.FORWARD,) * 3
@@ -60,13 +64,17 @@ CLUB_PRESETS: dict[str, ClubPreset] = {
     preset.key: preset
     for preset in (
         ClubPreset("brookhaven", "Brookhaven FC", "BRK", "Brookhaven Park",
-                   TeamStyle(label="possession", directness=0.25, pressing=0.55, risk=0.35)),
+                   TeamStyle(label="possession", directness=0.25, pressing=0.55, risk=0.35,
+                             weak_flank=Channel.LEFT)),
         ClubPreset("ironvale", "Ironvale United", "IRV", "The Foundry Ground",
-                   TeamStyle(label="direct", directness=0.75, pressing=0.40, risk=0.65)),
+                   TeamStyle(label="direct", directness=0.75, pressing=0.40, risk=0.65,
+                             weak_flank=Channel.RIGHT)),
         ClubPreset("kestrel_bay", "Kestrel Bay Athletic", "KBA", "Cliffside Arena",
-                   TeamStyle(label="high_press", directness=0.50, pressing=0.85, risk=0.50)),
+                   TeamStyle(label="high_press", directness=0.50, pressing=0.85, risk=0.50,
+                             weak_flank=Channel.LEFT)),
         ClubPreset("silverlake", "Silverlake Rovers", "SLR", "Lakeshore Stadium",
-                   TeamStyle(label="counter", directness=0.65, pressing=0.30, risk=0.55)),
+                   TeamStyle(label="counter", directness=0.65, pressing=0.30, risk=0.55,
+                             weak_flank=Channel.RIGHT)),
     )
 }
 

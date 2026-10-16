@@ -16,7 +16,7 @@ flowchart LR
     end
     subgraph S2[2 Interpret]
         AN[MatchAnalyzer<br/>xG, pass difficulty, stats,<br/>momentum, control vs chaos]
-        KM[Key moment detector<br/>importance + facts]
+        KM[Key moment detector<br/>importance + facts,<br/>tactical pattern miner]
     end
     subgraph S3[3 Explain]
         WF[Agent Framework workflow<br/>analyst, commentator]
@@ -45,9 +45,12 @@ are used only where judgement and language matter (stages 3 to 5), and every mod
 ```mermaid
 flowchart LR
     P[Producer policy<br/>pacing, relevance] --> I[Intake<br/>writes job to shared state]
-    I --> A[Match Analyst<br/>tools: player stats,<br/>team comparison, recent moments]
+    I -->|any moment but a tactical flag| A[Match Analyst<br/>tools: player stats,<br/>team comparison, recent moments]
+    I -->|tactical_pattern| S[Tactical Scout<br/>explains the mined pattern]
     A -->|explanation in shared state| N[Lead Commentator]
     A --> Z[Personalization Producer<br/>one card per viewer segment, concurrent]
+    S -->|explanation in shared state| N
+    S --> Z
     N --> F[Standards Editor<br/>fan-in: roster rule + fact-check]
     Z --> F
     F -. rejected card + issues .-> Z
@@ -59,6 +62,7 @@ flowchart LR
 | Agent | Role | Output |
 |---|---|---|
 | Match Analyst | Why a moment matters, with tool-based evidence | `Explanation` |
+| Tactical Scout | Why a flagged tactical pattern matters (zone, defender, count, share); routed by moment kind | `Explanation` |
 | Lead Commentator | One live commentary line | `Commentary` |
 | Personalization Producer | Persona card in voice, vocabulary, perspective, budget | `PersonaCard` |
 | Broadcast Translator | Localised card with names and numbers preserved | `TranslatedCard` |

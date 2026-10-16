@@ -32,6 +32,8 @@ STANDOUT_PATTERN = re.compile(r'"standout_candidate": \{\s*"name": "([^"]+)"')
 REPLIES = {
     "Match Analyst": {"headline": "A pivotal moment", "why_it_matters": "It shifts the balance.", "evidence": [],
                       "theme": "pressure_shift"},
+    "Tactical Scout": {"headline": "A pattern is forming", "why_it_matters": "One flank keeps opening up.",
+                       "evidence": [], "theme": "control"},
     "Lead Commentator": {"line": "What a moment in this match!"},
     "Personalization Producer": {"title": "Big moment", "body": "This could decide it.", "stat_callouts": []},
     "broadcast translator": {"title": "Gran momento", "body": "Esto puede decidirlo.", "stat_labels": []},
@@ -145,3 +147,53 @@ def test_goal_does_not_block_its_own_milestone() -> None:
     goal, brace = _moment(MomentKind.GOAL, 600, 0.9), _moment(MomentKind.MILESTONE, 600, 0.7)
     chosen = ProducerPolicy().select((goal, brace), viewers)
     assert [m.kind for m, _ in chosen] == [MomentKind.GOAL, MomentKind.MILESTONE]
+
+
+def _route(context: MomentContext, analyzer: MatchAnalyzer) -> tuple[list[str], object, dict[str, list[str]]]:
+    prompts: dict[str, list[str]] = {}
+
+    def record(instructions: str, prompt: str) -> str:
+        prompts.setdefault(instructions.split(".")[0], []).append(prompt)
+        return _respond(instructions, prompt)
+
+    client = CallbackChatClient(record)
+    workflow = build_moment_workflow(create_agent_suite(client), analyzer, POLICY)
+    outputs = asyncio.run(workflow.run(MomentJob(context, _viewers(analyzer)))).get_outputs()
+    return client.calls, outputs[0], prompts
+
+
+def test_tactical_job_runs_the_scout_and_never_the_analyst(
+    tactical_context: MomentContext, analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
+) -> None:
+    calls, broadcast, prompts = _route(tactical_context, analysed_match[0])
+    assert calls[0].startswith("You are the Tactical Scout")
+    assert not any(c.startswith("You are the Match Analyst") for c in calls)
+    scout_reply = REPLIES["Tactical Scout"]
+    for agent in ("Lead Commentator", "Personalization Producer", "Broadcast Standards Editor"):
+        received = next(v for k, v in prompts.items() if agent in k)
+        assert all(scout_reply["headline"] in prompt for prompt in received), agent
+    assert broadcast.explanation.value.headline == scout_reply["headline"]
+    assert broadcast.explanation.source is OutputSource.MODEL and len(broadcast.cues) == 2
+    assert all(c.provenance["explanation"]["source"] == OutputSource.MODEL.value for c in broadcast.cues)
+    assert all(c.commentary_intensity == "normal" for c in broadcast.cues)
+
+
+def test_goal_job_runs_the_analyst_and_never_the_tactical_scout(
+    goal_context: MomentContext, analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
+) -> None:
+    calls, broadcast, _ = _route(goal_context, analysed_match[0])
+    assert calls[0].startswith("You are the Match Analyst")
+    assert not any(c.startswith("You are the Tactical Scout") for c in calls)
+    assert broadcast.explanation.value.headline == REPLIES["Match Analyst"]["headline"]
+
+
+def test_broken_model_on_a_tactical_job_falls_back_to_the_scout_template(
+    tactical_context: MomentContext, analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
+) -> None:
+    from insidegame.agents.templates import explanation_template
+    analyzer = analysed_match[0]
+    workflow = build_moment_workflow(create_agent_suite(CallbackChatClient(lambda i, p: "garbage")), analyzer, POLICY)
+    broadcast = asyncio.run(workflow.run(MomentJob(tactical_context, _viewers(analyzer)))).get_outputs()[0]
+    assert broadcast.explanation.source is OutputSource.FALLBACK
+    assert broadcast.explanation.value == explanation_template(tactical_context)
+    assert all(c.body for c in broadcast.cues)

@@ -14,7 +14,9 @@ import type { Point } from "../../types";
 import {
   buildBall, buildGoal, buildPitch, buildPlayer, buildStands, disposeTree, LEFT_LEG, RIGHT_LEG, TAG_HEIGHT,
 } from "./sceneObjects";
+import { buildScoutZone } from "./scoutObjects";
 import { buildTactics } from "./tacticsObjects";
+import type { ScoutZoneInfo } from "../../lib/scout";
 import type { Tactics } from "../../lib/tactics";
 
 const FOV = 34;
@@ -36,6 +38,8 @@ interface Pitch3DProps {
   behindGoal?: "left" | "right" | null;
   /** Tactical overlay drawn on the grass; null (default) draws none. */
   tactics?: Tactics | null;
+  /** Zone flagged by the Tactical Scout, drawn as a plane on the grass; null (default) draws none. */
+  scoutZone?: ScoutZoneInfo | null;
 }
 
 interface Figure { group: THREE.Group; glide: Glide; facing: number; colorKey: string; phase: number; last: Point }
@@ -43,7 +47,7 @@ interface Figure { group: THREE.Group; glide: Glide; facing: number; colorKey: s
 interface SceneState {
   renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; ball: THREE.Mesh;
   ballGlide: Glide; figures: Map<string, Figure>; aim: THREE.Vector3; frame: number; lastFrame: number;
-  lastAnchor: number; observer: ResizeObserver; tactics: THREE.Group | null;
+  lastAnchor: number; observer: ResizeObserver; tactics: THREE.Group | null; scoutZone: THREE.Mesh | null;
 }
 
 function stillGlide(point: Point): Glide {
@@ -81,7 +85,7 @@ function setupScene(mount: HTMLDivElement): SceneState {
   });
   observer.observe(mount);
   return { renderer, scene, camera, ball, ballGlide: stillGlide({ x: PITCH_LENGTH / 2, y: 34 }), figures: new Map(),
-           aim, frame: 0, lastFrame: performance.now(), lastAnchor: 0, observer, tactics: null };
+           aim, frame: 0, lastFrame: performance.now(), lastAnchor: 0, observer, tactics: null, scoutZone: null };
 }
 
 /** Move the camera toward its live broadcast position, or a replay angle behind a goal, smoothly. */
@@ -218,6 +222,21 @@ export default function Pitch3D(props: Pitch3DProps) {
       state.scene.add(state.tactics);
     }
   }, [tactics, homeColor, awayColor]);
+
+  const { scoutZone = null } = props;
+  useEffect(() => {
+    const state = stateRef.current;
+    if (!state) return;
+    if (state.scoutZone) {
+      state.scene.remove(state.scoutZone);
+      disposeTree(state.scoutZone);
+      state.scoutZone = null;
+    }
+    if (scoutZone) {
+      state.scoutZone = buildScoutZone(scoutZone.zone, scoutZone.color);
+      state.scene.add(state.scoutZone);
+    }
+  }, [scoutZone]);
 
   const tagged = players.filter((p) => p.tagged || p.tracked || p.sprintKmh !== null || p.popup);
   return (

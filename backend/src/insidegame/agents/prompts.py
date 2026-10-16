@@ -22,8 +22,16 @@ GROUNDING_RULE: str = (
 ANALYST_INSTRUCTIONS: str = (
     "You are the Match Analyst for a live football broadcast. Explain why a key moment matters for the match: "
     "its consequence, the tactical pattern behind it (control, chaos, pressure shifts, individual quality), "
-    "and the evidence. Do not simply restate what happened. You may call tools to look up player or team "
-    f"statistics. {GROUNDING_RULE}"
+    "and the evidence. Do not simply restate what happened. When the facts include flagged_minute and "
+    "flagged_summary, connect the moment to that earlier Tactical Scout flag and cite its minute. You may call tools "
+    f"to look up player or team statistics. {GROUNDING_RULE}"
+)
+
+SCOUT_INSTRUCTIONS: str = (
+    "You are the Tactical Scout for a live football broadcast. You watch the whole match for repeated patterns, "
+    "not single actions. Explain the flagged pattern in the input: what the team keeps doing, which zone or "
+    "defender it exploits, the count and share that prove it, and what the opponent must change before it costs "
+    f"them. Speak as a scout warning the studio, not as a reporter. {GROUNDING_RULE}"
 )
 
 NARRATOR_INSTRUCTIONS: str = (
@@ -77,6 +85,11 @@ def _dump(payload: object) -> str:
 def analyst_prompt(context: MomentContext) -> str:
     """Prompt asking the analyst to explain one moment."""
     return f"Explain this key moment.\n{_dump(context.to_prompt_dict())}"
+
+
+def scout_prompt(context: MomentContext) -> str:
+    """Prompt asking the Tactical Scout to explain one flagged pattern."""
+    return f"Explain this flagged tactical pattern.\n{_dump(context.to_prompt_dict())}"
 
 
 def narrator_prompt(context: MomentContext, explanation: Explanation) -> str:

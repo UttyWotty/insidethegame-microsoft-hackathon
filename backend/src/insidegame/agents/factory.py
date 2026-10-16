@@ -15,13 +15,15 @@ from insidegame.agents.prompts import (
     NARRATOR_INSTRUCTIONS,
     PERSONALIZER_INSTRUCTIONS,
     RECAP_INSTRUCTIONS,
+    SCOUT_INSTRUCTIONS,
     TRANSLATOR_INSTRUCTIONS,
 )
 
 
 @dataclass(frozen=True)
 class AgentSuite:
-    """The seven specialised agents: the moment and recap pipeline, its fact-checker, and the viewer companion."""
+    """The eight specialised agents: the moment and recap pipeline, the Tactical Scout, its fact-checker, and the
+    viewer companion."""
 
     analyst: Agent
     narrator: Agent
@@ -30,6 +32,7 @@ class AgentSuite:
     editor: Agent
     companion: Agent
     fact_checker: Agent
+    scout: Agent
 
 
 def create_agent_suite(client: SupportsChatGetResponse) -> AgentSuite:
@@ -49,4 +52,6 @@ def create_agent_suite(client: SupportsChatGetResponse) -> AgentSuite:
                         description="Answers viewers' questions about the live match, using statistics tools."),
         fact_checker=Agent(client, FACT_CHECKER_INSTRUCTIONS, name="standards_editor",
                            description="Fact-checks cards and commentary before they go to air."),
+        scout=Agent(client, SCOUT_INSTRUCTIONS, name="tactical_scout",
+                    description="Explains tactical patterns mined from the event stream before they are punished."),
     )

@@ -47,3 +47,15 @@ def test_outcomes_are_read_from_cue_provenance() -> None:
     assert step_notes([])["analyst"] == "" and step_notes([])["fact_checker"] == ""
     skipped = {"provenance": {"fact_check": {"verdict": "skipped"}, "commentary_check": {"verdict": "skipped"}}}
     assert step_notes([skipped])["fact_checker"] == NOTHING_TO_CHECK
+
+
+def test_scout_is_a_named_agent_with_its_handoffs_and_source_note() -> None:
+    from insidegame.orchestration.trace import AGENTS
+    assert AGENTS["scout"] == "Tactical Scout"
+    assert {("intake", "scout"), ("scout", "narrator"), ("scout", "personalizer")} <= set(HANDOFFS)
+    trace = AgentTrace("m2", "31'", "tactical_pattern", origin_s=0.0)
+    trace.observe("scout", INVOKED, 0.1)
+    trace.observe("scout", COMPLETED, 1.0)
+    done = trace.to_dict(2.0, [_cue("model", "approved")])
+    assert done["steps"][0]["agent"] == "Tactical Scout" and done["steps"][0]["note"] == "AI, 1 attempt"
+    assert step_notes([])["scout"] == ""

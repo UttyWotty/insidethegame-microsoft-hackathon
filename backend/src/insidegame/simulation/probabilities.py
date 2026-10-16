@@ -91,6 +91,7 @@ def effective_style(style: TeamStyle, goal_difference: int, match_second: float)
         directness=_unit(style.directness + shift),
         pressing=_unit(style.pressing + shift),
         risk=_unit(style.risk + shift),
+        weak_flank=style.weak_flank,
     )
 
 

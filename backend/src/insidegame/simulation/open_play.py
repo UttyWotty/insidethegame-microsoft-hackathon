@@ -3,13 +3,23 @@
 Each resolver samples an outcome, emits the corresponding events, and updates SimState.
 Turnovers hand possession to the defending side with coordinates mirrored into its frame. Near the byline, wide
 of the goal, passes become cutbacks or crosses into the box and carries cut inside, as attackers do in real play.
+Attacks lean toward the defending club's weak flank, where passes complete slightly more often and tackles fail.
 """
 
 from insidegame.core.constants import GOAL_CENTER_Y_M
 from insidegame.core.geometry import Point, clamp_to_pitch, distance, mirror
 from insidegame.domain.enums import EventType, Outcome
 from insidegame.domain.teams import TeamStyle
+from insidegame.simulation.flanks import (
+    WEAK_FLANK_PASS_BONUS,
+    WEAK_FLANK_TACKLE_REDUCTION,
+    in_exploited_final_third,
+    in_exploited_flank,
+    lateral_shift,
+)
 from insidegame.simulation.probabilities import (
+    PROBABILITY_MAX,
+    PROBABILITY_MIN,
     pass_success_probability,
     pressure_probability,
     tackle_probability,
@@ -76,13 +86,13 @@ def in_cross_zone(ball: Point) -> bool:
     return ball.x >= CROSS_ZONE_X_M and abs(ball.y - GOAL_CENTER_Y_M) > CROSS_ZONE_WIDE_M
 
 
-def _pass_target(state: SimState, style: TeamStyle) -> Point:
+def _pass_target(state: SimState, style: TeamStyle, defending_style: TeamStyle) -> Point:
     rng = state.rng
     if in_cross_zone(state.ball):
         x = rng.uniform(*CROSS_TARGET_X_M)
         return clamp_to_pitch(Point(x, GOAL_CENTER_Y_M + rng.gauss(0.0, CROSS_TARGET_Y_SD_M)))
     forward = rng.gauss(PASS_FORWARD_BASE_M + PASS_FORWARD_DIRECTNESS_M * style.directness, PASS_FORWARD_SD_M)
-    lateral = rng.gauss(0.0, PASS_LATERAL_SD_M)
+    lateral = rng.gauss(lateral_shift(state.ball, defending_style), PASS_LATERAL_SD_M)
     target = clamp_to_pitch(Point(state.ball.x + forward, state.ball.y + lateral))
     return Point(min(max(target.x, MIN_PASS_X_M), MAX_PASS_X_M), target.y)
 
@@ -96,11 +106,13 @@ def resolve_pass(state: SimState, style: TeamStyle, defending_style: TeamStyle) 
     """Simulate a pass, completing it or turning possession over via interception."""
     rng, origin, passer = state.rng, state.ball, state.carrier
     crossing = in_cross_zone(origin)
-    target = _pass_target(state, style)
+    target = _pass_target(state, style, defending_style)
     length = distance(origin, target)
     receiver = pick_receiver(state.attacking_team, passer, target.x, rng)
     p_success = pass_success_probability(length, target.x, passer.attributes, state.under_pressure,
                                          defending_style.pressing, state.clock_s)
+    if in_exploited_final_third(target, defending_style):
+        p_success = min(p_success + WEAK_FLANK_PASS_BONUS, PROBABILITY_MAX)
     if crossing:
         p_success *= CROSS_SUCCESS_FACTOR
     success = rng.random() < p_success
@@ -141,6 +153,8 @@ def resolve_carry(state: SimState, defending_style: TeamStyle) -> None:
     end = _carry_end(state)
     defender = pick_defender(state.defending_team, origin.x, rng)
     p_tackle = tackle_probability(carrier.attributes, defender.attributes, defending_style.pressing)
+    if in_exploited_flank(origin, defending_style):
+        p_tackle = max(p_tackle - WEAK_FLANK_TACKLE_REDUCTION, PROBABILITY_MIN)
     if rng.random() >= p_tackle:
         length = distance(origin, end)
         state.emit(EventType.CARRY, state.attacking, carrier, origin, end=end, outcome=Outcome.SUCCESS,

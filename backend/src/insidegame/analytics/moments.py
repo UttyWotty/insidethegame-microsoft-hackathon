@@ -28,6 +28,7 @@ class MomentKind(StrEnum):
     MOMENTUM_SWING = "momentum_swing"
     CHAOS_SPELL = "chaos_spell"
     MILESTONE = "milestone"
+    TACTICAL_PATTERN = "tactical_pattern"
 
 
 @dataclass(frozen=True)

@@ -27,11 +27,12 @@ flowchart LR
 
 As of 2026-10-13 (develop at PR #58, release v0.1.0 on main):
 
-- Stage 1 (Ingest): synthetic match engine calibrated against top-flight reference bands (11 of 13 metrics within
-  band over 480 matches, see [docs/CALIBRATION.md](docs/CALIBRATION.md)), with home advantage and speed-limited
-  tracking for all 22 players.
-- Stage 2 (Interpret): streaming analytics implemented (xG, pass difficulty, stats, rhythm, key moments).
-- Stages 3-5 (Explain, Render, Personalize): seven-agent workflow with fact-checking, overlay cues, persona recaps,
+- Stage 1 (Ingest): synthetic match engine calibrated against top-flight reference bands (13 of 13 metrics within
+  band over 480 matches, see [docs/CALIBRATION.md](docs/CALIBRATION.md)), with home advantage, a weak defensive
+  flank per club, and speed-limited tracking for all 22 players.
+- Stage 2 (Interpret): streaming analytics implemented (xG, pass difficulty, stats, rhythm, key moments, and
+  tactical pattern mining that links later goals to earlier flags).
+- Stages 3-5 (Explain, Render, Personalize): eight-agent workflow, including the Tactical Scout, with fact-checking, overlay cues, persona recaps,
   and a Match Companion implemented; validated on a local model through the evaluation harness.
 - Live API: real-time replay with personalized server-sent event streams, moment backpressure, and rate limits.
 - Broadcast frontend: live pitch with sprint tags, five persona overlays, stats, momentum, spoken play-by-play
@@ -43,7 +44,9 @@ As of 2026-10-13 (develop at PR #58, release v0.1.0 on main):
 
 A seeded, deterministic possession-chain simulator generates full 90-minute matches between fictional clubs.
 Each team has a tactical style (possession, direct, high press, counter) that adapts to the game state:
-trailing teams chase late, leading teams protect. Outcomes are driven by player attributes, pitch geometry,
+trailing teams chase late, leading teams protect. Every club also has a weak defensive flank (Brookhaven and Kestrel
+Bay on the left, Ironvale and Silverlake on the right): opponents drift toward it in the attacking half, and passes
+into it and dribbles down it succeed slightly more often, so the Tactical Scout has real patterns to find. Outcomes are driven by player attributes, pitch geometry,
 pressure, and fatigue.
 
 Calibrated averages over 480 simulated matches (every pairing, seeds 1 to 480; full table and reference bands in
@@ -51,15 +54,15 @@ Calibrated averages over 480 simulated matches (every pairing, seeds 1 to 480; f
 
 | Metric | Simulated | Typical top-flight range |
 |---|---|---|
-| Goals per match | 2.81 | 2.5-3.1 |
-| Expected goals per match | 2.98 | 2.4-3.2 |
-| Shots per match | 27.6 | 22-28 |
-| Shots on target | 33.4% | 30-40% |
-| Shot conversion | 10.2% | 9-13% |
-| Pass accuracy | 79.1% | 78-86% |
-| Shots from inside the box / byline | 70.5% / 1.8% | 55-72% / 0-4% |
-| Mean shot distance | 14.8 m | 14-19 m |
-| Home wins / draws / away wins | 38.8% / 32.1% / 29.2% | 40-48% / 22-30% / 25-33% |
+| Goals per match | 2.85 | 2.5-3.1 |
+| Expected goals per match | 2.88 | 2.4-3.2 |
+| Shots per match | 27.1 | 22-28 |
+| Shots on target | 34.0% | 30-40% |
+| Shot conversion | 10.5% | 9-13% |
+| Pass accuracy | 79.4% | 78-86% |
+| Shots from inside the box / byline | 70.3% / 2.0% | 55-72% / 0-4% |
+| Mean shot distance | 14.9 m | 14-19 m |
+| Home wins / draws / away wins | 44.0% / 28.3% / 27.7% | 40-48% / 22-30% / 25-33% |
 
 Event types: `period_start`, `period_end`, `kick_off`, `pass`, `carry`, `shot`, `goal`, `save`, `pressure`,
 `tackle`, `interception`, `foul`, `possession_change`. Coordinates are metres on a 105 x 68 pitch, relative to the
@@ -119,15 +122,25 @@ or training pipelines.
   great saves, speed indicators (shots of 115 km/h or more), distance indicators (completed passes of 40 m or
   more, players passing 300 m and 400 m carried), difficult passes, momentum swings, chaos spells, and
   milestones (braces, hat-tricks, pass counts). Each moment carries an importance score and structured facts for the
-  explanation agents. About 19 moments are detected per match.
+  explanation agents. About 26 moments are detected per match.
+- **Tactical patterns (Tactical Scout):** a deterministic miner watches a rolling 15-minute window of final-third
+  entries and ball wins and flags three patterns as `tactical_pattern` moments: a flank exposed (6 or more completed entries
+  down one wide channel at a success rate of 85% or more, naming the beaten full-back), a channel overload (at least
+  7 successful entries and 60% of them down one channel), and a turnover zone (at least 5 ball wins in one zone
+  outside the winner's defensive third). Flags are at least 10 minutes apart, and the same pattern waits 15 minutes
+  before it can be flagged again; about 7 are raised per match. When a goal or big chance comes from a flagged
+  pattern within 15 minutes, it carries `flagged_minute` and `flagged_summary`, so the broadcast can say "Scout
+  flagged 31'". Over seeds 1 to 30 of Kestrel Bay vs Ironvale, about 95% of wide flank flags point at the defending
+  club's configured weak flank.
 
 ## Agents and Personas (Stages 3-5)
 
-Seven specialised Microsoft Agent Framework agents, each with a single role:
+Eight specialised Microsoft Agent Framework agents, each with a single role:
 
 | Agent | Role | Output schema |
 |---|---|---|
 | Match Analyst | Explains why a moment matters; calls statistics tools (`get_player_stats`, `compare_teams`, `recent_moments`) | `Explanation` |
+| Tactical Scout | Explains a flagged tactical pattern (which zone or defender it exploits, the count and share that prove it); the workflow routes `tactical_pattern` moments to it instead of the Match Analyst | `Explanation` |
 | Lead Commentator | Writes one broadcast-ready commentary line | `Commentary` |
 | Personalization Producer | Rewrites the explanation for a viewer persona | `PersonaCard` |
 | Broadcast Translator | Localises cards, keeping names and numbers intact | `TranslatedCard` |
@@ -405,10 +418,10 @@ with a grounded template. With one local model call at a time, persona cards que
 ```
 backend/
   src/insidegame/
-    core/         constants, pitch geometry, domain exceptions
+    core/         constants, pitch geometry and zones, domain exceptions
     domain/       immutable event, team, and match models
-    simulation/   seeded synthetic match engine (stage 1 source)
-    analytics/    streaming interpretation: xG, pass quality, stats, rhythm, key moments (stage 2)
+    simulation/   seeded synthetic match engine with per-club weak flanks (stage 1 source)
+    analytics/    streaming interpretation: xG, pass quality, stats, rhythm, key moments, tactical patterns (stage 2)
     tracking/     synthetic 22-player positions with speed-limited motion and sprint detection
     highlights/   automated highlights reels: clip selection, frame windows, narration (pure)
     studio/       studio visuals: heat and pressing grids, pass networks, space control, theme to visual (pure)

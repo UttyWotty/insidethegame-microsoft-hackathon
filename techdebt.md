@@ -72,7 +72,8 @@ Copilot-through-MCP recording, the demo video, then the submission steps. Fabric
 
 - Retake README screenshots (`docs/images/`): they predate the 22-player broadcast pitch, sprint tags, landing screen, fact-check chips, and producer console; capture them with real AI output.
 - Record the demo video from `docs/DEMO_SCRIPT.md` (under 2 minutes, no copyrighted music, Voice on); dry-run the
-  script first. The demo match is now seed 20 (3-2), chosen after the shot-location fix changed every seeded match.
+  script first. The demo match is now seed 201 (4-3), chosen after the weak-flank tendency changed every seeded match;
+  its 35' and 77' goals are linked to earlier Tactical Scout flags.
 <!--
 - Update the demo script to include the broadcast camera, fact-checker, producer console, and Copilot or Foundry
   agent via MCP. Resolved 2026-10-13 in PR #31; spoken commentary and sprint tags added in PR #48.

@@ -14,7 +14,7 @@ from insidegame.agents.factory import create_agent_suite
 from insidegame.agents.personas import PersonaKey, ViewerProfile
 from insidegame.agents.runner import OutputSource, RunPolicy
 from insidegame.agents.schemas import PersonaCard, StatCallout
-from insidegame.agents.steps import explain, narrate, personalize, translate
+from insidegame.agents.steps import explain, narrate, personalize, scout_explain, translate
 from insidegame.agents.templates import explanation_template
 from insidegame.agents.tools import EvidenceLedger, build_analyst_tools
 from insidegame.agents.validation import explanation_validator
@@ -24,7 +24,7 @@ from insidegame.analytics.moments import MomentKind
 POLICY = RunPolicy(timeout_s=5.0, max_attempts=2, prompt_suffix="")
 FAST_TIMEOUT = RunPolicy(timeout_s=0.05, max_attempts=2, prompt_suffix="")
 SLOW_RESPONSE_S = 0.5
-ANALYST_KEY, NARRATOR_KEY = "Match Analyst", "Lead Commentator"
+ANALYST_KEY, NARRATOR_KEY, SCOUT_KEY = "Match Analyst", "Lead Commentator", "Tactical Scout"
 PERSONALIZER_KEY, TRANSLATOR_KEY = "Personalization Producer", "broadcast translator"
 UNGROUNDED_NUMBER = 987
 
@@ -178,3 +178,35 @@ def test_recap_take_uses_the_model_when_grounded_and_falls_back_otherwise(
     assert accepted.source is OutputSource.MODEL and accepted.value.headline == "Tight first half"
     assert rejected.source is OutputSource.FALLBACK and "numbers at half-time" in rejected.value.headline
     assert "The Analyst" in client.requests[0][1][-1].text
+
+
+def _scout_json(context: MomentContext, extra: str = "") -> str:
+    facts = context.moment.facts
+    return json.dumps({"headline": f"{facts['team']} have found a weakness{extra}",
+                       "why_it_matters": f"{facts['count']} of {facts['total']} entries went the same way.",
+                       "evidence": [str(facts["summary"])], "theme": "control"})
+
+
+def test_scout_explains_a_tactical_flag_with_its_own_agent(
+    tactical_context: MomentContext, analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
+) -> None:
+    client = ScriptedChatClient({SCOUT_KEY: [_scout_json(tactical_context)]})
+    outcome = asyncio.run(scout_explain(create_agent_suite(client), tactical_context, analysed_match[0], POLICY))
+    assert outcome.source is OutputSource.MODEL and client.requests[0][0] == SCOUT_KEY
+    assert "flagged tactical pattern" in client.requests[0][1][-1].text
+
+
+def test_scout_malformed_or_ungrounded_reply_falls_back_to_the_tactical_template(
+    tactical_context: MomentContext, analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
+) -> None:
+    for replies in (["not json", "{}"], [_scout_json(tactical_context, f" {UNGROUNDED_NUMBER} times")] * 2):
+        client = ScriptedChatClient({SCOUT_KEY: list(replies)})
+        outcome = asyncio.run(scout_explain(create_agent_suite(client), tactical_context, analysed_match[0], POLICY))
+        assert outcome.source is OutputSource.FALLBACK
+        assert outcome.value == explanation_template(tactical_context)
+
+
+def test_scout_instructions_never_route_to_analyst_scripts() -> None:
+    from insidegame.agents.prompts import ANALYST_INSTRUCTIONS, SCOUT_INSTRUCTIONS
+    assert SCOUT_INSTRUCTIONS.startswith("You are the Tactical Scout") and ANALYST_KEY not in SCOUT_INSTRUCTIONS
+    assert "flagged_minute" in ANALYST_INSTRUCTIONS and "flagged_summary" in ANALYST_INSTRUCTIONS

@@ -1,6 +1,7 @@
 /**
  * Pure layout of a moment's agent trace as a timeline: one bar per agent, positioned by when it started and how
  * long it ran, with the agents it hands off to. Running agents extend to the trace's elapsed time.
+ * Handoffs name only agents that actually ran for this moment, so routed agents (analyst or scout) never show both.
  */
 import type { AgentTraceInfo, TraceStep } from "../types";
 
@@ -25,7 +26,7 @@ export function traceBars(trace: AgentTraceInfo): TraceBar[] {
       executorId: s.executor_id, agent: s.agent, status: s.status, note: s.note, durationMs,
       leftPct: (s.started_ms / span) * PERCENT,
       widthPct: Math.max((durationMs / span) * PERCENT, MIN_WIDTH_PCT),
-      handsOffTo: trace.handoffs.filter(([from]) => from === s.executor_id).map(([, to]) => names[to] ?? to),
+      handsOffTo: trace.handoffs.filter(([from, to]) => from === s.executor_id && to in names).map(([, to]) => names[to]),
     };
   });
 }

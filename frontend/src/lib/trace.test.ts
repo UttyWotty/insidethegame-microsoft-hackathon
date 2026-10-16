@@ -26,3 +26,20 @@ describe("traceBars", () => {
     expect(formatSeconds(16)).toBe("16 ms");
   });
 });
+
+describe("routed handoffs", () => {
+  it("names only agents that ran for the moment", () => {
+    const scoutTrace: AgentTraceInfo = {
+      moment_id: "t", minute: "31'", kind: "tactical_pattern", finished: true, elapsed_ms: 2000,
+      handoffs: [["intake", "analyst"], ["intake", "scout"], ["scout", "narrator"], ["analyst", "narrator"]],
+      steps: [
+        { executor_id: "intake", agent: "Intake", status: "done", started_ms: 0, ended_ms: 10, note: "" },
+        { executor_id: "scout", agent: "Tactical Scout", status: "done", started_ms: 20, ended_ms: 900, note: "" },
+        { executor_id: "narrator", agent: "Lead Commentator", status: "done", started_ms: 950, ended_ms: 2000, note: "" },
+      ],
+    };
+    const [intake, scout] = traceBars(scoutTrace);
+    expect(intake.handsOffTo).toEqual(["Tactical Scout"]);
+    expect(scout.handsOffTo).toEqual(["Lead Commentator"]);
+  });
+});
