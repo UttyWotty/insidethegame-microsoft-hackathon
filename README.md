@@ -25,7 +25,7 @@ flowchart LR
 
 ## Status
 
-As of 2026-10-17 (develop at PR #74, release v0.1.0 on main):
+As of 2026-10-17 (develop at PR #75, release v0.1.0 on main):
 
 - Stage 1 (Ingest): synthetic match engine calibrated against top-flight reference bands (13 of 13 metrics within
   band over 480 matches, see [docs/CALIBRATION.md](docs/CALIBRATION.md)), with home advantage, a weak defensive
@@ -33,13 +33,18 @@ As of 2026-10-17 (develop at PR #74, release v0.1.0 on main):
 - Stage 2 (Interpret): streaming analytics implemented (xG, expected threat (xT) with line-breaking passes, pass
   difficulty, stats, rhythm, key moments, tactical pattern mining that links later goals to earlier flags, and team
   shape with line-height shifts explained as changes in control).
-- Stages 3-5 (Explain, Render, Personalize): eight-agent workflow, including the Tactical Scout, with fact-checking, overlay cues, persona recaps,
-  and a Match Companion implemented; validated on a local model through the evaluation harness.
+- Stages 3-5 (Explain, Render, Personalize): eight-agent workflow, including the Tactical Scout, with fact-checking,
+  overlay cues, persona recaps, and a Match Companion implemented; validated on a local model through the evaluation
+  harness and in the live UI (model-written cards and fact-checks aired end to end), with template fallbacks that
+  never lose a moment.
 - Live API: real-time replay with personalized server-sent event streams, moment backpressure, and rate limits.
 - Broadcast frontend: live pitch with sprint tags, five persona overlays, stats, momentum, spoken play-by-play
-  commentary that reacts to big moments, recaps, multiview, and a streamed producer console implemented.
+  commentary that reacts to big moments, recaps, multiview, and a streamed producer console implemented. Instant
+  replays re-play the real build-up and shot with an analysis card, queue instead of overlapping, and wait for open
+  recaps; half-time and full-time highlights replay the real passes, carries, and shots.
 - Azure deployment: infrastructure as code, container, CI, and keyless Foundry and Speech auth ready (`azd up`);
-  not yet deployed or verified against Azure.
+  not yet deployed or verified against Azure. The Bicep templates compile and lint clean; a local container
+  build and smoke test are pending.
 
 ## Synthetic Match Engine
 
