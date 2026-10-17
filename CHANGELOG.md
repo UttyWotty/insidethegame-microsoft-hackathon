@@ -187,16 +187,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `docs/SUBMISSION.md` brought up to date: eight agents including the Tactical Scout, ten MCP tools, expected
+  threat, line-breaking passes and shape shifts, the analysed instant replay and replay queue, highlights that
+  replay the real action, realistic finishing, degraded-path resilience and outcome problems, 13 of 13 calibration
+  metrics, 626 backend and 181 frontend tests, and testing steps on the seed 1407 demo match. `docs/DEMO_SCRIPT.md`
+  notes that with Auto replays on the 34' replay now queues behind the 28' one; `techdebt.md` wraps the resolved
+  live UI check and venue calibration items and records that the vitest advisories still need the breaking
+  vitest 4 upgrade.
 - Non-shot highlights clips (line-breaking passes, momentum swings, and any other moment not about a shot) now
   replay the real passes and carries in their window instead of stepping through stored frames, where the ball ran
   up to 51 m ahead of the player on the ball. The pure `highlights/reel_sequence.py` builds one build-up keyframe
   per pass or carry (the ball at the action's true start, the actor aligned on it, built with the instant replay's
   new shared `action_keyframe`) and a final keyframe at the last action's end when the next event happens (clamped
   to 0.4-5.0 s), sent as `playback: "story"`. That final keyframe puts the receiver on the ball only for a
-  completed pass and the carrier for a carry; a failed pass (which keeps its intended receiver) aligns no one, so the
-  intended teammate no longer glides onto the interception spot. Over seeds 1-200 plus 1407, 494 of 495 such clips now play keyframes
-  (ball-to-actor distance 0.0 m, largest ball step 1.10 m per 0.1 s); the one clip with no pass or carry in its
-  window keeps its frames. Instant replays, shot clips, narration, captions, and clip order are unchanged.
+  completed pass and the carrier for a carry; a failed pass (which keeps its intended receiver) aligns no one, so
+  the intended teammate no longer glides onto the interception spot. Over seeds 1-200 plus 1407, 494 of 495 such
+  clips now play keyframes (ball-to-actor distance 0.0 m, largest ball step 1.10 m per 0.1 s); the one clip with
+  no pass or carry in its window keeps its frames. Instant replays, shot clips, narration, captions, and clip
+  order are unchanged.
 - Recap vocabulary moved below the agents layer: `RecapStage`, `MIN_TURNING_POINT_IMPORTANCE`, and `moment_actor`
   now live in `analytics/recap_basis.py`, so `highlights/reel.py` no longer imports `agents.recap_context`; every
   importer uses the new home and reel output is unchanged (reel digests for seeds 1407 and 194 match develop).
