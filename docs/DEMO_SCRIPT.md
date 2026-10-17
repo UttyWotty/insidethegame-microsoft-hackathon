@@ -11,7 +11,9 @@ fixture: seed 1407, Kestrel Bay vs Ironvale (2-1, goals at 28', 34', and 65'), p
 Ironvale United at 30x (one match minute is two seconds). Oskar Pereira (28') puts Kestrel Bay ahead, Ansel Juarez
 (34') levels for Ironvale United, and Zane Brekke (65') wins it. Broadcast cam on, Voice on, Analyst persona,
 English. Turn **Auto replays** off for the take that supplies beats 0:00-0:08 and 2b: with it on, the replay covers the pitch
-3.5 s after the shot, so a goal banner is readable for only about 3.5 s, and the 28' replay hides the 34' banner. At 58' a shot card ("Blocked", Kofi Quintero)
+3.5 s after the shot, so a goal banner is readable for only about 3.5 s, and the 28' replay hides the 34' banner.
+With Auto replays on, the 34' replay now waits in the replay queue and follows the 28' one, so the Auto replays off
+take is still the one for beat 0:00-0:08. At 58' a shot card ("Blocked", Kofi Quintero)
 is on screen next to the Tactical Scout card; frame or crop the shot on the Scout card. Every chip must show **AI**,
 not **Template**, before recording, and the 65' Analyst card must cite the 58' Scout flag (the template wording
 always does; re-record if a model answer drops it). In every take, including the Spanish one,

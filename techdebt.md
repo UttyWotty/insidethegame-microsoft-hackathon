@@ -1,14 +1,16 @@
 <!--
 Open follow-ups and technical debt for Inside the Game, tracked in the repository so nothing is forgotten.
 Resolved items are wrapped in HTML comments rather than deleted, preserving history.
-Ordered by priority within each section; status as of 2026-10-16 (develop at PR #64, release v0.1.0 on main).
+Ordered by priority within each section; status as of 2026-10-17 (develop at PR #74, release v0.1.0 on main).
 -->
 
 # Tech Debt and Follow-ups
 
-Every item that needs neither a model run nor Azure is done. Suggested order for the remaining work: Azure deploy
-and verification (diagnostics, AI chips, neural voice), a Foundry evaluation report, README screenshots and the
-Copilot-through-MCP recording, the demo video, then the submission steps. Fabric is optional polish.
+Most open items need a model run or Azure; the exceptions are the pass-target clamp tuning under Next up, the
+vitest 4 upgrade, the shared session store, and making the repository public. Suggested order
+for the remaining work: Azure deploy and verification (diagnostics, AI chips, neural voice), a Foundry evaluation
+report, README screenshots and the Copilot-through-MCP recording, the demo video, then the submission steps.
+Fabric is optional polish.
 
 ## Next up (first thing next session)
 
@@ -99,6 +101,7 @@ Copilot-through-MCP recording, the demo video, then the submission steps. Fabric
   require the submission to be solely owned by the entrant (rules 4.6 and 4.11). Use a personal machine from now on.
   Resolved 2026-10-12: the owner confirmed this machine is approved for the project.
 -->
+<!--
 - Agents have been validated on a real model only through the evaluation harness, not yet in the live UI. Validate
   the live path (MLX locally, then Foundry) before recording anything.
   Done 2026-10-13 with Qwen3.8 27B 6-bit on the MLX gateway at `127.0.0.1:8081` (launchd agent
@@ -109,7 +112,6 @@ Copilot-through-MCP recording, the demo video, then the submission steps. Fabric
   commentator verbs, eval coverage of every persona, fact-check issues in the report, and "In production" status
   in the producer console.
   Still open:
-  <!--
   1. Live UI check. The 2026-10-13 attempt (seed 7, speed 20, analyst and Spanish casual viewers) produced no
      broadcast record in 12 minutes: all 18 detected moments started at once and shared the single local model
      slot, so none finished, and a `godot` process from another project was saturating the machine at the same
@@ -119,14 +121,16 @@ Copilot-through-MCP recording, the demo video, then the submission steps. Fabric
      MODEL_BASE_URL=http://127.0.0.1:8081/v1 MODEL_TIMEOUT_S=240 MODEL_MAX_CONCURRENCY=1 API_PORT=8000
      .venv/bin/python -m insidegame.main`, then confirm the chips show AI (not Template) and the producer console
      shows model sources and fact-check verdicts.
-  -->
      Done 2026-10-16 (seed 201, speed 10, one analyst viewer, Qwen3.8 27B 6-bit on 8081, browser closed after
      kick-off and checked through the producer API): the 15' goal aired with explanation, commentary, and card all
      from the model and a model fact-check approval with no issues; the 1' long-pass card aired with model
      commentary and card, a model fact-check approval, and a fallback explanation after the Match Analyst hit the
      240 s timeout. No tracebacks; backpressure skipped 2 moments. Local latency is 4 to 11 minutes per card, so
      the local model cannot keep up with a live match at any useful speed; record the video on Foundry.
-  2. Rerun the evaluation once to read `fact_check_issues` and judge whether the 4 revisions were real catches.
+  Resolved 2026-10-16: the live UI check passed (PR #64); the evaluation rerun stays open below.
+-->
+- Rerun the evaluation once to read `fact_check_issues` and judge whether the 4 revisions in
+  `docs/evaluations/2026-10-13-mlx-qwen3.8-27b-6bit.json` were real catches (best on Foundry, see Azure go-live).
 
 ## Azure go-live (needs a personal Azure subscription)
 
@@ -162,8 +166,8 @@ Copilot-through-MCP recording, the demo video, then the submission steps. Fabric
 
 - Retake README screenshots (`docs/images/`): they predate the 22-player broadcast pitch, sprint tags, landing screen, fact-check chips, and producer console; capture them with real AI output.
 - Record the demo video from `docs/DEMO_SCRIPT.md` (under 2 minutes, no copyrighted music, Voice on); dry-run the
-  script first. The demo match is now seed 201 (4-3), chosen after the weak-flank tendency changed every seeded match;
-  its 35' and 77' goals are linked to earlier Tactical Scout flags.
+  script first. The demo match is now seed 1407 (2-1), chosen by `insidegame.datasets.demo_search`; its 28' and
+  65' goals are linked to the Tactical Scout flags at 14' and 58'.
 <!--
 - Update the demo script to include the broadcast camera, fact-checker, producer console, and Copilot or Foundry
   agent via MCP. Resolved 2026-10-13 in PR #31; spoken commentary and sprint tags added in PR #48.
@@ -194,11 +198,17 @@ Copilot-through-MCP recording, the demo video, then the submission steps. Fabric
   Resolved 2026-10-13 in PR #58: shots weighted by openness to goal, cutbacks and crosses from wide byline
   positions; byline shots 55% to 1.8% of all shots.
 -->
+<!--
 - Results by venue sit just outside their bands after the shot-location fix (home wins 38.8% against 40 to 48%,
   draws 32.1% against 22 to 30%, 480 matches). Raise scoring slightly or strengthen home advantage, then rerun
   `insidegame.datasets.calibrate`.
+  Resolved 2026-10-17: `docs/CALIBRATION.md` (regenerated 2026-10-17, 480 matches) has 13 of 13 metrics in band,
+  with home wins 46.25% and draws 25.42%.
+-->
 - `npm audit` reports advisories in vitest's dependencies (tinypool, @vitest/mocker); they affect only the test
-  runner, not the shipped bundle. Upgrade to vitest 4 (a breaking change) in its own pull request.
+  runner, not the shipped bundle. Upgrade to vitest 4 (a breaking change) in its own pull request. Rechecked
+  2026-10-17: 3 vulnerabilities (1 moderate, 2 critical), and `npm audit fix` without `--force` changes nothing;
+  the only fix is `vitest@4.1.12` through `npm audit fix --force`.
 - Live sessions are in memory, so the app runs a single replica; move session state to a shared store before scaling out.
 <!--
 - `/api/matches` (match creation) has no per-client rate limit beyond the 20-session cap.

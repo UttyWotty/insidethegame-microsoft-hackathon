@@ -1,8 +1,9 @@
 /**
  * Automated highlights reel: shot clips replay the real build-up and the ball's flight, other clips replay the
  * passes and carries around the moment, and clips with neither step through stored frames. Build-up plays at real
- * match pace and the strike in slow motion, a broadcast caption that keeps clear of the clip's action captions it,
- * and the commentator narrates it when Voice is on. Viewers can pause, skip between clips, replay, or go back to live.
+ * match pace and the strike in slow motion, a broadcast caption that keeps clear of the clip's action captions
+ * it, and the commentator narrates it when Voice is on. Viewers can pause, skip between clips, replay, or go back
+ * to live.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError } from "../api/client";

@@ -25,7 +25,7 @@ flowchart LR
 
 ## Status
 
-As of 2026-10-13 (develop at PR #58, release v0.1.0 on main):
+As of 2026-10-17 (develop at PR #74, release v0.1.0 on main):
 
 - Stage 1 (Ingest): synthetic match engine calibrated against top-flight reference bands (13 of 13 metrics within
   band over 480 matches, see [docs/CALIBRATION.md](docs/CALIBRATION.md)), with home advantage, a weak defensive
@@ -137,7 +137,7 @@ or training pipelines.
   great saves, speed indicators (shots of 115 km/h or more), distance indicators (completed passes of 40 m or
   more, players passing 300 m and 400 m carried), difficult passes, momentum swings, chaos spells, and
   milestones (braces, hat-tricks, pass counts). Each moment carries an importance score and structured facts for the
-  explanation agents. About 26 moments are detected per match.
+  explanation agents. About 30 moments are detected per match with player tracking (about 26 from events alone).
 - **Tactical patterns (Tactical Scout):** a deterministic miner watches a rolling 15-minute window of final-third
   entries and ball wins and flags three patterns as `tactical_pattern` moments: a flank exposed (6 or more completed entries
   down one wide channel at a success rate of 85% or more, naming the beaten full-back), a channel overload (at least
@@ -375,17 +375,18 @@ React + TypeScript (Vite, no UI library) broadcast interface:
 - **Instant replays:** a few seconds after every goal and every big chance (xG 0.25 or more), the action replays
   from another angle (behind the goal in the 3D view, a zoomed crop on the 2D pitch) under a REPLAY bug, with a
   short commentator line, then returns to live. An Auto replays toggle turns them off. A replay that comes due
-  while another is rolling waits in a queue of at most two (a goal replaces the oldest non-goal when it is full) and
-  is skipped if its shot is more than 10 match minutes behind live by its turn; "Back to live" skips only the
-  replay on screen. A recap that arrives during a replay opens once no replay is rolling, queued, or about to start,
-  and a replay that comes due while a recap dialog is open waits in the queue until it closes. The replay re-plays the
-  real build-up (the last few passes and carries, at real pace), then the strike and the ball's flight into the
-  goal mouth in slow motion (a blocked shot stops at the blocker, and a saved shot stops in front of the line
-  with the keeper at the ball). The 2D crop frames the whole action, from the
-  first build-up pass to the goal mouth, and draws the build-up path and the shot cone from the shooter to both
-  posts; the card and caption sit on the half away from the goal. It ends on an analysis card: xG, goal chance, distance, angle, speed, defenders and keeper in the cone,
-  pressure, the build-up's passes, time, and xT, and the assist (the full set for the analyst, a plain subset for
-  other personas). Cone counts come from the synthetic tracking positions and are illustrative.
+  while another is rolling waits in a queue of at most two (a goal replaces the oldest non-goal when it is full)
+  and is skipped if its shot is more than 10 match minutes behind live by its turn; "Back to live" skips only the
+  replay on screen. A recap that arrives during a replay opens once no replay is rolling, queued, or about to
+  start, and a replay that comes due while a recap dialog is open waits in the queue until it closes. The replay
+  re-plays the real build-up (the last few passes and carries, at real pace), then the strike and the ball's
+  flight into the goal mouth in slow motion (a blocked shot stops at the blocker, and a saved shot stops in front
+  of the line with the keeper at the ball). The 2D crop frames the whole action, from the first build-up pass to
+  the goal mouth, and draws the build-up path and the shot cone from the shooter to both posts; the card and
+  caption sit on the half away from the goal. It ends on an analysis card: xG, goal chance, distance, angle,
+  speed, defenders and keeper in the cone, pressure, the build-up's passes, time, and xT, and the assist (the full
+  set for the analyst, a plain subset for other personas). Cone counts come from the synthetic tracking positions
+  and are illustrative.
 - **Studio:** a pundit screen with four analysis visuals on the pitch: space control (each area owned by the
   nearest team, with the players), pass networks, heat maps, and pressing maps, per team, for the whole match or
   the last 15 minutes. By default it follows the Match Analyst: the tactical theme of the newest explanation picks
@@ -507,8 +508,8 @@ backend/
                   key moments, tactical patterns, team shape and shape shifts, shot cones and blocks, recap stages
                   and turning points (stage 2)
     tracking/     synthetic 22-player positions with speed-limited motion, sprint detection, and the late protect drop
-    highlights/   automated highlights reels (clip selection, shot stories, non-shot sequences, frame windows, narration) and instant replay
-                  stories (build-up and flight keyframes, shot analysis) (pure)
+    highlights/   automated highlights reels (clip selection, shot stories, non-shot sequences, frame windows,
+                  narration) and instant replay stories (build-up and flight keyframes, shot analysis) (pure)
     studio/       studio visuals: heat and pressing grids, pass networks, space control, theme to visual (pure)
     speech/       neural voice choice and SSML for spoken commentary (pure)
     commentary/   deterministic play-by-play lines with intensity for goals and close calls
