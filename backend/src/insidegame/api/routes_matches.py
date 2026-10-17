@@ -11,9 +11,9 @@ from fastapi.responses import StreamingResponse
 from insidegame.agents.personas import DEFAULT_LANGUAGE
 from insidegame.agents.context import build_viewer_context
 from insidegame.agents.question_context import build_question_context
-from insidegame.agents.recap_context import RecapStage
 from insidegame.agents.runner import OutputSource
 from insidegame.agents.steps import answer_question
+from insidegame.analytics.recap_basis import RecapStage
 from insidegame.api.clients import client_key
 from insidegame.api.models import AskRequest, CreateMatchRequest
 from insidegame.api.sse import stream

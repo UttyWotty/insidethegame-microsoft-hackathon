@@ -18,11 +18,12 @@ from enum import StrEnum
 from insidegame.agents.context import MomentContext
 from insidegame.agents.personas import ViewerProfile, is_relevant
 from insidegame.agents.context import ViewerContext
-from insidegame.agents.recap_context import RecapContext, RecapStage, build_recap_context
+from insidegame.agents.recap_context import RecapContext, build_recap_context
 from insidegame.agents.recap_takes import template_take
 from insidegame.agents.schemas import MatchRecap, RecapTake
 from insidegame.agents.runner import OutputSource
 from insidegame.agents.templates import recap_template
+from insidegame.analytics.recap_basis import RecapStage
 from insidegame.analytics.threat import ThreatAction
 from insidegame.commentary.play_by_play import PlayByPlay, line_gap_for_speed
 from insidegame.core.exceptions import HighlightsNotReadyError, ReplayNotFoundError, SessionLimitError

@@ -15,13 +15,14 @@ from pydantic import BaseModel
 from insidegame.agents.context import MomentContext, ViewerContext, build_moment_context, build_viewer_context
 from insidegame.agents.factory import AgentSuite
 from insidegame.agents.personas import ViewerProfile
-from insidegame.agents.recap_context import RecapStage, build_recap_context
+from insidegame.agents.recap_context import build_recap_context
 from insidegame.agents.runner import AgentOutcome, OutputSource, RunPolicy
 from insidegame.agents.recap_context import RecapContext
 from insidegame.agents.schemas import MatchRecap, RecapTake
 from insidegame.agents.steps import personalize_recap, write_recap
 from insidegame.agents.templates import commentary_template, explanation_template, persona_card_template
 from insidegame.analytics.analyzer import AnalysisUpdate, MatchAnalyzer
+from insidegame.analytics.recap_basis import RecapStage
 from insidegame.core.constants import PERIODS
 from insidegame.domain.enums import EventType
 from insidegame.domain.events import MatchEvent

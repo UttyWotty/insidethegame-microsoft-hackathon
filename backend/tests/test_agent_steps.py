@@ -162,9 +162,10 @@ def test_tools_answer_as_of_the_moment_not_the_live_match(
 def test_recap_take_uses_the_model_when_grounded_and_falls_back_otherwise(
     analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
 ) -> None:
-    from insidegame.agents.recap_context import RecapStage, build_recap_context
+    from insidegame.agents.recap_context import build_recap_context
     from insidegame.agents.steps import personalize_recap
     from insidegame.agents.templates import recap_template
+    from insidegame.analytics.recap_basis import RecapStage
     analyzer = analysed_match[0]
     context = build_recap_context(analyzer, RecapStage.HALF_TIME)
     recap = recap_template(context)

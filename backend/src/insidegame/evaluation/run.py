@@ -13,7 +13,7 @@ from pathlib import Path
 from insidegame.adapters.model_client import build_model_runtime
 from insidegame.agents.factory import create_agent_suite
 from insidegame.agents.personas import PersonaKey
-from insidegame.agents.recap_context import RecapStage
+from insidegame.analytics.recap_basis import RecapStage
 from insidegame.evaluation.report import summarize
 from insidegame.live.segments import build_segment_profile
 from insidegame.orchestration.service import MatchIntelligenceService

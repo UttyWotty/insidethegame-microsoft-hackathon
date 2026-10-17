@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from insidegame.agents.recap_context import RecapStage
 from insidegame.analytics.moments import KeyMoment, MomentKind
+from insidegame.analytics.recap_basis import RecapStage
 from insidegame.core.geometry import Point
 from insidegame.domain.enums import EventType, Outcome, ShotResult
 from insidegame.domain.events import MatchEvent

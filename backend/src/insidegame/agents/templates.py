@@ -8,10 +8,11 @@ import re
 import zlib
 from collections.abc import Callable
 
+from insidegame.agents.card_text import fit_card_body
 from insidegame.agents.context import MomentContext, ViewerContext
 from insidegame.agents.glossary import concept_for
 from insidegame.agents.personas import PersonaKey
-from insidegame.agents.recap_context import RecapContext, RecapStage, moment_actor
+from insidegame.agents.recap_context import RecapContext
 from insidegame.agents.schemas import (
     Commentary,
     Explanation,
@@ -22,6 +23,7 @@ from insidegame.agents.schemas import (
     TranslatedCard,
 )
 from insidegame.analytics.moments import FactValue, MomentKind, moment_intensity
+from insidegame.analytics.recap_basis import RecapStage, moment_actor
 from insidegame.analytics.threat_moments import LINES_JOINER
 from insidegame.domain.enums import Intensity
 
@@ -57,6 +59,7 @@ PAYOFF_SENTENCE: str = " The Tactical Scout flagged it at {minute}: {summary}."
 SUPERFAN_OWN_PREFIX: str = "Get in! "
 SUPERFAN_SETBACK_PREFIX: str = "So close! "
 SUPERFAN_RIVAL_PREFIX: str = "Stay strong. "
+NO_PREFIX: str = ""
 SETBACK_KINDS: frozenset[MomentKind] = frozenset({MomentKind.BIG_CHANCE_MISSED})
 MAX_CALLOUTS: int = 3
 EXCITED_OPENERS: dict[MomentKind, tuple[str, ...]] = {
@@ -278,13 +281,18 @@ def _superfan_prefix(context: MomentContext, viewer: ViewerContext) -> str:
 
 
 def persona_card_template(context: MomentContext, explanation: Explanation, viewer: ViewerContext) -> PersonaCard:
-    """Build a persona-specific card from the explanation without any model call."""
-    persona = viewer.viewer.persona
-    title, body, callouts = explanation.headline, explanation.why_it_matters, _callouts(context)
+    """Build a persona-specific card from the explanation without any model call.
+
+    Bodies built from why_it_matters are fitted to the persona's word budget by fit_card_body (leading whole
+    sentences), so template cards always pass the card validator; the title keeps any Scout payoff link.
+    """
+    persona, max_words = viewer.viewer.persona, viewer.viewer.profile.max_words
+    title, callouts = explanation.headline, _callouts(context)
+    body = fit_card_body(NO_PREFIX, explanation.why_it_matters, max_words)
     if persona is PersonaKey.CASUAL:
         body, callouts = f"{explanation.headline}. It is {context.score_home}-{context.score_away}.", []
     elif persona is PersonaKey.SUPERFAN:
-        body = _superfan_prefix(context, viewer) + explanation.why_it_matters
+        body = fit_card_body(_superfan_prefix(context, viewer), explanation.why_it_matters, max_words)
     elif persona is PersonaKey.PLAYER_TRACKER and viewer.tracked_player_name:
         stats = context.players.get(viewer.tracked_player_name, {})
         title = f"Tracking {viewer.tracked_player_name}"

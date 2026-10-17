@@ -5,13 +5,12 @@ The same context feeds the editor agent's prompt, its grounding check, and the f
 """
 
 from dataclasses import dataclass, field
-from enum import StrEnum
 
 from insidegame.analytics.analyzer import MatchAnalyzer
+from insidegame.analytics.recap_basis import MIN_TURNING_POINT_IMPORTANCE, RecapStage
 from insidegame.analytics.stats import PlayerStats
 
 MAX_RECAP_MOMENTS: int = 6
-MIN_TURNING_POINT_IMPORTANCE: float = 0.45
 POSSESSION_DECIMALS: int = 1
 XG_DECIMALS: int = 2
 IMPACT_GOAL: float = 3.0
@@ -19,14 +18,6 @@ IMPACT_XG: float = 2.0
 IMPACT_COMPLETED_PASS: float = 0.02
 IMPACT_DEFENSIVE_ACTION: float = 0.15
 IMPACT_SAVE: float = 0.5
-FACT_PLAYER_KEYS: tuple[str, ...] = ("scorer", "player", "goalkeeper", "passer")
-
-
-class RecapStage(StrEnum):
-    """Point in the match a recap covers."""
-
-    HALF_TIME = "half_time"
-    FULL_TIME = "full_time"
 
 
 @dataclass(frozen=True)
@@ -57,11 +48,6 @@ def impact_score(player: PlayerStats) -> float:
     defensive = player.tackles + player.interceptions
     return (IMPACT_GOAL * player.goals + IMPACT_XG * player.xg + IMPACT_COMPLETED_PASS * player.passes_completed
             + IMPACT_DEFENSIVE_ACTION * defensive + IMPACT_SAVE * player.saves)
-
-
-def moment_actor(facts: dict[str, object]) -> str | None:
-    """Return the main player named in a moment's facts, if any."""
-    return next((str(facts[k]) for k in FACT_PLAYER_KEYS if facts.get(k)), None)
 
 
 def build_recap_context(analyzer: MatchAnalyzer, stage: RecapStage) -> RecapContext:

@@ -175,6 +175,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Recap vocabulary moved below the agents layer: `RecapStage`, `MIN_TURNING_POINT_IMPORTANCE`, and `moment_actor`
+  now live in `analytics/recap_basis.py`, so `highlights/reel.py` no longer imports `agents.recap_context`; every
+  importer uses the new home and reel output is unchanged (reel digests for seeds 1407 and 194 match develop).
+
 - Auto replays queue instead of being dropped: a goal or big chance whose replay comes due while another replay is
   rolling waits in a queue of at most 2 (`REPLAY_QUEUE_MAX`; a goal replaces the oldest non-goal when it is full, a
   non-goal is dropped), and a queued replay is skipped, goals included, if its shot is more than 600 match seconds
@@ -288,6 +292,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   available, grounded template otherwise) above the shared recap.
 
 ### Fixed
+
+- Template persona cards always fit the persona's word budget (`max_words` x `WORD_BUDGET_TOLERANCE`, the card
+  validator's bound): the new pure `agents/card_text.py` keeps the prefix plus the leading whole sentences of
+  `why_it_matters` that fit, or cuts a single long first sentence at a word boundary with a trailing `...`. It is
+  used by the analyst, superfan, and player tracker templates. Superfan cards for goals linked to a `flank_exposed`
+  Scout flag were 53 words against a 52-word bound (208 cards on 102 of seeds 1-4000, including the demo seed
+  1407's 65' winner); a sweep of every persona card on every goal over seeds 1-4000 now has 0 over-limit cards and 0 validator
+  or grounding failures, and the card title still carries the Scout link.
 
 - The highlights caption no longer covers a shot clip's action: in story clips it goes to whichever of the bottom
   and top bands is clear of every keyframe ball and the acting player's dot at every playback tick and covers
