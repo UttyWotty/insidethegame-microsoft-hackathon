@@ -2,7 +2,8 @@
  * The main broadcast experience: the live pitch with persona overlays, score bug, shot and line-breaker cards,
  * shape-shift lines, stats, physical and danger leaderboards, momentum, and commentary.
  * It subscribes to the viewer's personalized stream and opens the recap dialog when a new recap arrives, holding it
- * while an auto replay is rolling, queued, or scheduled (see lib/replayQueue for the queue rules).
+ * while an auto replay is rolling, queued, or scheduled, and holds due replays while a recap dialog is open (see
+ * lib/replayQueue for the queue rules).
  * Changing persona or language reconnects to a different segment of the same live match.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -13,7 +14,7 @@ import { sprintSpeed } from "../lib/motion";
 import { playerDots } from "../lib/playerDots";
 import { earnsReplay, REPLAY_DELAY_MS } from "../lib/replay";
 import {
-  emptyReplayQueue, holdsRecap, replayDue, replayFinished, replaysOff, replayScheduled,
+  emptyReplayQueue, holdsRecap, recapClosed, recapOpened, replayDue, replayFinished, replaysOff, replayScheduled,
 } from "../lib/replayQueue";
 import { SCOUT_CARD_MS, SCOUT_ZONE_MS, scoutZoneFor, stillVisible } from "../lib/scout";
 import { SHAPE_SHIFT_MS } from "../lib/shape";
@@ -156,6 +157,12 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
     if (!isTyping()) setOpenRecap(heldRecap);
     setHeldRecap(null);
   }, [recapHeld, heldRecap]);
+
+  // Due replays wait in the queue while a recap dialog is open and roll once it closes.
+  const recapOpen = openRecap !== null;
+  useEffect(() => {
+    setReplays((s) => (recapOpen ? recapOpened(s) : recapClosed(s, liveSecond.current)));
+  }, [recapOpen]);
 
   useEffect(() => {
     if (openRecap?.stage !== "half_time") return undefined;

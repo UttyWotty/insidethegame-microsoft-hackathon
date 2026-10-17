@@ -138,6 +138,9 @@ def played_replays(shots: Sequence[ReplayCandidate], clock: Sequence[tuple[float
     another rolls joins a queue of REPLAY_QUEUE_MAX (goal priority); when a replay ends, queued shots more than
     REPLAY_MAX_LAG_MATCH_S behind the live match second are dropped. clock lists (stream seconds, match second) for
     every event in order, so the live match second at any stream time is that of the latest event shown.
+    The frontend also holds due replays in the queue while a recap dialog is open; this model has no recap dialogs,
+    so it assumes the viewer closes each recap promptly (the half-time recap closes itself after 15 s), as the live
+    demo does.
     """
     stamps = [t for t, _ in clock]
     goals = [shot.goal for shot in shots]

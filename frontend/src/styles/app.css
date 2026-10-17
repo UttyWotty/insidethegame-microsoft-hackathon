@@ -200,6 +200,12 @@ main:focus { outline: none; }
 @media (prefers-reduced-motion: reduce) { .replay-stage .ball { transition: none; } }
 .modal-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .highlight-caption { position: absolute; left: var(--space-5); right: var(--space-5); bottom: var(--space-4); display: grid; gap: var(--space-1); padding: var(--space-3) var(--space-4); border-left: 6px solid var(--color-warning); }
+/* Story clips move the caption off the action (lib/captionPlacement.ts mirrors these insets and the 40% width). */
+.highlight-caption.at-top, .highlight-caption.at-top-left, .highlight-caption.at-top-right { top: var(--space-4); bottom: auto; }
+.highlight-caption.compact { width: 40%; right: auto; }
+.highlight-caption.compact.at-top-right, .highlight-caption.compact.at-bottom-right { left: auto; right: var(--space-5); }
+/* Hidden twins of the caption, one per layout, measured by lib/useCaptionPlacement.ts. */
+.highlight-caption.caption-measure { visibility: hidden; }
 .highlight-title { font-size: var(--text-lg); text-transform: uppercase; }
 .highlight-controls { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 

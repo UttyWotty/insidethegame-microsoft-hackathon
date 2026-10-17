@@ -289,6 +289,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The highlights caption no longer covers a shot clip's action: in story clips it goes to whichever of the bottom
+  and top bands is clear of every keyframe ball and the acting player's dot at every playback tick and covers
+  fewer players (on the default Broadcast cam that is usually the empty band above the tilted pitch), and only
+  when neither band is clear becomes a compact, side-anchored caption away from the action. A placement is used
+  only if the caption fits fully inside the pitch view, with each layout's height measured on its own (hidden
+  full-width and compact twins); when nothing that fits is clear, the caption keeps today's full-width lower
+  third, so at phone width it is never cut off or worse than before. Pure rules in
+  `frontend/src/lib/captionPlacement.ts` with the camera projection in `lib/viewProjection.ts` (the broadcast
+  tilt and perspective from `app.css`); frame clips and the 3D camera keep the lower third. Narration, timing, and
+  voice are unchanged.
+- An auto replay no longer starts under an open recap dialog (seed 194's 47' save under the half-time recap): due
+  replays wait in the queue while the dialog is open and roll when it closes, with the queue cap and the 10-minute
+  staleness drop unchanged (`recapOpened` and `recapClosed` in `lib/replayQueue.ts`). `datasets/demo_story.py` has
+  no recap dialogs and documents that it assumes each recap is closed promptly; its model is unchanged.
 - Highlights clips of shots now replay the real build-up and the ball's flight into the goal (goals, big chances,
   great saves, thunderous strikes, and brace or hat-trick milestones): they reuse the instant replay's
   story keyframes (`highlights/reel_story.py`, `playback: "story"` in the `/highlights` payload) and its timeline

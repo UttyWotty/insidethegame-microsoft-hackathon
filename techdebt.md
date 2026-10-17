@@ -44,11 +44,19 @@ Copilot-through-MCP recording, the demo video, then the submission steps. Fabric
   Resolved 2026-10-17: built on `feature/replay-queue` (replays queue, at most 2, goals first, none over 10 match
   minutes behind live; an arriving recap waits until no replay is rolling, queued, or scheduled).
 -->
+<!--
 - Follow-up (separate task): an auto replay can start while a recap dialog is still open (seed 194's 47' save over
   the half-time recap); hold due replays in the queue while a recap dialog is open.
+  Resolved 2026-10-17: built on `feature/broadcast-overlay-polish` (due replays stay queued while a recap dialog is
+  open and roll when it closes).
+-->
+<!--
 - Follow-up (separate task): in the default broadcast camera the highlights caption covers the bottom strip of the
   pitch, hiding the start of the 77' build-up (the assist starts near that touchline). Move or shrink the caption
   during story clips, or frame the camera higher.
+  Resolved 2026-10-17: built on `feature/broadcast-overlay-polish` (story-clip captions move to the clear band, or go
+  compact, away from the ball and the acting player, only where the caption fits inside the view).
+-->
 - Follow-up (separate task): `highlights/reel.py` imports `agents.recap_context` (a higher layer); move
   `MIN_TURNING_POINT_IMPORTANCE`, `RecapStage`, and `moment_actor` down a layer.
 <!--
