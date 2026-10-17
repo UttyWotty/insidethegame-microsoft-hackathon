@@ -409,7 +409,9 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   skipped backlog, live audiences), a timeline of every detected moment (queued, in production, aired, held,
   released, skipped as stale, or not aired), and each moment's
   full broadcast record: the analyst's reasoning, the commentary, and every audience's overlay with source and
-  fact-check verdict. A producer can hold AI overlays for approval and release them per moment or all at once.
+  fact-check verdict. When an output degraded or needed a retry, the moment detail lists why per output (for
+  example "Card (casual fr): workflow degraded; template failed"); clean moments show nothing extra.
+  A producer can hold AI overlays for approval and release them per moment or all at once.
   A live agent trace shows, per moment, each agent's start, duration, outcome (AI or template, attempts,
   fact-check verdicts), and handoffs.
 - Switching persona or language mid-match backfills the most recent relevant moments for the new segment.

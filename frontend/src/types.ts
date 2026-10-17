@@ -117,7 +117,8 @@ export interface ShapeShiftMark {
 /** The whole match's line-height timeline and shape shifts, whatever the studio window. */
 export interface ShapeStudio { timeline: ShapeTimelinePoint[]; shifts: ShapeShiftMark[] }
 
-export interface Provenance { source: OutputSource; attempts: number; latency_ms: number }
+/** One output's provenance; problems is present only when the outcome recorded any (e.g. "template failed"). */
+export interface Provenance { source: OutputSource; attempts: number; latency_ms: number; problems?: string[] }
 
 export interface FactCheck { verdict: "approved" | "revised" | "replaced" | "skipped"; checker: string; issues: string[] }
 

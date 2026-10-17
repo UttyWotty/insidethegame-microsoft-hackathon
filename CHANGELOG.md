@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Outcome problems reach the producer console: each cue provenance entry (explanation, commentary, card,
+  translation) now carries `problems` (for example `workflow degraded`, `template failed`, retry or timeout notes)
+  only when the outcome recorded any, so normal model and fallback cues are byte-identical to before. The producer
+  console's moment detail lists them per output (for example "Card: template failed"), grouping per-viewer outputs
+  and naming the affected audiences by segment (persona, language, and any club or player, for example
+  "Card (analyst fr, casual fr)"); the pure summary lives in `frontend/src/lib/outcomeProblems.ts`.
 - Degraded-path resilience: `degraded_broadcast` now guards each template separately. If the explanation
   template raises, a minimal grounded explanation (`<minute> <kind title>` plus a fixed sentence, no evidence) is used;
   a failing commentary template falls back to the explanation headline; a failing persona card template affects only
