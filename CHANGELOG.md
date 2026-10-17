@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Degraded-path resilience: `degraded_broadcast` now guards each template separately. If the explanation
+  template raises, a minimal grounded explanation (`<minute> <kind title>` plus a fixed sentence, no evidence) is used;
+  a failing commentary template falls back to the explanation headline; a failing persona card template affects only
+  that viewer, who gets a minimal headline card fitted to the persona's budget. Each fallback is logged with its
+  traceback and noted as `template failed` on the outcome (source stays fallback), so a moment is never lost when
+  both the workflow and a template fail. Pure builders live in `orchestration/minimal_outputs.py`.
 - Demo-story scorer and seed search: the pure `datasets/demo_story.py` checks eight hard rules a demo match must
   meet (at most 9 Scout flags; a home go-ahead goal from 6 m or more linked to a home flank flag 3 to 12 minutes
   earlier; a later dropped shape shift by the leader with falling control; a replayed big save; a passing build-up;

@@ -242,7 +242,8 @@ intake -> analyst -> +-> narrator -------+-> fact-checker -> assembler -> overla
 - **Recaps:** the Match Editor writes half-time and full-time recaps at each period end, with a grounded
   standout-player check.
 - **Failure recovery:** each agent falls back individually; if the workflow itself fails, a degraded
-  template path still produces cues for every viewer.
+  template path still produces cues for every viewer. If a template on that path raises, only that piece is
+  replaced by a minimal grounded output (minute and moment kind), noted as "template failed", so the moment still airs.
 
 `MatchIntelligenceService.handle_event(event)` runs the whole pipeline for one event.
 
