@@ -6,8 +6,9 @@ one player's match, or a short lesson. Every number comes from the recap context
 
 from insidegame.agents.context import ViewerContext
 from insidegame.agents.personas import PersonaKey
-from insidegame.agents.recap_context import RecapContext, RecapStage
+from insidegame.agents.recap_context import RecapContext
 from insidegame.agents.schemas import RecapTake
+from insidegame.analytics.recap_basis import RecapStage
 
 STAGE_NAMES: dict[RecapStage, str] = {RecapStage.HALF_TIME: "half-time", RecapStage.FULL_TIME: "full-time"}
 

@@ -57,8 +57,11 @@ Copilot-through-MCP recording, the demo video, then the submission steps. Fabric
   Resolved 2026-10-17: built on `feature/broadcast-overlay-polish` (story-clip captions move to the clear band, or go
   compact, away from the ball and the acting player, only where the caption fits inside the view).
 -->
+<!--
 - Follow-up (separate task): `highlights/reel.py` imports `agents.recap_context` (a higher layer); move
   `MIN_TURNING_POINT_IMPORTANCE`, `RecapStage`, and `moment_actor` down a layer.
+  Resolved 2026-10-17: built on `feature/superfan-limit-and-layering` (moved to `analytics/recap_basis.py`).
+-->
 <!--
 - Follow-up (separate task): a saved shot in the replay still flies to its spot on the goal line with no keeper
   interaction, so it can look like it went in; stop it at the keeper the way blocked shots stop at the blocker.
@@ -76,10 +79,14 @@ Copilot-through-MCP recording, the demo video, then the submission steps. Fabric
   many shots from the same depth: 17.8% of shots and 19.1% of goals before the finishing change, 20.4% and 33.1%
   after (seeds 1-60, Kestrel Bay vs Ironvale). Spreading it (`pass=92:101`, `pass=93:102`) was prototyped, but
   goals fell to 2.40-2.57 per match and draws rose out of band, so it needs its own calibration tuning.
+<!--
 - Follow-up (separate task): the superfan persona card for a goal linked to a `flank_exposed` Scout flag
   (`agents/templates.py`, prefix plus the full `why_it_matters`) can exceed the superfan's 40-word limit (x 1.3)
   on seeds 779, 802, 1176, and 1809 (and 3693, the only late-winner demo candidate). Fix: prefix plus the leading
   whole sentences of `why_it_matters` within `max_words`. Seed 1407 (the demo) is not affected.
+  Resolved 2026-10-17: built on `feature/superfan-limit-and-layering` (`agents/card_text.py`; seed 1407's 65'
+  superfan cards were also over the bound and now fit).
+-->
 
 ## Blockers before submitting
 

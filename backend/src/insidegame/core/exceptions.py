@@ -63,3 +63,7 @@ class ReplayNotFoundError(InsideGameError):
 
 class XtConvergenceError(InsideGameError):
     """Raised when expected threat (xT) value iteration does not converge within its iteration budget."""
+
+
+class CardBudgetError(InsideGameError):
+    """Raised when fixed persona card text, such as a superfan prefix, alone exceeds the persona's word budget."""

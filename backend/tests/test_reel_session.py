@@ -13,8 +13,8 @@ import pytest
 from agent_framework.openai import OpenAIChatCompletionClient
 
 from insidegame.agents.factory import create_agent_suite
-from insidegame.agents.recap_context import RecapStage
 from insidegame.agents.runner import RunPolicy
+from insidegame.analytics.recap_basis import RecapStage
 from insidegame.live.session import MatchSession
 from insidegame.orchestration.service import MatchIntelligenceService
 from insidegame.simulation.engine import simulate_match

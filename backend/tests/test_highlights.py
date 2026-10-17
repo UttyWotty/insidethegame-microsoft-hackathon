@@ -4,8 +4,8 @@ They check clip selection (goals first, half-time limited to the first half), fr
 narration priority, and the grounded fallback caption. All logic is pure.
 """
 
-from insidegame.agents.recap_context import RecapStage
 from insidegame.analytics.moments import KeyMoment, MomentKind
+from insidegame.analytics.recap_basis import RecapStage
 from insidegame.highlights.reel import (
     LEAD_S,
     MAX_CLIPS,

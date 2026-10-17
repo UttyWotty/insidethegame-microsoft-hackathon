@@ -79,7 +79,8 @@ def test_superfan_tone_matches_whether_the_moment_helps_their_club(
 def test_recap_turning_points_are_important_and_readable(
     analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
 ) -> None:
-    from insidegame.agents.recap_context import MIN_TURNING_POINT_IMPORTANCE, RecapStage, build_recap_context
+    from insidegame.agents.recap_context import build_recap_context
+    from insidegame.analytics.recap_basis import MIN_TURNING_POINT_IMPORTANCE, RecapStage
     from insidegame.agents.templates import recap_template
     analyzer = analysed_match[0]
     context = build_recap_context(analyzer, RecapStage.FULL_TIME)

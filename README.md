@@ -498,7 +498,8 @@ backend/
     domain/       immutable event, team, and match models
     simulation/   seeded synthetic match engine with per-club weak flanks (stage 1 source)
     analytics/    streaming interpretation: xG, expected threat (xT) and line breaks, pass quality, stats, rhythm,
-                  key moments, tactical patterns, team shape and shape shifts, shot cones and blocks (stage 2)
+                  key moments, tactical patterns, team shape and shape shifts, shot cones and blocks, recap stages
+                  and turning points (stage 2)
     tracking/     synthetic 22-player positions with speed-limited motion, sprint detection, and the late protect drop
     highlights/   automated highlights reels (clip selection, shot stories, frame windows, narration) and instant replay
                   stories (build-up and flight keyframes, shot analysis) (pure)

@@ -9,7 +9,7 @@ import asyncio
 from test_live import GOALS_SEED, OFFLINE_POLICY, _offline_suite
 
 from insidegame.agents.personas import PersonaKey
-from insidegame.agents.recap_context import RecapStage
+from insidegame.analytics.recap_basis import RecapStage
 from insidegame.evaluation.report import summarize
 from insidegame.live.segments import build_segment_profile
 from insidegame.orchestration.cues import MomentBroadcast

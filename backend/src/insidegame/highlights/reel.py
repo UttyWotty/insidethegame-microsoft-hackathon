@@ -11,8 +11,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from insidegame.agents.recap_context import MIN_TURNING_POINT_IMPORTANCE, RecapStage, moment_actor
 from insidegame.analytics.moments import KeyMoment, MomentKind, moment_intensity
+from insidegame.analytics.recap_basis import MIN_TURNING_POINT_IMPORTANCE, RecapStage, moment_actor
 from insidegame.highlights.reel_story import StorySource, clip_story
 from insidegame.highlights.replay_story import ReplayKeyframe
 from insidegame.tracking.model import Frame

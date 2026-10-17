@@ -13,11 +13,11 @@ from insidegame.agents.glossary import concept_for
 from insidegame.agents.grounding import check_grounding
 from insidegame.agents.personas import PersonaKey, ViewerProfile
 from insidegame.agents.prompts import SCOUT_INSTRUCTIONS, fact_check_prompt
-from insidegame.agents.recap_context import RecapStage
 from insidegame.agents.templates import KIND_LABELS, commentary_template, explanation_template, persona_card_template
 from insidegame.agents.validation import card_validator, commentary_validator, explanation_validator
 from insidegame.analytics.analyzer import MatchAnalyzer
 from insidegame.analytics.moments import MomentKind
+from insidegame.analytics.recap_basis import RecapStage
 from insidegame.analytics.shape_tracker import ShiftDirection
 from insidegame.highlights.reel import KIND_TITLES, select_moments
 
