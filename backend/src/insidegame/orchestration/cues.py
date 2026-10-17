@@ -1,10 +1,11 @@
 """Overlay cues: the timed, machine-readable render contract for broadcast graphics (stage four).
 
 A cue says what to show, for whom, in which layout, from which match second, and for how long.
-Cues carry provenance so producers can see whether text came from a model, a retry, or a fallback.
+Cues carry provenance so producers can see whether text came from a model, a retry, or a fallback, and why.
 """
 
 from dataclasses import dataclass, field
+from typing import Any
 
 from insidegame.agents.personas import OverlayStyle
 from insidegame.agents.runner import AgentOutcome, OutputSource
@@ -66,6 +67,19 @@ def _text(item: PersonalizedCard) -> tuple[str, str, list[dict[str, str]], str]:
     return translated.title, translated.body, callouts, item.viewer.viewer.language
 
 
+def _outcome_provenance(outcome: AgentOutcome[Any]) -> dict[str, object]:
+    """Source, attempts, and latency of one outcome, plus its problems only when there are any.
+
+    Omitting an empty problems list keeps normal model and fallback cues byte-identical to earlier releases, while
+    degraded or retried outputs tell the producer why (for example "workflow degraded" or "template failed").
+    """
+    entry: dict[str, object] = {"source": outcome.source.value, "attempts": outcome.attempts,
+                                "latency_ms": outcome.latency_ms}
+    if outcome.problems:
+        entry["problems"] = list(outcome.problems)
+    return entry
+
+
 def build_cue(
     match_id: str, moment: KeyMoment, explanation: AgentOutcome[Explanation],
     commentary: AgentOutcome[Commentary], item: PersonalizedCard, commentary_text: str | None = None,
@@ -81,10 +95,7 @@ def build_cue(
     outcomes = {"explanation": explanation, "commentary": commentary, "card": item.card}
     if item.translation is not None:
         outcomes["translation"] = item.translation
-    provenance: dict[str, object] = {
-        name: {"source": o.source.value, "attempts": o.attempts, "latency_ms": o.latency_ms}
-        for name, o in outcomes.items()
-    }
+    provenance: dict[str, object] = {name: _outcome_provenance(o) for name, o in outcomes.items()}
     provenance["fact_check"] = item.fact_check.to_dict()
     provenance["commentary_check"] = commentary_check.to_dict()
     return OverlayCue(
