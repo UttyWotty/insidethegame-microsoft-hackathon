@@ -1,20 +1,34 @@
 /**
  * Automated highlights reel: shot clips replay the real build-up and the ball's flight, other clips stored frames.
- * Build-up plays at real match pace and the strike in slow motion, a broadcast lower third captions the clip, and
- * the commentator narrates it when Voice is on. Viewers can pause, skip between clips, replay, or go back to live.
+ * Build-up plays at real match pace and the strike in slow motion, a broadcast caption that keeps clear of the
+ * clip's action captions it, and the commentator narrates it when Voice is on. Viewers can pause, skip between clips, replay, or go back to live.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError } from "../api/client";
+import { isCompact } from "../lib/captionPlacement";
 import { playerDots } from "../lib/playerDots";
 import { REEL_RATE } from "../lib/reel";
 import { reelClipLengthMs, reelView } from "../lib/reelPlayback";
 import { speakLine, stopSpeaking } from "../lib/speakLine";
-import type { HighlightReel, MatchMetadata } from "../types";
+import { COMPACT_CLASS, MEASURE_CLASS, useCaptionPlacement } from "../lib/useCaptionPlacement";
+import type { HighlightClip, HighlightReel, MatchMetadata } from "../types";
 import { type BallAnchor } from "./Pitch";
 import { PitchView, type Camera } from "./PitchView";
 
 const TICK_MS = 100;
 const NO_SPRINT = () => null;
+
+/** The caption's lines; shared by the visible caption and the hidden twins measured for placement. */
+function CaptionBody({ label, position, count, clip }: { label: string; position: number; count: number;
+                                                      clip: HighlightClip }) {
+  return (
+    <>
+      <span className="term">{label} - {position} of {count}</span>
+      <strong className="display highlight-title">{clip.minute} {clip.title}{clip.actor ? ` - ${clip.actor}` : ""}</strong>
+      <span>{clip.commentary}</span>
+    </>
+  );
+}
 
 interface HighlightsPlayerProps {
   sessionId: string; stage: HighlightReel["stage"]; segment?: string; match: MatchMetadata;
@@ -40,6 +54,8 @@ export function HighlightsPlayer(props: HighlightsPlayerProps) {
   const clips = reel?.clips ?? [];
   const clip = clips[clipIndex];
   const finished = reel !== null && clipIndex >= clips.length;
+  const { fullRef, compactRef, placement } = useCaptionPlacement(clip ?? null, camera, TICK_MS);
+  const compact = isCompact(placement);
 
   useEffect(() => {
     if (!clip || paused) return undefined;
@@ -90,10 +106,16 @@ export function HighlightsPlayer(props: HighlightsPlayerProps) {
         <PitchView ball={view.ball} trail={[]} players={dots} moveMs={view.moveMs} homeColor={homeColor}
           awayColor={awayColor} camera={camera} shot={null} onBallAnchor={onBallAnchor}
           label={`${label}: ${clip.minute} ${clip.title}`}>
-          <div className="glass highlight-caption" aria-live="polite">
-            <span className="term">{label} - {clipIndex + 1} of {clips.length}</span>
-            <strong className="display highlight-title">{clip.minute} {clip.title}{clip.actor ? ` - ${clip.actor}` : ""}</strong>
-            <span>{clip.commentary}</span>
+          <div aria-live="polite"
+            className={`glass highlight-caption at-${placement}${compact ? ` ${COMPACT_CLASS}` : ""}`}>
+            <CaptionBody label={label} position={clipIndex + 1} count={clips.length} clip={clip} />
+          </div>
+          <div ref={fullRef} aria-hidden="true" className={`glass highlight-caption at-top ${MEASURE_CLASS}`}>
+            <CaptionBody label={label} position={clipIndex + 1} count={clips.length} clip={clip} />
+          </div>
+          <div ref={compactRef} aria-hidden="true"
+            className={`glass highlight-caption at-top-left ${COMPACT_CLASS} ${MEASURE_CLASS}`}>
+            <CaptionBody label={label} position={clipIndex + 1} count={clips.length} clip={clip} />
           </div>
         </PitchView>
       )}

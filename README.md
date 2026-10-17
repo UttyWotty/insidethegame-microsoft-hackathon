@@ -376,7 +376,8 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   short commentator line, then returns to live. An Auto replays toggle turns them off. A replay that comes due
   while another is rolling waits in a queue of at most two (a goal replaces the oldest non-goal when it is full) and
   is skipped if its shot is more than 10 match minutes behind live by its turn; "Back to live" skips only the
-  replay on screen. A recap that arrives during a replay opens once no replay is rolling, queued, or about to start. The replay re-plays the
+  replay on screen. A recap that arrives during a replay opens once no replay is rolling, queued, or about to start,
+  and a replay that comes due while a recap dialog is open waits in the queue until it closes. The replay re-plays the
   real build-up (the last few passes and carries, at real pace), then the strike and the ball's flight into the
   goal mouth in slow motion (a blocked shot stops at the blocker, and a saved shot stops in front of the line
   with the keeper at the ball). The 2D crop frames the whole action, from the
@@ -391,7 +392,9 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   and its source beside it.
 - **Automated highlights:** at half-time and full-time a highlights reel replays every goal and the biggest
   moments (up to six) on the pitch, with a broadcast caption and the moment's commentary spoken in the viewer's
-  language. Shot clips play the build-up and the ball's flight into the goal (the instant replay's story, build-up
+  language. In shot clips the caption keeps clear of the ball and the acting player where the view allows: it
+  moves between the bottom and the top of the view, or becomes a compact corner caption away from the action, but
+  only where it fits inside the view; otherwise it stays the full-width lower third. Shot clips play the build-up and the ball's flight into the goal (the instant replay's story, build-up
   at real pace and the strike in slow motion); other clips replay the tracking frames recorded live at real match
   pace. Pause, skip, replay, or go back to live.
 - **Ask the analyst:** viewers question the Match Companion about the live match and get grounded answers
