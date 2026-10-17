@@ -35,9 +35,13 @@ Copilot-through-MCP recording, the demo video, then the submission steps. Fabric
 - Follow-up (separate task): the highlights reel has the same ball-flight bug; fix it with the replay builder.
   Resolved 2026-10-16: built on `feature/reel-real-action` (shot clips replay the story keyframes, `playback`).
 -->
+<!--
 - Follow-up (separate task): non-shot reel clips (distance thresholds, difficult or line-breaking passes, pass and
   carry milestones, momentum swings, chaos spells) still play stored frames, so the ball runs ahead of the players
   on passes (seed 194's 15' momentum swing). Needs keyframes for single passes and carries and a new story kind.
+  Resolved 2026-10-17: built on `feature/reel-nonshot-clips` (non-shot reel clips replay the passes and carries in
+  their window as build-up keyframes, `playback: "story"`, with no new story kind).
+-->
 <!--
 - Follow-up (separate task): a qualifying replay is dropped, not queued, while another replay is playing (seed 194's
   65' save, xG 0.55, got no replay), and the full-time recap opens over a replay that starts after 90 minutes.

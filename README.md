@@ -268,7 +268,7 @@ skipped.
 | GET | `/api/matches/{id}/producer/stream` | Server-sent events: the producer console state whenever it changes, then `end` |
 | GET | `/api/matches/{id}/replay?period=&at=` | Instant replay story of a played shot (`at` within 0.01 s): build-up, strike, and flight keyframes plus its analysis (xG, goal chance, shot cone, assist, build-up); 404 when no shot matches |
 | GET | `/api/matches/{id}/studio?window=` | Studio visuals for `match` or `last_15`: heat, pressing, and pass maps per team, space control, and the analyst's recommended visual |
-| GET | `/api/matches/{id}/highlights?stage=` | Highlights reel for `half_time` or `full_time` (409 until that recap exists): clips with narration and either the shot's replay-story keyframes (`playback: "story"`) or stored tracking frames (`playback: "frames"`) |
+| GET | `/api/matches/{id}/highlights?stage=` | Highlights reel for `half_time` or `full_time` (409 until that recap exists): clips with narration and keyframes (`playback: "story"`: the shot's replay story for shot clips, window keyframes of the passes and carries for other clips) or, when neither exists, stored tracking frames (`playback: "frames"`) |
 | POST | `/api/matches/{id}/producer/hold`, `/producer/release` | Hold AI overlays for approval; release one or all |
 | GET | `/api/speech/status` | Whether neural speech is configured (configuration only, no service call) |
 | GET | `/api/matches/{id}/speech?ref=&segment=` | MP3 of one commentary line this match produced (never arbitrary text) |
@@ -393,11 +393,14 @@ React + TypeScript (Vite, no UI library) broadcast interface:
   and its source beside it.
 - **Automated highlights:** at half-time and full-time a highlights reel replays every goal and the biggest
   moments (up to six) on the pitch, with a broadcast caption and the moment's commentary spoken in the viewer's
-  language. In shot clips the caption keeps clear of the ball and the acting player where the view allows: it
-  moves between the bottom and the top of the view, or becomes a compact corner caption away from the action, but
-  only where it fits inside the view; otherwise it stays the full-width lower third. Shot clips play the build-up and the ball's flight into the goal (the instant replay's story, build-up
-  at real pace and the strike in slow motion); other clips replay the tracking frames recorded live at real match
-  pace. Pause, skip, replay, or go back to live.
+  language. In story clips (shots and non-shot clips alike) the caption keeps clear of the ball and the acting
+  player where the view allows: it moves between the bottom and the top of the view, or becomes a compact corner
+  caption away from the action, but only where it fits inside the view; otherwise it stays the full-width lower
+  third. Shot clips play the build-up and the ball's flight into the goal (the instant replay's story, build-up at
+  real pace and the strike in slow motion). Non-shot clips (line-breaking passes, momentum swings) play the passes
+  and carries around the moment at real pace, with the ball at each action's true start and the acting player on
+  it; a clip with no pass or carry in its window replays the tracking frames recorded live. Pause, skip, replay, or
+  go back to live.
 - **Ask the analyst:** viewers question the Match Companion about the live match and get grounded answers
   in their persona's voice and language, with supporting stats and suggested follow-ups. Without a model, a
   deterministic engine still answers common questions from live statistics in the persona's voice.
@@ -502,7 +505,7 @@ backend/
                   key moments, tactical patterns, team shape and shape shifts, shot cones and blocks, recap stages
                   and turning points (stage 2)
     tracking/     synthetic 22-player positions with speed-limited motion, sprint detection, and the late protect drop
-    highlights/   automated highlights reels (clip selection, shot stories, frame windows, narration) and instant replay
+    highlights/   automated highlights reels (clip selection, shot stories, non-shot sequences, frame windows, narration) and instant replay
                   stories (build-up and flight keyframes, shot analysis) (pure)
     studio/       studio visuals: heat and pressing grids, pass networks, space control, theme to visual (pure)
     speech/       neural voice choice and SSML for spoken commentary (pure)

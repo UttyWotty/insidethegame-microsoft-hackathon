@@ -3,8 +3,8 @@
 At half-time or full-time the reel takes every goal plus the most important other moments up to MAX_CLIPS, in
 match order, never clipping Tactical Scout flags or shape shifts, and narrates each clip with the viewer's own
 commentary, the produced commentary, or a grounded label built from the moment's facts. Shot clips play that
-shot's instant-replay story (the real build-up and the ball's flight, playback STORY), and other clips are cut a
-few seconds either side of the moment from the frames recorded during the replay (playback FRAMES).
+shot's instant-replay story (the real build-up and the ball's flight), other clips play the keyframes of the passes
+and carries in their window (both playback STORY), and clips with neither are cut from stored frames (FRAMES).
 """
 
 from collections.abc import Mapping, Sequence
@@ -13,6 +13,7 @@ from enum import StrEnum
 
 from insidegame.analytics.moments import KeyMoment, MomentKind, moment_intensity
 from insidegame.analytics.recap_basis import MIN_TURNING_POINT_IMPORTANCE, RecapStage, moment_actor
+from insidegame.highlights.reel_sequence import clip_sequence
 from insidegame.highlights.reel_story import StorySource, clip_story
 from insidegame.highlights.replay_story import ReplayKeyframe
 from insidegame.tracking.model import Frame
@@ -34,7 +35,7 @@ UNCLIPPED_KINDS: frozenset[MomentKind] = frozenset({MomentKind.TACTICAL_PATTERN,
 
 
 class ClipPlayback(StrEnum):
-    """How the frontend plays a clip: the shot's replay story keyframes, or the stored frames around the moment."""
+    """How the frontend plays a clip: replay keyframes (a shot's story or the window's actions), or stored frames."""
 
     STORY = "story"
     FRAMES = "frames"
@@ -121,14 +122,15 @@ def build_reel(moments: Sequence[KeyMoment], stage: RecapStage, frames: Sequence
                narrations: Mapping[str, Narration], source: StorySource | None = None) -> list[Clip]:
     """Assemble the reel; narrations maps moment ids to the best line available, falling back to the facts.
 
-    With a source, a moment about a shot plays that shot's replay story keyframes (playback STORY); every other
-    clip, and every clip when source is None (the default, no stories), is cut from frames and skipped when empty.
+    With a source, a moment about a shot plays that shot's replay story keyframes, and any other moment plays the
+    keyframes of the passes and carries in its window (both playback STORY). A clip with neither, and every clip
+    when source is None (the default, no stories), is cut from frames and skipped when empty.
     """
     clips = []
     for moment in select_moments(moments, stage):
         title = KIND_TITLES.get(moment.kind, moment.kind.value)
         narration = narrations.get(moment.moment_id) or fallback_narration(moment)
-        story = clip_story(moment, source) if source else None
+        story = (clip_story(moment, source) or clip_sequence(moment, source, LEAD_S, TAIL_S)) if source else None
         if story:
             clips.append(Clip(moment, title, narration, story, ClipPlayback.STORY))
             continue

@@ -1,7 +1,8 @@
 /**
- * Pure choice of how a highlights clip plays: a shot clip replays its story, any other clip steps through frames.
- * Story clips use the instant replay's timeline (build-up at real pace, the strike in slow motion, interpolated
- * between keyframes) followed by the reel's caption hold; frame clips keep the reel's real-pace frame stepping.
+ * Pure choice of how a highlights clip plays: shot clips replay their story, other clips replay the passes and
+ * carries around the moment, and clips with neither step through stored frames. Story clips use the instant
+ * replay's timeline (build-up at real pace, the strike in slow motion, interpolated between keyframes) followed by
+ * the reel's caption hold; frame clips keep the reel's real-pace frame stepping.
  * Every view is returned in the screen frame, mirrored for the second half, so the player only draws it.
  */
 import type { HighlightClip, Point } from "../types";
