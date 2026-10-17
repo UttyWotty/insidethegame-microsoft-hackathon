@@ -26,7 +26,7 @@ SPEED = 30.0
 FULL_TIME_CLIPS = [("big_chance_missed", "20'", "story"), ("great_save", "20'", "story"), ("goal", "28'", "story"),
                    ("goal", "34'", "story"), ("goal", "65'", "story"), ("big_chance_missed", "89'", "story")]
 HALF_TIME_CLIPS = [("big_chance_missed", "20'", "story"), ("great_save", "20'", "story"),
-                   ("momentum_swing", "23'", "frames"), ("great_save", "23'", "story"), ("goal", "28'", "story"),
+                   ("momentum_swing", "23'", "story"), ("great_save", "23'", "story"), ("goal", "28'", "story"),
                    ("goal", "34'", "story")]
 WINNER_INDEX = 4
 ASSIST_RECEPTION = [91.7, 25.2]

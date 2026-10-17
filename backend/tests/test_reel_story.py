@@ -17,7 +17,8 @@ from insidegame.domain.enums import EventType, Outcome, ShotResult
 from insidegame.domain.events import MatchEvent
 from insidegame.domain.match import MatchMetadata
 from insidegame.highlights import reel_story
-from insidegame.highlights.reel import ClipPlayback, FrameRecord, build_reel, clip_frames
+from insidegame.highlights.reel import LEAD_S, TAIL_S, ClipPlayback, FrameRecord, build_reel, clip_frames
+from insidegame.highlights.reel_sequence import clip_sequence
 from insidegame.highlights.reel_story import StorySource, clip_story, moment_shot
 from insidegame.highlights.replay_story import ReplayPhase, build_story
 from insidegame.simulation.roster import build_fixture
@@ -123,14 +124,15 @@ def test_shot_clips_play_the_story_keyframes_ending_in_shot_then_flight(metadata
         assert [k["phase"] for k in payload["frames"]][-2:] == [ReplayPhase.SHOT.value, ReplayPhase.FLIGHT.value]
 
 
-def test_non_shot_clips_keep_the_stored_frames(metadata: MatchMetadata) -> None:
+def test_non_shot_clips_play_their_window_sequence_or_keep_the_stored_frames(metadata: MatchMetadata) -> None:
     moments = [_moment("lp", MomentKind.DISTANCE_THRESHOLD, PASS_AT, ("lp",)),
                _moment("sw", MomentKind.MOMENTUM_SWING, SWING_AT, ())]
     records = [_record(PASS_AT - 2.0), _record(PASS_AT + 1.0), _record(SWING_AT - 3.0), _record(SHOT_AT)]
-    reel = build_reel(moments, RecapStage.FULL_TIME, records, {}, _source(metadata))
-    assert [c.to_dict()["playback"] for c in reel] == ["frames", "frames"]
-    for clip, moment in zip(reel, moments, strict=True):
-        assert list(clip.frames) == clip_frames(records, moment)
+    source = _source(metadata)
+    reel = build_reel(moments, RecapStage.FULL_TIME, records, {}, source)
+    assert [c.to_dict()["playback"] for c in reel] == ["story", "frames"]
+    assert list(reel[0].frames) == clip_sequence(moments[0], source, LEAD_S, TAIL_S)
+    assert list(reel[1].frames) == clip_frames(records, moments[1])
 
 
 def test_a_shot_clip_is_kept_even_without_stored_frames(metadata: MatchMetadata) -> None:

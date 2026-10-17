@@ -128,9 +128,21 @@ def flight_seconds(origin: Point, end: Point, speed_kmh: float | None) -> float:
     return max(distance(origin, end) / speed_ms, MIN_FLIGHT_S)
 
 
-def _aligned(frame: Frame, player_id: str | None, spot: tuple[float, float]) -> Frame:
+def aligned_frame(frame: Frame, player_id: str | None, spot: tuple[float, float]) -> Frame:
     """The frame with the acting player moved onto spot (display alignment only; no number is derived from it)."""
     return [(pid, *spot) if pid == player_id else (pid, x, y) for pid, x, y in frame]
+
+
+def action_keyframe(action: MatchEvent, frame: Frame, team_id: str, metadata: MatchMetadata) -> ReplayKeyframe:
+    """The BUILD_UP keyframe of a pass or carry: the ball at its start in team_id's absolute frame, at its second.
+
+    frame is the tracking frame stored after the action; its player is aligned on the ball. The action must have a
+    start.
+    """
+    assert action.start is not None
+    ball = rounded(to_absolute(action.start, team_id, metadata), BALL_DECIMALS)
+    return ReplayKeyframe(action.period, action.match_second, ReplayPhase.BUILD_UP, action.event_type.value,
+                          action.player_id, action.receiver_id, ball, aligned_frame(frame, action.player_id, ball))
 
 
 def _keeper_id(shot: MatchEvent, metadata: MatchMetadata) -> str | None:
@@ -145,7 +157,7 @@ def _flight_positions(shot: MatchEvent, shot_positions: Frame, landing: tuple[fl
     """The FLIGHT keyframe's positions: the shot frame, with the defending keeper on the ball for a saved shot."""
     if shot.shot_result is not ShotResult.SAVED:
         return shot_positions
-    return _aligned(shot_positions, _keeper_id(shot, metadata), landing)
+    return aligned_frame(shot_positions, _keeper_id(shot, metadata), landing)
 
 
 def build_keyframes(shot: MatchEvent, actions: Sequence[MatchEvent], frames: Mapping[str, Frame], card: ShotCard,
@@ -163,12 +175,9 @@ def build_keyframes(shot: MatchEvent, actions: Sequence[MatchEvent], frames: Map
     for action in actions:
         if action.event_id not in frames or action.start is None:
             continue
-        ball = rounded(to_absolute(action.start, team_id, metadata), BALL_DECIMALS)
-        keyframes.append(ReplayKeyframe(action.period, action.match_second, ReplayPhase.BUILD_UP,
-                                        action.event_type.value, action.player_id, action.receiver_id, ball,
-                                        _aligned(frames[action.event_id], action.player_id, ball)))
+        keyframes.append(action_keyframe(action, frames[action.event_id], team_id, metadata))
     origin = rounded(to_absolute(shot.start, team_id, metadata), BALL_DECIMALS)
-    shot_positions = _aligned(frames[shot.event_id], shot.player_id, origin)
+    shot_positions = aligned_frame(frames[shot.event_id], shot.player_id, origin)
     outfield, keeper = shot_opponents(shot, frames[shot.event_id], metadata)
     end = flight_end(shot, card, outfield, keeper)
     landing = rounded(to_absolute(end, team_id, metadata), BALL_DECIMALS)

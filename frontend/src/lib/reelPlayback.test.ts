@@ -1,8 +1,9 @@
 /**
- * Tests for choosing how a highlights clip plays: shot clips replay their story, other clips step through frames.
+ * Tests for choosing how a highlights clip plays: story clips (a shot, or the passes around the moment) replay
+ * keyframes, and the rest step through frames.
  * They check clip lengths (slow-motion flight plus the caption hold), the story ball at the start, mid-flight and
- * after the motion in the mirrored second half, and that frame clips match the existing reel helpers exactly.
- * All logic is pure, so every clip is built by hand.
+ * after the motion in the mirrored second half, a first-half clip of build-up keyframes only played at real pace,
+ * and that frame clips match the existing reel helpers exactly. All logic is pure, so every clip is built by hand.
  */
 import { describe, expect, it } from "vitest";
 import { CLIP_HOLD_MS, clipLengthMs, frameBall, frameIndexAt, framePositions, glideMs } from "./reel";
@@ -60,6 +61,33 @@ describe("reelView of a story clip", () => {
   it("tags the current keyframe's actor and receiver and moves over one tick", () => {
     expect(reelView(story, 1000, TICK)).toMatchObject({ actor: "h4", receiver: "h11", moveMs: TICK });
     expect(reelView(story, BUILD_UP_MS + 10, 250)).toMatchObject({ actor: "h9", receiver: null, moveMs: 250 });
+  });
+});
+
+const passKey = (second: number, ball: [number, number], player: string): ReplayKeyframe => ({
+  period: 1, match_second: second, phase: "build_up", event_type: "pass", player_id: player, receiver_id: null, ball,
+  positions: [[player, ball[0], ball[1]], ["a1", 50, 34]],
+});
+const passKeys = [passKey(200, [20, 30], "h4"), passKey(204, [40, 50], "h8"), passKey(207, [70, 20], "h11")];
+const sequence: HighlightClip = { ...base, kind: "threat_created", period: 1, match_second: 204, playback: "story",
+  frames: passKeys };
+const SEQUENCE_MOTION_MS = 7000;
+
+describe("a story clip of build-up keyframes only", () => {
+  it("plays the whole span at real pace, then holds", () => {
+    expect(reelClipLengthMs(sequence)).toBe(SEQUENCE_MOTION_MS + CLIP_HOLD_MS);
+  });
+
+  it("is at the midpoint of two keyframe balls halfway between them", () => {
+    const view = reelView(sequence, 2000, TICK);
+    expect(view?.ball.x).toBeCloseTo(30);
+    expect(view?.ball.y).toBeCloseTo(40);
+  });
+
+  it("holds on the last keyframe's ball with its player as the actor", () => {
+    expect(reelView(sequence, SEQUENCE_MOTION_MS + CLIP_HOLD_MS, TICK)).toMatchObject({
+      ball: { x: 70, y: 20 }, actor: "h11",
+    });
   });
 });
 
