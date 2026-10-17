@@ -1,7 +1,7 @@
 <!--
 Open follow-ups and technical debt for Inside the Game, tracked in the repository so nothing is forgotten.
 Resolved items are wrapped in HTML comments rather than deleted, preserving history.
-Ordered by priority within each section; status as of 2026-10-17 (develop at PR #74, release v0.1.0 on main).
+Ordered by priority within each section; status as of 2026-10-17 (develop at PR #75, release v0.1.0 on main).
 -->
 
 # Tech Debt and Follow-ups
@@ -134,6 +134,10 @@ Fabric is optional polish.
 
 ## Azure go-live (needs a personal Azure subscription)
 
+- Pre-deploy dry run, local part: `infra/main.bicep` and `infra/resources.bicep` compile and lint clean (Bicep
+  0.47.16, 2026-10-17). Still to do: build the image (`docker build -t inside-the-game .`) and smoke-test it with
+  `MODEL_PROVIDER=offline` (health, landing page, a demo match, a replay). Blocked on 2026-10-17 because the local
+  Docker Desktop engine answered every request with HTTP 500; restart Docker Desktop first.
 - Create the Azure free account (needs a credit card; do it on a personal machine, not the work laptop).
 - Deploy: `azd auth login && azd up` from the repo root; pick a region with model quota (for example `eastus2` or `swedencentral`). See `docs/DEPLOYMENT.md`.
 - Before deploying, protect write and cost endpoints: `azd env set MCP_API_KEY "$(openssl rand -hex 24)"` and set `PRODUCER_KEY` on the container app.
@@ -179,7 +183,9 @@ Fabric is optional polish.
 -->
 - Cut release `v0.2.0` through Git Flow once deployed and validated.
 - Make the GitHub repository public before submitting.
-- Paste `docs/SUBMISSION.md` into the hackathon project page with the app URL and video link.
+- Paste `docs/SUBMISSION.md` into the hackathon project page with the app URL and video link. Testing step 1 and the
+  present-tense Azure AI Speech and Container Apps lines are only true once the app is live; reword them if the
+  deployment slips.
 - Keep the deployment running until judging ends on 2026-11-10, then `azd down --purge`.
 
 ## Engineering
