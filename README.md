@@ -43,8 +43,8 @@ As of 2026-10-17 (develop at PR #75, release v0.1.0 on main):
   replays re-play the real build-up and shot with an analysis card, queue instead of overlapping, and wait for open
   recaps; half-time and full-time highlights replay the real passes, carries, and shots.
 - Azure deployment: infrastructure as code, container, CI, and keyless Foundry and Speech auth ready (`azd up`);
-  not yet deployed or verified against Azure. The Bicep templates compile and lint clean; a local container
-  build and smoke test are pending.
+  not yet deployed or verified against Azure. The Bicep templates compile and lint clean, and the container
+  image builds and passes a local smoke test.
 
 ## Synthetic Match Engine
 

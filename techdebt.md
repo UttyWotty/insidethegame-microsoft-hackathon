@@ -134,10 +134,15 @@ Fabric is optional polish.
 
 ## Azure go-live (needs a personal Azure subscription)
 
+<!--
 - Pre-deploy dry run, local part: `infra/main.bicep` and `infra/resources.bicep` compile and lint clean (Bicep
   0.47.16, 2026-10-17). Still to do: build the image (`docker build -t inside-the-game .`) and smoke-test it with
   `MODEL_PROVIDER=offline` (health, landing page, a demo match, a replay). Blocked on 2026-10-17 because the local
   Docker Desktop engine answered every request with HTTP 500; restart Docker Desktop first.
+  Resolved 2026-10-19: image built; offline smoke test passed (health, landing page, diagnostics, seed 1407 streamed
+  to an analyst and a casual viewer to full time at 2-1, full-time highlights, the 65' winner replay, studio,
+  producer; no errors in the container log).
+-->
 - Create the Azure free account (needs a credit card; do it on a personal machine, not the work laptop).
 - Deploy: `azd auth login && azd up` from the repo root; pick a region with model quota (for example `eastus2` or `swedencentral`). See `docs/DEPLOYMENT.md`.
 - Before deploying, protect write and cost endpoints: `azd env set MCP_API_KEY "$(openssl rand -hex 24)"` and set `PRODUCER_KEY` on the container app.
