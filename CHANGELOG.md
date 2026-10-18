@@ -187,6 +187,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Frontend test runner upgraded from vitest 3 to vitest 4 (`^4.1.12`), clearing the `npm audit` advisories in
+  tinypool and `@vitest/mocker` (test-runner only, not the shipped bundle); `npm audit` now reports 0
+  vulnerabilities. No configuration or test changes were needed: all 31 test files (181 tests) pass, and vite
+  stays at 7. `techdebt.md` wraps the resolved vitest item.
 - `docs/SUBMISSION.md` brought up to date: eight agents including the Tactical Scout, ten MCP tools, expected
   threat, line-breaking passes and shape shifts, the analysed instant replay and replay queue, highlights that
   replay the real action, realistic finishing, degraded-path resilience and outcome problems, 13 of 13 calibration

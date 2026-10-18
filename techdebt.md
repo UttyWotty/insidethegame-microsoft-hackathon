@@ -1,13 +1,13 @@
 <!--
 Open follow-ups and technical debt for Inside the Game, tracked in the repository so nothing is forgotten.
 Resolved items are wrapped in HTML comments rather than deleted, preserving history.
-Ordered by priority within each section; status as of 2026-10-17 (develop at PR #75, release v0.1.0 on main).
+Ordered by priority within each section; status as of 2026-10-19 (develop at PR #77, release v0.1.0 on main).
 -->
 
 # Tech Debt and Follow-ups
 
 Most open items need a model run or Azure; the exceptions are the pass-target clamp tuning under Next up, the
-vitest 4 upgrade, the shared session store, and making the repository public. Suggested order
+shared session store, and making the repository public. Suggested order
 for the remaining work: Azure deploy and verification (diagnostics, AI chips, neural voice), a Foundry evaluation
 report, README screenshots and the Copilot-through-MCP recording, the demo video, then the submission steps.
 Fabric is optional polish.
@@ -211,10 +211,14 @@ Fabric is optional polish.
   Resolved 2026-10-17: `docs/CALIBRATION.md` (regenerated 2026-10-17, 480 matches) has 13 of 13 metrics in band,
   with home wins 46.25% and draws 25.42%.
 -->
+<!--
 - `npm audit` reports advisories in vitest's dependencies (tinypool, @vitest/mocker); they affect only the test
   runner, not the shipped bundle. Upgrade to vitest 4 (a breaking change) in its own pull request. Rechecked
   2026-10-17: 3 vulnerabilities (1 moderate, 2 critical), and `npm audit fix` without `--force` changes nothing;
   the only fix is `vitest@4.1.12` through `npm audit fix --force`.
+  Resolved 2026-10-19: vitest upgraded to 4.1.12 with no config or test changes; `npm audit` reports 0
+  vulnerabilities and all 31 frontend test files pass.
+-->
 - Live sessions are in memory, so the app runs a single replica; move session state to a shared store before scaling out.
 <!--
 - `/api/matches` (match creation) has no per-client rate limit beyond the 20-session cap.
