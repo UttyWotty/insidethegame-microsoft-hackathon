@@ -125,7 +125,11 @@ comeback, or a late goal. The demo seed (1407) passes every rule.
 
 Twelve matches (about 30,000 events) generate in under two seconds. A two-match sample is committed in
 [`data/sample/`](data/sample/README.md). The files load directly into Microsoft Fabric lakehouses, notebooks,
-or training pipelines.
+or training pipelines. [`docs/FABRIC.md`](docs/FABRIC.md) walks through the Fabric path: a PySpark notebook
+(`fabric/notebooks/load_lakehouse.ipynb`) loads them into six Delta tables with explicit schemas, a Direct Lake
+semantic model in TMDL (`fabric/InsideTheGame.SemanticModel/`) adds relationships and ten DAX measures, and a
+three-page report is described field by field. `python -m insidegame.fabric.check` (from `backend/`) verifies the
+data, notebook, and model against the Python schemas offline.
 
 ## Match Interpretation (Stage 2)
 
@@ -527,7 +531,11 @@ backend/
     datasets/     synthetic dataset tables, dataset card, generator, calibration, xT fit (xt_fit), and demo-seed
                   search (demo_search, scored by the pure demo_story module) CLIs
     foundry/      hosted agent definition and registration for Foundry Agent Service
+    fabric/       Fabric lakehouse schemas, row validator, TMDL and notebook drift checks (pure), offline check CLI
   tests/          unit and integration tests
+fabric/
+  notebooks/      PySpark notebook loading the JSONL files into lakehouse Delta tables
+  InsideTheGame.SemanticModel/  Direct Lake semantic model in TMDL (tables, relationships, DAX measures)
 frontend/
   src/api/        HTTP client and server-sent event hook
   src/state/      pure stream reducer

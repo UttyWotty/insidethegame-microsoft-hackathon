@@ -66,6 +66,7 @@ def build_tables(result: MatchResult) -> MatchTables:
     match: Row = {
         "match_id": metadata.match_id, "seed": metadata.seed, "competition": metadata.competition,
         "venue": metadata.venue, "home": metadata.home.name, "away": metadata.away.name,
+        "home_team_id": metadata.home.team_id, "away_team_id": metadata.away.team_id,
         "home_style": metadata.home.style.label, "away_style": metadata.away.style.label,
         "home_goals": result.home_goals, "away_goals": result.away_goals, "events": len(result.events),
         "home_possession_pct": round(stats.possession_share(metadata.home.team_id), COORD_DECIMALS),

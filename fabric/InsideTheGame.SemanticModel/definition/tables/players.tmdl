@@ -1,0 +1,191 @@
+table players
+	lineageTag: 2d1148c3-e7af-565c-9985-719a88b99e5b
+
+	measure Goals = SUM(players[goals])
+		formatString: 0
+		lineageTag: faa3a11e-3b5e-5db8-aece-db908e0655f0
+
+	measure 'Expected Goals' = SUM(players[xg])
+		formatString: 0.00
+		lineageTag: 6f57e3ef-bcc5-5cff-b903-3505b2828072
+
+	measure 'Goals minus xG' = [Goals] - [Expected Goals]
+		formatString: +0.00;-0.00;0.00
+		lineageTag: 69e10063-300c-5a14-bded-c1d022cba0b5
+
+	measure Shots = SUM(players[shots])
+		formatString: 0
+		lineageTag: 68c7c8f7-9396-5fef-adb0-591dc0c781bc
+
+	measure 'Pass Accuracy %' = DIVIDE(SUM(players[passes_completed]), SUM(players[passes_attempted]))
+		formatString: 0.0%
+		lineageTag: aa8975be-e733-5e7a-b04a-000ed4585645
+
+	column match_id
+		dataType: string
+		lineageTag: b3c3f4f5-6266-599b-af92-e75fe568811a
+		summarizeBy: none
+		sourceColumn: match_id
+
+	column passes_attempted
+		dataType: int64
+		lineageTag: c3b9468a-4450-5fac-850c-65efc2fd1988
+		summarizeBy: sum
+		sourceColumn: passes_attempted
+
+	column passes_completed
+		dataType: int64
+		lineageTag: 414fb80b-81c8-5597-b2a0-a2c986a073b4
+		summarizeBy: sum
+		sourceColumn: passes_completed
+
+	column progressive_passes
+		dataType: int64
+		lineageTag: c479f0a0-06b9-55ad-82d0-09956fc41967
+		summarizeBy: sum
+		sourceColumn: progressive_passes
+
+	column final_third_entries
+		dataType: int64
+		lineageTag: 5ae40e24-557f-5138-a40f-3b1518cb9bd7
+		summarizeBy: sum
+		sourceColumn: final_third_entries
+
+	column shots
+		dataType: int64
+		lineageTag: ad44e709-54b2-577f-93b2-5587ca14fba0
+		summarizeBy: sum
+		sourceColumn: shots
+
+	column shots_on_target
+		dataType: int64
+		lineageTag: 436ca430-b227-50cf-be14-60b67771aa79
+		summarizeBy: sum
+		sourceColumn: shots_on_target
+
+	column goals
+		dataType: int64
+		lineageTag: d162fb0c-2807-5cf8-a3f3-715e49c94c03
+		summarizeBy: sum
+		sourceColumn: goals
+
+	column xg
+		dataType: double
+		lineageTag: 91fe92f7-23e1-528e-81be-c49beda7fe7a
+		summarizeBy: sum
+		sourceColumn: xg
+
+	column max_shot_speed_kmh
+		dataType: double
+		lineageTag: b9de2276-2d62-54eb-9977-4da7e0a9a17c
+		summarizeBy: none
+		sourceColumn: max_shot_speed_kmh
+
+	column carries
+		dataType: int64
+		lineageTag: 9a51e4aa-d7a4-5f3b-8605-4117cae3a4c6
+		summarizeBy: sum
+		sourceColumn: carries
+
+	column carry_distance_m
+		dataType: double
+		lineageTag: 190fca6c-6ef8-54c1-b08d-5a0731b9201f
+		summarizeBy: sum
+		sourceColumn: carry_distance_m
+
+	column tackles
+		dataType: int64
+		lineageTag: 9e19fedd-c71e-5c7b-93e3-2c523f80d828
+		summarizeBy: sum
+		sourceColumn: tackles
+
+	column interceptions
+		dataType: int64
+		lineageTag: cfe507d2-1c85-55c5-9230-8875e86092ff
+		summarizeBy: sum
+		sourceColumn: interceptions
+
+	column pressures
+		dataType: int64
+		lineageTag: 5bbbd791-7174-55b8-8b9b-3c072e1f7af1
+		summarizeBy: sum
+		sourceColumn: pressures
+
+	column fouls
+		dataType: int64
+		lineageTag: ca83250b-1318-573b-9589-94eb8c410d0d
+		summarizeBy: sum
+		sourceColumn: fouls
+
+	column saves
+		dataType: int64
+		lineageTag: 219b1992-79f6-57a9-9574-27a41ae4dabe
+		summarizeBy: sum
+		sourceColumn: saves
+
+	column xt_added
+		dataType: double
+		lineageTag: 4201f5c3-3a5d-50c2-b54a-c7acf27af6e5
+		summarizeBy: sum
+		sourceColumn: xt_added
+
+	column line_breaking_passes
+		dataType: int64
+		lineageTag: c892d1fc-2dcb-5634-b6f3-391ebce6f925
+		summarizeBy: sum
+		sourceColumn: line_breaking_passes
+
+	column opponents_bypassed
+		dataType: int64
+		lineageTag: ca328073-fbe1-5752-acfa-b4a036943e6f
+		summarizeBy: sum
+		sourceColumn: opponents_bypassed
+
+	column player_id
+		dataType: string
+		lineageTag: 5283fae1-3e39-5131-b02e-c736f65ad8b6
+		summarizeBy: none
+		sourceColumn: player_id
+
+	column team_id
+		dataType: string
+		lineageTag: 4f953b8a-6e62-5e3c-bb75-52027ae01a6e
+		summarizeBy: none
+		sourceColumn: team_id
+
+	column name
+		dataType: string
+		lineageTag: 546d416b-792c-5915-b97e-e01a52b61600
+		summarizeBy: none
+		sourceColumn: name
+
+	column pass_accuracy
+		dataType: double
+		lineageTag: 94c375e5-d8c7-5a20-a425-8d5f95498af1
+		summarizeBy: none
+		sourceColumn: pass_accuracy
+
+	column avg_pass_difficulty
+		dataType: double
+		lineageTag: 6a912cfd-da04-5f17-a8fb-fbb1c84d7ff3
+		summarizeBy: none
+		sourceColumn: avg_pass_difficulty
+
+	column position
+		dataType: string
+		lineageTag: d27da2f0-a56f-5392-8f1b-6ef75dc5e8b5
+		summarizeBy: none
+		sourceColumn: position
+
+	column shirt_number
+		dataType: int64
+		lineageTag: f771e88d-a6ee-5d8d-9edf-ccb5fec0d467
+		summarizeBy: none
+		sourceColumn: shirt_number
+
+	partition players = entity
+		mode: directLake
+		source
+			entityName: players
+			schemaName: dbo
+			expressionSource: DatabaseQuery

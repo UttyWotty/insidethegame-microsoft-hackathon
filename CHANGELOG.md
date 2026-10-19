@@ -15,6 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Microsoft Fabric lakehouse path (`docs/FABRIC.md`): a PySpark notebook (`fabric/notebooks/load_lakehouse.ipynb`)
+  loads the five JSON Lines files into six Delta tables with explicit schemas (FAILFAST), adding an event `phase`,
+  a moment `scout_pattern`, and a `clubs` dimension; a Direct Lake semantic model in TMDL
+  (`fabric/InsideTheGame.SemanticModel/`) has five tables, six relationships, and ten DAX measures (Goals,
+  Expected Goals, Goals minus xG, Shots, Pass Accuracy %, Avg Pass Difficulty, xT Added, Avg Momentum,
+  Pass Share %, Scout Flags). The pure `insidegame.fabric` package holds the column schemas as the single source
+  of truth, a row validator, a TMDL reader, and a notebook drift check; `python -m insidegame.fabric.check`
+  validates a dataset folder and the `fabric/` artifacts offline and exits 1 with `<file>:<line>: <message>` lines
+  on any problem.
+- Match rows in the dataset carry `home_team_id` and `away_team_id` (the committed sample is regenerated).
+
 - Outcome problems reach the producer console: each cue provenance entry (explanation, commentary, card,
   translation) now carries `problems` (for example `workflow degraded`, `template failed`, retry or timeout notes)
   only when the outcome recorded any, so normal model and fallback cues are byte-identical to before. The producer
