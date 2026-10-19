@@ -1,0 +1,23 @@
+relationship 4610425d-9b15-5ab0-8459-d71ab4e25828
+	fromColumn: events.match_id
+	toColumn: matches.match_id
+
+relationship 3105fb5a-e51a-55e3-b8e7-e70be81674b3
+	fromColumn: players.match_id
+	toColumn: matches.match_id
+
+relationship 48cfa86a-6362-543d-bbec-ec88eb3fe4ee
+	fromColumn: moments.match_id
+	toColumn: matches.match_id
+
+relationship a2f85df8-46fa-53f6-b3e9-0b746d6177d1
+	fromColumn: events.team_id
+	toColumn: clubs.team_id
+
+relationship 765fe21b-b4f5-5b19-af0d-22a93dcd9eaf
+	fromColumn: players.team_id
+	toColumn: clubs.team_id
+
+relationship 83f2467d-9006-5346-9c6a-adb64eabc652
+	fromColumn: moments.team_id
+	toColumn: clubs.team_id

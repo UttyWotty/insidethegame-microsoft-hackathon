@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "InsideTheGame"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "8a3f5c1e-2b4d-4e6f-9a1b-3c5d7e9f1a2b"
+  }
+}

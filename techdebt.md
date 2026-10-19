@@ -163,7 +163,16 @@ Fabric is optional polish.
   Bicep, and the frontend preferring it when configured (needs the Azure subscription to verify).
   Resolved 2026-10-13: `/api/matches/{id}/speech`, Speech role and endpoint in Bicep, frontend prefers it.
 -->
+<!--
 - Microsoft Fabric: load `datasets.generate` output into a Fabric lakehouse and build a small Power BI report; reference it in the submission.
+  Resolved 2026-10-19: built on `feature/fabric-lakehouse` (notebook, TMDL semantic model, report guide in
+  `docs/FABRIC.md`, offline check `insidegame.fabric.check`); the live run is tracked below.
+-->
+- Microsoft Fabric live check (needs a Fabric capacity or trial): run the notebook and the semantic model against a
+  live Fabric workspace by following `docs/FABRIC.md` (upload, run `load_lakehouse.ipynb`, deploy the TMDL with the
+  SQL endpoint placeholders replaced, or route B), build the three report pages, and fix anything the offline check
+  could not catch (Direct Lake `schemaName`, `lineageTag`, Spark coercion of `tracking.players`). Add a report
+  screenshot to the submission.
 - Foundry evaluations (groundedness, relevance) on agent outputs, linked from the producer console or docs.
 - GitHub Copilot: record Copilot agent mode in VS Code querying the live match through the MCP server (`.vscode/mcp.json` example in README); also register the Foundry hosted agent and show it in the portal.
 <!--

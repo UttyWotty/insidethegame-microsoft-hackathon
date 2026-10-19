@@ -1,0 +1,210 @@
+table events
+	lineageTag: e68978d0-170c-5681-9cfe-02ede0ea37f4
+
+	measure 'Avg Pass Difficulty' = AVERAGE(events[pass_difficulty])
+		formatString: 0.0
+		lineageTag: 075f9929-9f55-5ac7-b13c-0157411acc51
+
+	measure 'xT Added' = SUM(events[xt_added])
+		formatString: 0.000
+		lineageTag: 28e370e3-a49a-5ed3-81fe-7d8a54169677
+
+	/// Home-relative momentum from -1 (away on top) to +1 (home on top); read it per match and phase, not per club.
+	measure 'Avg Momentum' = AVERAGE(events[momentum])
+		formatString: +0.00;-0.00;0.00
+		lineageTag: b2035049-fd6d-51ea-9ba3-8c3fdc70a4a1
+
+	/// Share of all passes in the current match and phase made by the filtered club: a possession proxy.
+	measure 'Pass Share %' =
+			VAR TeamPasses = CALCULATE(COUNTROWS(events), events[event_type] = "pass")
+			VAR AllPasses = CALCULATE(COUNTROWS(events), events[event_type] = "pass", REMOVEFILTERS(clubs))
+			RETURN DIVIDE(TeamPasses, AllPasses)
+		formatString: 0.0%
+		lineageTag: c34e19e9-f966-5605-9766-87f9f80a4ea4
+
+	column event_id
+		dataType: string
+		lineageTag: 43d3d7cd-957e-50aa-ad92-e5ecdb4b5b4b
+		summarizeBy: none
+		sourceColumn: event_id
+
+	column match_id
+		dataType: string
+		lineageTag: 59d4331a-56d7-59de-83b6-77746f2656a6
+		summarizeBy: none
+		sourceColumn: match_id
+
+	column sequence
+		dataType: int64
+		lineageTag: 4b08278f-c209-5c2c-9175-e6625a95d1c1
+		summarizeBy: none
+		sourceColumn: sequence
+
+	column period
+		dataType: int64
+		lineageTag: 5040a657-f7fe-56d0-bf31-ef6b1fe888d2
+		summarizeBy: none
+		sourceColumn: period
+
+	column match_second
+		dataType: double
+		lineageTag: c2d898d2-6382-5867-ac24-fc969b5bae65
+		summarizeBy: none
+		sourceColumn: match_second
+
+	column minute
+		dataType: int64
+		lineageTag: 1aef5086-855c-5d9c-936c-51ad6f6ae43f
+		summarizeBy: none
+		sourceColumn: minute
+
+	column event_type
+		dataType: string
+		lineageTag: cfae59b5-1e08-5eb1-8ff4-7db7164c74f4
+		summarizeBy: none
+		sourceColumn: event_type
+
+	column team_id
+		dataType: string
+		lineageTag: 7366acd1-bdfb-5411-b531-892d37e4e77f
+		summarizeBy: none
+		sourceColumn: team_id
+
+	column player_id
+		dataType: string
+		lineageTag: dde39813-af71-5002-8961-21a9f7f1603f
+		summarizeBy: none
+		sourceColumn: player_id
+
+	column possession_id
+		dataType: int64
+		lineageTag: e907836a-56e7-5ea5-b0ac-4453ac351725
+		summarizeBy: none
+		sourceColumn: possession_id
+
+	column outcome
+		dataType: string
+		lineageTag: 84b6186f-eb68-5ba9-be89-65c2759c5d02
+		summarizeBy: none
+		sourceColumn: outcome
+
+	column receiver_id
+		dataType: string
+		lineageTag: a9b47ae6-943e-5f31-a577-11d44a8f05c2
+		summarizeBy: none
+		sourceColumn: receiver_id
+
+	column under_pressure
+		dataType: boolean
+		lineageTag: be02f9f4-449c-5775-8526-910ce9bbb796
+		summarizeBy: none
+		sourceColumn: under_pressure
+
+	column length_m
+		dataType: double
+		lineageTag: 708df474-8923-58e1-a120-67f7cbab74d3
+		summarizeBy: none
+		sourceColumn: length_m
+
+	column ball_speed_kmh
+		dataType: double
+		lineageTag: 4d21b9f4-5030-5751-91ea-fe6c240bf2b3
+		summarizeBy: none
+		sourceColumn: ball_speed_kmh
+
+	column shot_result
+		dataType: string
+		lineageTag: 8cde4e14-3f82-5535-82e3-69f2bf5474bd
+		summarizeBy: none
+		sourceColumn: shot_result
+
+	column side
+		dataType: string
+		lineageTag: c2c4131f-7924-5bc4-b634-d58d492ea395
+		summarizeBy: none
+		sourceColumn: side
+
+	column minute_label
+		dataType: string
+		lineageTag: ad2c4417-5191-5118-84e5-d5b7ed0c7886
+		summarizeBy: none
+		sourceColumn: minute_label
+
+	column start_x
+		dataType: double
+		lineageTag: 3752a709-3664-5e6d-90da-2391da99af75
+		summarizeBy: none
+		sourceColumn: start_x
+
+	column start_y
+		dataType: double
+		lineageTag: 394a8d01-595c-58da-876d-99a18d3b7179
+		summarizeBy: none
+		sourceColumn: start_y
+
+	column end_x
+		dataType: double
+		lineageTag: a7f40ba9-da9c-5c28-a1d6-03cde5e6cc0c
+		summarizeBy: none
+		sourceColumn: end_x
+
+	column end_y
+		dataType: double
+		lineageTag: 01b43711-296c-5fa9-9b08-a3fa6d8d8638
+		summarizeBy: none
+		sourceColumn: end_y
+
+	column score_home
+		dataType: int64
+		lineageTag: e88a32b3-006a-5319-b02e-d87332c20f9d
+		summarizeBy: none
+		sourceColumn: score_home
+
+	column score_away
+		dataType: int64
+		lineageTag: 5667821e-eb0e-57f6-b661-71e2fdff83fe
+		summarizeBy: none
+		sourceColumn: score_away
+
+	column xg
+		dataType: double
+		lineageTag: 5694a48b-1bbe-563f-99c9-eeb2da7866f7
+		summarizeBy: sum
+		sourceColumn: xg
+
+	column pass_difficulty
+		dataType: double
+		lineageTag: b6609095-47a1-53cd-ad22-a72acf57bb1e
+		summarizeBy: none
+		sourceColumn: pass_difficulty
+
+	column momentum
+		dataType: double
+		lineageTag: bbb661dd-89b6-5469-be49-f51aa975f16f
+		summarizeBy: none
+		sourceColumn: momentum
+
+	column rhythm_state
+		dataType: string
+		lineageTag: a2cf4b30-41db-5be3-9785-6b3daf4d1674
+		summarizeBy: none
+		sourceColumn: rhythm_state
+
+	column xt_added
+		dataType: double
+		lineageTag: 8506c916-3b1a-515b-800a-268b22710d9f
+		summarizeBy: sum
+		sourceColumn: xt_added
+
+	column phase
+		dataType: string
+		lineageTag: 4f3576b9-b595-524c-a846-e9676e568245
+		summarizeBy: none
+		sourceColumn: phase
+
+	partition events = entity
+		mode: directLake
+		source
+			entityName: events
+			schemaName: dbo
+			expressionSource: DatabaseQuery

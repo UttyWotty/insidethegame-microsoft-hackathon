@@ -75,7 +75,10 @@ output, and a grounded fallback keeps the broadcast on air.
 - **Azure Container Apps, Container Registry, Application Insights, Log Analytics:** one container, provisioned
   with the Azure Developer CLI and Bicep.
 - **GitHub Actions:** CI on pull requests and OIDC-based deployment without stored secrets.
-- **Microsoft Fabric ready:** the dataset generator outputs analytics-ready JSON Lines with a dataset card.
+- **Microsoft Fabric ready:** the dataset generator outputs analytics-ready JSON Lines with a dataset card, a
+  PySpark notebook loads them into lakehouse Delta tables, and a Direct Lake semantic model (TMDL) adds
+  relationships and DAX measures for a Power BI report; all of it is schema-checked offline
+  (see `docs/FABRIC.md`).
 
 ## Problem it solves
 

@@ -1,0 +1,80 @@
+table moments
+	lineageTag: ac93ccc8-c164-5004-8b83-d3ba9efac377
+
+	/// Tactical Scout pattern moments (kind tactical_pattern).
+	measure 'Scout Flags' = CALCULATE(COUNTROWS(moments), moments[kind] = "tactical_pattern")
+		formatString: 0
+		lineageTag: eac87f91-69ac-59f5-810f-0974a078c981
+
+	column match_id
+		dataType: string
+		lineageTag: 7f3b6715-fc08-5586-aebe-3a1467cb1916
+		summarizeBy: none
+		sourceColumn: match_id
+
+	column moment_id
+		dataType: string
+		lineageTag: b3de416b-49de-55eb-a4d6-3dce9395a601
+		summarizeBy: none
+		sourceColumn: moment_id
+
+	column kind
+		dataType: string
+		lineageTag: 47307962-343c-5e3e-aa04-ac5c5f7b66cf
+		summarizeBy: none
+		sourceColumn: kind
+
+	column period
+		dataType: int64
+		lineageTag: ef12cb38-9e5b-5256-9624-8633be5e30e5
+		summarizeBy: none
+		sourceColumn: period
+
+	column match_second
+		dataType: double
+		lineageTag: b56eff56-9fa2-5a0d-ad08-bc3b4e032acc
+		summarizeBy: none
+		sourceColumn: match_second
+
+	column minute
+		dataType: int64
+		lineageTag: 253f878c-0777-5050-8d32-43bd669017b9
+		summarizeBy: none
+		sourceColumn: minute
+
+	column minute_label
+		dataType: string
+		lineageTag: 62335790-fa3d-52fe-a596-0ca74f170084
+		summarizeBy: none
+		sourceColumn: minute_label
+
+	column importance
+		dataType: double
+		lineageTag: b0c7e07b-1c16-5751-8322-08dd3cfc6e1d
+		summarizeBy: none
+		sourceColumn: importance
+
+	column team_id
+		dataType: string
+		lineageTag: 3fed435e-6ca3-55ab-b144-df7ea128dbf1
+		summarizeBy: none
+		sourceColumn: team_id
+
+	column scout_pattern
+		dataType: string
+		lineageTag: 011edff0-73cd-52bd-bf04-fb763bfbc0b6
+		summarizeBy: none
+		sourceColumn: scout_pattern
+
+	column facts
+		dataType: string
+		lineageTag: bf60e5e5-5cff-5b2d-92f7-4a7534dec1dc
+		summarizeBy: none
+		sourceColumn: facts
+
+	partition moments = entity
+		mode: directLake
+		source
+			entityName: moments
+			schemaName: dbo
+			expressionSource: DatabaseQuery

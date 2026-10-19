@@ -24,6 +24,8 @@ def test_rows_reconcile_with_the_simulated_match() -> None:
     assert len(tables.events) == len(result.events)
     assert len(tables.players) == SQUAD_PLAYERS
     assert tables.match["home_goals"] == result.home_goals
+    assert tables.match["home_team_id"] == result.metadata.home.team_id
+    assert tables.match["away_team_id"] == result.metadata.away.team_id
     shots = [r for r in tables.events if r["event_type"] == EventType.SHOT.value]
     assert shots and all(isinstance(r["xg"], float) for r in shots)
     assert sum(len(r["moment_kinds"]) for r in tables.events) == len(tables.moments)  # type: ignore[arg-type]
