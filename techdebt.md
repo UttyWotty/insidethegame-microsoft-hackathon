@@ -1,7 +1,7 @@
 <!--
 Open follow-ups and technical debt for Inside the Game, tracked in the repository so nothing is forgotten.
 Resolved items are wrapped in HTML comments rather than deleted, preserving history.
-Ordered by priority within each section; status as of 2026-10-19 (develop at PR #77, release v0.1.0 on main).
+Ordered by priority within each section; status as of 2026-10-19 (develop at PR #80, release v0.1.0 on main).
 -->
 
 # Tech Debt and Follow-ups
