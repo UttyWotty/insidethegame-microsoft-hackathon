@@ -186,6 +186,11 @@ Fabric is optional polish.
 - Record the demo video from `docs/DEMO_SCRIPT.md` (under 2 minutes, no copyrighted music, Voice on); dry-run the
   script first. The demo match is now seed 1407 (2-1), chosen by `insidegame.datasets.demo_search`; its 28' and
   65' goals are linked to the Tactical Scout flags at 14' and 58'.
+  Offline dry run 2026-10-19 (container, `MODEL_PROVIDER=offline`, seed 1407): every scripted fact matches the build
+  (goals 28', 34', 65' for 2-1; Scout flags 14' and 58' with 6 of 7 entries; the 65' Analyst card's 0.136 xG and
+  58' citation and the Casual card's "It is 2-1."; xT leaders 0.228, 0.186, 0.177; the 83' shift from 27.1 m to
+  17.8 m with possession 60.6% to 49.3%; all six trace agents; the 65' winner as clip 5 of 6; beats contiguous to
+  1:57). Still to recheck on Foundry: AI chips, Spanish text, and the quoted card wording, which a model may change.
 <!--
 - Update the demo script to include the broadcast camera, fact-checker, producer console, and Copilot or Foundry
   agent via MCP. Resolved 2026-10-13 in PR #31; spoken commentary and sprint tags added in PR #48.
