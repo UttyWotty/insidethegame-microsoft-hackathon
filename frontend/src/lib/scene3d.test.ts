@@ -29,6 +29,7 @@ describe("scene3d", () => {
   it("approaches targets smoothly and glides linearly", () => {
     expect(approach(0, 10, 450, 450)).toBeCloseTo(5);
     expect(approach(0, 10, 0, 450)).toBe(0);
+    expect(approach(-40, 66.5, Number.POSITIVE_INFINITY, 450)).toBe(66.5);
     const glide = { from: { x: 0, y: 0 }, to: { x: 10, y: 20 }, startedAt: 1000, durationMs: 500 };
     expect(glideAt(glide, 1250)).toEqual({ x: 5, y: 10 });
     expect(glideAt(glide, 5000)).toEqual({ x: 10, y: 20 });
