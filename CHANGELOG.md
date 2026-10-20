@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Browser tab icon (`frontend/public/favicon.svg`): an original pitch mark in the app palette (navy tile, green
+  pitch, white halfway line and centre circle, sky-blue ball), linked from `frontend/index.html`.
 - Microsoft Fabric lakehouse path (`docs/FABRIC.md`): a PySpark notebook (`fabric/notebooks/load_lakehouse.ipynb`)
   loads the five JSON Lines files into six Delta tables with explicit schemas (FAILFAST), adding an event `phase`,
   a moment `scout_pattern`, and a `clubs` dimension; a Direct Lake semantic model in TMDL
