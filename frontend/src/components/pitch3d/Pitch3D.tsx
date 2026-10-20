@@ -1,6 +1,7 @@
 /**
  * 3D broadcast view of the synthetic match: players as figures in club colours, the ball, goals, and a TV camera
- * on the near touchline that pans to follow the ball. Players glide between tracking frames like the 2D pitch,
+ * on the near touchline that pans to follow the ball; switching to or from the replay angle behind a goal is a cut, as
+ * on TV, while following the ball eases. Players glide between tracking frames like the 2D pitch,
  * name and sprint tags float above the players in the action, and overlays sit on top anchored to the ball.
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -48,6 +49,8 @@ interface SceneState {
   renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; ball: THREE.Mesh;
   ballGlide: Glide; figures: Map<string, Figure>; aim: THREE.Vector3; frame: number; lastFrame: number;
   lastAnchor: number; observer: ResizeObserver; tactics: THREE.Group | null; scoutZone: THREE.Mesh | null;
+  /** Camera angle shown on the last frame; undefined before the first frame, so the first frame cuts too. */
+  angle: "left" | "right" | null | undefined;
 }
 
 function stillGlide(point: Point): Glide {
@@ -75,7 +78,6 @@ function setupScene(mount: HTMLDivElement): SceneState {
   scene.add(ball);
   const camera = new THREE.PerspectiveCamera(FOV, ASPECT, NEAR, FAR);
   const start = broadcastCamera(null);
-  // The camera eases to its target every frame, so a replay angle cuts in smoothly from wherever it starts.
   camera.position.set(start.position.x, start.position.y, start.position.z);
   const aim = new THREE.Vector3(start.target.x, start.target.y, start.target.z);
   camera.lookAt(aim);
@@ -85,14 +87,20 @@ function setupScene(mount: HTMLDivElement): SceneState {
   });
   observer.observe(mount);
   return { renderer, scene, camera, ball, ballGlide: stillGlide({ x: PITCH_LENGTH / 2, y: 34 }), figures: new Map(),
-           aim, frame: 0, lastFrame: performance.now(), lastAnchor: 0, observer, tactics: null, scoutZone: null };
+           aim, frame: 0, lastFrame: performance.now(), lastAnchor: 0, observer, tactics: null, scoutZone: null,
+           angle: undefined };
 }
 
-/** Move the camera toward its live broadcast position, or a replay angle behind a goal, smoothly. */
+/**
+ * Move the camera toward its live broadcast position, or a replay angle behind a goal: smoothly while the angle
+ * stays the same, and as an instant cut when it changes (or on the first frame).
+ */
 function steerCamera(state: SceneState, ball: Point, elapsed: number, behindGoal: "left" | "right" | null): void {
   const want = behindGoal ? behindGoalCamera(ball, behindGoal) : broadcastCamera(ball);
+  const step = state.angle === behindGoal ? elapsed : Number.POSITIVE_INFINITY;
+  state.angle = behindGoal;
   const { camera, aim } = state;
-  const ease = (from: number, to: number) => approach(from, to, elapsed, CAMERA_HALF_LIFE_MS);
+  const ease = (from: number, to: number) => approach(from, to, step, CAMERA_HALF_LIFE_MS);
   camera.position.set(ease(camera.position.x, want.position.x), ease(camera.position.y, want.position.y),
                       ease(camera.position.z, want.position.z));
   aim.set(ease(aim.x, want.target.x), 0, ease(aim.z, want.target.z));

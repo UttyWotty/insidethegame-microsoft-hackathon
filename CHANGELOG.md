@@ -340,6 +340,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The 3D replay camera cuts straight to the angle behind the goal (and back to the touchline when live resumes), as
+  on TV, instead of flying low across the pitch for about three seconds at the start of every replay.
 - Instant replays and highlight reels no longer show a passer running alongside a slow-rolling ball: each completed
   pass now has a reception keyframe, so the ball reaches the receiver at the pass's own speed while the passer stays
   where they struck it, and a new `highlights/replay_motion.py` caps off-ball players at 7 m/s between keyframes,
