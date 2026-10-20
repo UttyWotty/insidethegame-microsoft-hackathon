@@ -143,10 +143,16 @@ Fabric is optional polish.
   to an analyst and a casual viewer to full time at 2-1, full-time highlights, the 65' winner replay, studio,
   producer; no errors in the container log).
 -->
-- Create the Azure free account (needs a credit card; do it on a personal machine, not the work laptop).
-- Deploy: `azd auth login && azd up` from the repo root; pick a region with model quota (for example `eastus2` or `swedencentral`). See `docs/DEPLOYMENT.md`.
-- Before deploying, protect write and cost endpoints: `azd env set MCP_API_KEY "$(openssl rand -hex 24)"` and set `PRODUCER_KEY` on the container app.
-- Verify: open `https://<app-url>/api/diagnostics` (one real model call through the managed identity), then use the app.
+<!--
+- Done 2026-10-20: free-trial subscription (spending limit On, $100 budget alert `hackathon-100`), deployed with
+  `azd up` to eastus2 with MCP_API_KEY set; /api/diagnostics reached gpt-4.1-mini through the managed identity,
+  /api/speech/status is available, and a live match aired only model-written, fact-checked moments to 34'.
+  The first `azd up` failed with RequestConflict (Foundry project and model deployment changed the account at the
+  same time); fixed by making the project depend on the deployment.
+-->
+- `PRODUCER_KEY` is deliberately unset on the live app: the Producer tab does not send `X-Producer-Key`, so setting
+  it would lock judges out of the producer console. Add a key field to the console first if it must be protected.
+- Tear down after judging (after 2026-11-10): `azd down --purge`.
 - Register the Foundry hosted agent: `uv pip install --python .venv/bin/python -e "backend[foundry]"`, then `eval "$(azd env get-values)"` and `.venv/bin/python -m insidegame.foundry.register --ask "Which matches are live?"`.
 - Set up continuous deployment: `azd pipeline config`.
 - Verify neural speech: `curl https://<app-url>/api/speech/status` shows available, then turn on Voice in the app.

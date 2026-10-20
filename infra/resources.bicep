@@ -74,11 +74,13 @@ resource foundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   }
 }
 
+// Created after the model deployment: Azure rejects two concurrent changes to one AI Services account.
 resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
   parent: foundry
   name: 'inside-the-game'
   location: location
   tags: tags
+  dependsOn: [modelDeployment]
   identity: { type: 'SystemAssigned' }
   properties: {
     displayName: 'Inside the Game'
