@@ -340,6 +340,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The 3D replay camera behind the goal sits higher (15 m, 16 m back, in the front of the end stand) and 6 m toward the
+  near touchline, so it looks down over the keeper at the shot instead of through the players in front of goal.
 - The 3D replay camera cuts straight to the angle behind the goal (and back to the touchline when live resumes), as
   on TV, instead of flying low across the pitch for about three seconds at the start of every replay.
 - Instant replays and highlight reels no longer show a passer running alongside a slow-rolling ball: each completed

@@ -36,17 +36,23 @@ export function broadcastCamera(ball: Point | null): { position: Vec3; target: V
   };
 }
 
-/** Replay camera behind a goal: low, a little to the side, looking up the pitch at the action. */
-export const GOAL_CAMERA_BACK = 14;
-export const GOAL_CAMERA_HEIGHT = 7;
-const GOAL_CAMERA_SIDE = 0.25;
+/**
+ * Replay camera behind a goal: raised in the front of the end stand and set off toward the near touchline, so it
+ * looks down over the keeper at the shot instead of through the players in front of goal.
+ */
+export const GOAL_CAMERA_BACK = 16;
+export const GOAL_CAMERA_HEIGHT = 15;
+/** Fraction of the ball's offset across the pitch the replay camera follows. */
+const GOAL_CAMERA_SIDE = 0.4;
+/** Fixed shift of the replay camera toward the near touchline, in metres. */
+const GOAL_CAMERA_OFFSET_Z = 6;
 
 /** Camera position and aim behind the left or right goal, framing the ball. */
 export function behindGoalCamera(ball: Point | null, end: "left" | "right"): { position: Vec3; target: Vec3 } {
   const world = pitchToWorld(ball ?? { x: PITCH_LENGTH / 2, y: PITCH_WIDTH / 2 });
   const sign = end === "right" ? 1 : -1;
   return {
-    position: { x: sign * (PITCH_LENGTH / 2 + GOAL_CAMERA_BACK), y: GOAL_CAMERA_HEIGHT, z: world.z * GOAL_CAMERA_SIDE },
+    position: { x: sign * (PITCH_LENGTH / 2 + GOAL_CAMERA_BACK), y: GOAL_CAMERA_HEIGHT, z: world.z * GOAL_CAMERA_SIDE + GOAL_CAMERA_OFFSET_Z },
     target: { x: world.x, y: 0, z: world.z },
   };
 }

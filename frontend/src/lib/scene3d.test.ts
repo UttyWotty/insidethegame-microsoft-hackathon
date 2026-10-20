@@ -21,9 +21,9 @@ describe("scene3d", () => {
 
   it("puts the replay camera behind the goal the action finished at", () => {
     const right = behindGoalCamera({ x: 95, y: 40 }, "right");
-    expect(right.position.x).toBe(66.5);
+    expect(right.position).toEqual({ x: 68.5, y: 15, z: 8.4 });
     expect(right.target).toEqual({ x: 42.5, y: 0, z: 6 });
-    expect(behindGoalCamera(null, "left").position.x).toBe(-66.5);
+    expect(behindGoalCamera(null, "left").position.x).toBe(-68.5);
   });
 
   it("approaches targets smoothly and glides linearly", () => {
