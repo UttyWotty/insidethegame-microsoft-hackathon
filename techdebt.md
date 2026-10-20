@@ -1,16 +1,46 @@
 <!--
 Open follow-ups and technical debt for Inside the Game, tracked in the repository so nothing is forgotten.
 Resolved items are wrapped in HTML comments rather than deleted, preserving history.
-Ordered by priority within each section; status as of 2026-10-19 (develop at PR #80, release v0.1.0 on main).
+Ordered by priority within each section; status as of 2026-10-20 (develop at PR #87, release v0.1.0 on main).
 -->
 
 # Tech Debt and Follow-ups
 
-Most open items need a model run or Azure; the exceptions are the pass-target clamp tuning under Next up, the
-shared session store, and making the repository public. Suggested order
-for the remaining work: Azure deploy and verification (diagnostics, AI chips, neural voice), a Foundry evaluation
-report, README screenshots and the Copilot-through-MCP recording, the demo video, then the submission steps.
-Fabric is optional polish.
+The app is live on Azure (see Azure go-live). Everything left to submit is in the ordered checklist below; finish it
+on 2026-10-21 and submit well before the 2026-10-27 23:59 PT deadline. Fabric is optional polish.
+
+## Finish and submit (2026-10-21, in this order)
+
+Live app: https://ca-web-e57jcjawvpd5a.blackriver-4dd5512b.eastus2.azurecontainerapps.io/
+
+1. Pre-flight (5 min). `curl <app>/api/health` (the first call after idle can come back empty; retry), then
+   `curl <app>/api/diagnostics` (expect `model_reachable: true`). In the portal, Cost Management shows spend so far;
+   expect a few dollars a day. Never click Upgrade.
+2. Foundry evaluation (15 min). `eval "$(azd env get-values)"`, then
+   `MODEL_PROVIDER=foundry MODEL_NAME=gpt-4.1-mini AZURE_OPENAI_ENDPOINT=$AZURE_OPENAI_ENDPOINT
+   .venv/bin/python -m insidegame.evaluation.run --max-moments 6`; commit the report to `docs/evaluations/` and
+   read `fact_check_issues` (closes the open item under Blockers). `az login` must be the same account.
+3. Register the Foundry hosted agent (10 min): `uv pip install --python .venv/bin/python -e "backend[foundry]"`,
+   `eval "$(azd env get-values)"`, `.venv/bin/python -m insidegame.foundry.register --ask "Which matches are live?"`;
+   screenshot it answering in the Foundry portal playground (evidence for Best Use of Microsoft Foundry).
+4. Polishing check on the live site (20 min), seed 1407 at speed 10: 3D replay (camera cuts to the raised angle,
+   passes reach the receiver), AI chips (not Template) on cards, Casual fan in Spanish, multiview, producer console,
+   full-time highlights. Compare the card wording quoted in `docs/DEMO_SCRIPT.md` with the Foundry output and update
+   the script where the model words it differently. Fix only what blocks the video.
+5. Retake README screenshots (`docs/images/broadcast.jpg`, `multiview.jpg`) from the live site with AI output.
+6. Record the demo video from `docs/DEMO_SCRIPT.md` on the live site: under 2 minutes, Voice on, no music, no real
+   club or league branding. Lead with the 14' Scout flag, the 28' goal, and the replay that links back to it.
+   Upload to YouTube as Public.
+7. Update `docs/SUBMISSION.md`: app URL, video link, and check every Azure line is in present tense and true.
+8. Cut release `v0.2.0` (Git Flow): `release/0.2.0` from develop, bump `version` in `backend/pyproject.toml` and
+   `frontend/package.json` (both 0.1.0), move Unreleased in
+   `CHANGELOG.md` to `## [0.2.0] - <date>`, PR into main, tag `v0.2.0` on the merge commit, GitHub release from the
+   changelog section, PR back into develop, delete the branch.
+9. Make the repository public: first `git grep -nI -E "api[_-]?key|secret|password|connectionstring"` on main and
+   confirm `.azure/` is untracked (it holds MCP_API_KEY).
+10. Submit on the Innovation Studio platform (aka.ms/insidethegame): pitch from `docs/SUBMISSION.md`, public repo
+    URL, YouTube link, live app URL (no credentials needed).
+11. Leave the deployment running until 2026-11-10, then `azd down --purge`.
 
 ## Next up (first thing next session)
 
