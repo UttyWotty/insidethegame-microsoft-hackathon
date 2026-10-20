@@ -24,7 +24,10 @@ from insidegame.domain.teams import Team
 from insidegame.highlights.reel import FrameRecord
 from insidegame.highlights.replay_analysis import analyse_shot
 from insidegame.highlights.replay_story import (
+    DEFAULT_PASS_SPEED_KMH,
     MIN_FLIGHT_S,
+    RECEPTION_EVENT,
+    RECEPTION_MAX_SHARE,
     REPLAY_MAX_ACTIONS,
     ReplayPhase,
     ReplayStory,
@@ -32,6 +35,7 @@ from insidegame.highlights.replay_story import (
     build_up_actions,
     find_shot,
     flight_seconds,
+    reception_keyframe,
 )
 from insidegame.simulation.engine import simulate_match
 from insidegame.simulation.roster import build_fixture
@@ -130,8 +134,9 @@ def test_build_up_keyframes_carry_the_ball_from_each_start_to_its_end(metadata: 
     assert story is not None
     keyframes = story.keyframes
     actions = {e.event_id: e for e in events}
-    for keyframe, action_id, following in zip(keyframes, ["e4", "e5", "e6", "e7"], keyframes[1:], strict=False):
-        action = actions[action_id]
+    starts = [i for i, k in enumerate(keyframes) if k.phase is ReplayPhase.BUILD_UP and k.event_type != RECEPTION_EVENT]
+    for index, action_id in zip(starts, ["e4", "e5", "e6", "e7"], strict=True):
+        keyframe, following, action = keyframes[index], keyframes[index + 1], actions[action_id]
         assert keyframe.phase is ReplayPhase.BUILD_UP and action.start and action.end
         assert distance(Point(*keyframe.ball), action.start) <= BALL_TOLERANCE_M
         assert distance(Point(*following.ball), action.end) <= BALL_TOLERANCE_M
@@ -144,7 +149,7 @@ def test_phases_end_with_shot_then_flight_at_the_flight_time(metadata: MatchMeta
     story = build_story(events, _frames(metadata, events), {}, metadata, 1, SHOT_AT)
     assert story is not None
     phases = [k.phase for k in story.keyframes]
-    assert phases == [ReplayPhase.BUILD_UP] * 4 + [ReplayPhase.SHOT, ReplayPhase.FLIGHT]
+    assert phases == [ReplayPhase.BUILD_UP] * 6 + [ReplayPhase.SHOT, ReplayPhase.FLIGHT]
     shot, flight = story.keyframes[-2:]
     expected = max(distance(Point(95.0, 30.0), Point(*flight.ball)) / (SHOT_SPEED_KMH / 3.6), MIN_FLIGHT_S)
     assert shot.match_second == SHOT_AT
@@ -211,8 +216,8 @@ def test_away_shot_is_mirrored_into_the_absolute_frame(metadata: MatchMetadata) 
               _shot(team=AWAY, player="irv-11")]
     story = build_story(events, _frames(metadata, events), {}, metadata, 1, SHOT_AT)
     assert story is not None
-    build_up, shot, flight = story.keyframes
-    assert build_up.ball == (25.0, 28.0) and shot.ball == (10.0, 38.0)
+    build_up, reception, shot, flight = story.keyframes
+    assert build_up.ball == (25.0, 28.0) and reception.ball == shot.ball == (10.0, 38.0)
     assert story.analysis.card.placement_y is not None
     expected = mirror(Point(105.0, 34.0 + story.analysis.card.placement_y))
     assert flight.ball == (round(expected.x, 1), round(expected.y, 1)) and flight.ball[0] == 0.0
@@ -240,7 +245,42 @@ def test_build_up_actions_without_a_stored_frame_are_skipped(metadata: MatchMeta
     del frames["e5"]
     story = build_story(events, frames, {}, metadata, 1, SHOT_AT)
     assert story is not None
-    assert [k.match_second for k in story.keyframes if k.phase is ReplayPhase.BUILD_UP] == [92.0, 96.0, 97.5]
+    seconds = [k.match_second for k in story.keyframes if k.phase is ReplayPhase.BUILD_UP]
+    assert seconds == pytest.approx([92.0, 96.0, 97.5, 97.5 + MIN_FLIGHT_S])
+
+
+def test_a_completed_pass_reaches_its_receiver_at_the_pass_speed(metadata: MatchMetadata) -> None:
+    events = _home_events()
+    story = build_story(events, _frames(metadata, events), {}, metadata, 1, SHOT_AT)
+    assert story is not None
+    receptions = [k for k in story.keyframes if k.event_type == RECEPTION_EVENT]
+    assert [k.player_id for k in receptions] == ["kba-09", "kba-11"]
+    first = receptions[0]
+    assert first.ball == (88.0, 36.0) and first.positions[[p for p, _, _ in first.positions].index("kba-09")][1:] == (88.0, 36.0)
+    assert first.match_second == pytest.approx(94.0 + 10.77 / (DEFAULT_PASS_SPEED_KMH / 3.6), abs=0.01)
+
+
+def test_a_reception_lands_before_the_next_action_and_only_for_completed_passes(metadata: MatchMetadata) -> None:
+    long_pass = _event("lp", 90.0, EventType.PASS, HOME, "kba-04", (20.0, 30.0), (80.0, 30.0), "kba-08",
+                       ball_speed_kmh=36.0)
+    frame = _frame(metadata)
+    reception = reception_keyframe(long_pass, frame, HOME, metadata, 91.0)
+    assert reception is not None and reception.match_second == pytest.approx(90.0 + RECEPTION_MAX_SHARE)
+    failed = _event("fp", 90.0, EventType.PASS, HOME, "kba-04", (20.0, 30.0), (40.0, 30.0), "kba-08",
+                    outcome=Outcome.FAILURE)
+    carry = _event("c", 90.0, EventType.CARRY, HOME, "kba-04", (20.0, 30.0), (40.0, 30.0))
+    assert reception_keyframe(failed, frame, HOME, metadata, 95.0) is None
+    assert reception_keyframe(carry, frame, HOME, metadata, 95.0) is None
+    assert reception_keyframe(long_pass, frame, HOME, metadata, 90.0) is None
+
+
+def test_the_strike_shows_the_stored_frame_after_smoothing(metadata: MatchMetadata) -> None:
+    events = _home_events()
+    frames = _frames(metadata, events, {"irv-01": (100.0, 34.0)})
+    story = build_story(events, frames, {}, metadata, 1, SHOT_AT)
+    assert story is not None
+    shot = next(k for k in story.keyframes if k.phase is ReplayPhase.SHOT)
+    assert dict((p, (x, y)) for p, x, y in shot.positions)["irv-01"] == (100.0, 34.0)
 
 
 def test_flight_seconds_has_a_floor_and_a_default_speed() -> None:

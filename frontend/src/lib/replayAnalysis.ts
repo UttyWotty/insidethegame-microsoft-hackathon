@@ -3,7 +3,7 @@
  * The analyst gets the full set of shot facts, while every other persona gets a plain-language subset.
  * Cone and build-up points arrive in the absolute home frame and are converted to the screen frame for the period.
  */
-import type { PersonaKey, Point, ReplayAnalysis } from "../types";
+import type { PersonaKey, Point, ReplayAnalysis, ReplayKeyframe } from "../types";
 import { toScreen } from "./pitch";
 import { resultLabel, shotStats } from "./shotCard";
 
@@ -11,6 +11,8 @@ const XT_DIGITS = 3;
 /** Replay xG decimals: the model value goal chance is computed from, so "xG 0.075" sits beside "Goal chance 8%". */
 const REPLAY_XG_DIGITS = 3;
 const DURATION_DIGITS = 0;
+/** Event type of the keyframe where a pass reaches its receiver; it adds no point to the build-up path. */
+export const RECEPTION_EVENT = "reception";
 
 function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
@@ -90,6 +92,14 @@ export function analysisRows(a: ReplayAnalysis, persona: PersonaKey, names: Reco
 /** The shot cone (origin and both posts) in the screen frame for the period. */
 export function coneScreen(a: ReplayAnalysis, period: number): Point[] {
   return a.cone.map(([x, y]) => toScreen({ x, y }, true, period));
+}
+
+/**
+ * The build-up path point of keyframe index: one point per action keyframe so far, so a reception keyframe keeps
+ * its pass's point (pass to pathScreen as upTo).
+ */
+export function pathIndex(frames: ReplayKeyframe[], index: number): number {
+  return frames.slice(0, index + 1).filter((f) => f.event_type !== RECEPTION_EVENT).length - 1;
 }
 
 /** The build-up path's first upTo + 1 points (keyframe ball points, then the shot origin) in the screen frame. */
