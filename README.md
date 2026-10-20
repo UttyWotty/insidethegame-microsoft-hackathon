@@ -44,9 +44,11 @@ As of 2026-10-19 (develop at PR #80, release v0.1.0 on main):
   recaps; half-time and full-time highlights replay the real passes, carries, and shots.
 - Microsoft Fabric: a lakehouse notebook and a Direct Lake semantic model with ten measures are ready and checked
   offline against the dataset (see [docs/FABRIC.md](docs/FABRIC.md)); not yet run in a live Fabric workspace.
-- Azure deployment: infrastructure as code, container, CI, and keyless Foundry and Speech auth ready (`azd up`);
-  not yet deployed or verified against Azure. The Bicep templates compile and lint clean, and the container
-  image builds and passes a local smoke test.
+- Azure deployment: live on Azure Container Apps in eastus2 since 2026-10-20
+  (https://ca-web-e57jcjawvpd5a.blackriver-4dd5512b.eastus2.azurecontainerapps.io/), deployed with `azd up`.
+  The agents run on gpt-4.1-mini in Microsoft Foundry through the app's managed identity (no keys), and neural
+  speech is available. Verified on the live site: seed 1407 to 34' with every aired moment model-written and
+  fact-checked (no template fallbacks), including both Tactical Scout flags and both goals.
 
 ## Synthetic Match Engine
 

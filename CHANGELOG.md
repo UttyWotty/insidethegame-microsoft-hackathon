@@ -340,6 +340,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A first `azd up` on a new subscription no longer fails with `RequestConflict`: the Foundry project is created after
+  the model deployment, since Azure rejects two concurrent changes to one AI Services account.
 - The 3D replay camera behind the goal sits higher (15 m, 16 m back, in the front of the end stand) and 6 m toward the
   near touchline, so it looks down over the keeper at the shot instead of through the players in front of goal.
 - The 3D replay camera cuts straight to the angle behind the goal (and back to the touchline when live resumes), as
