@@ -9,7 +9,7 @@ import { api } from "../api/client";
 import { toScreen } from "../lib/pitch";
 import { playerDots } from "../lib/playerDots";
 import { goalEnd, REPLAY_SPEECH_RATE, replayLine } from "../lib/replay";
-import { coneScreen, pathScreen } from "../lib/replayAnalysis";
+import { coneScreen, pathIndex, pathScreen } from "../lib/replayAnalysis";
 import { cardSide, replayCrop } from "../lib/replayFraming";
 import { clockAt, replayLengthMs, replayStage, sampleAt } from "../lib/replayTimeline";
 import { speakLine, stopSpeaking } from "../lib/speakLine";
@@ -82,7 +82,7 @@ export function ReplayPlayer(props: ReplayPlayerProps) {
   const stage = replayStage(frames, elapsed);
   const ball = screen(sample.ball);
   const color = analysis.team_id === match.home.team_id ? homeColor : awayColor;
-  const path = stage === "build_up" ? [...pathScreen(analysis, period, sample.index), ball]
+  const path = stage === "build_up" ? [...pathScreen(analysis, period, pathIndex(frames, sample.index)), ball]
     : pathScreen(analysis, period, analysis.build_up.path.length);
   const annotations = camera !== "3d"
     ? <ReplayAnalysisLayer cone={stage === "build_up" ? null : coneScreen(analysis, period)} path={path} color={color} />

@@ -4,8 +4,8 @@
  * All logic is pure.
  */
 import { describe, expect, it } from "vitest";
-import { analysisRows, assistLabel, buildUpLabel, coneScreen, pathScreen } from "./replayAnalysis";
-import type { ReplayAnalysis } from "../types";
+import { analysisRows, assistLabel, buildUpLabel, coneScreen, pathIndex, pathScreen } from "./replayAnalysis";
+import type { ReplayAnalysis, ReplayKeyframe } from "../types";
 
 const analysis: ReplayAnalysis = {
   shot_event_id: "s1", shooter_id: "h11", team_id: "kba",
@@ -65,6 +65,15 @@ describe("replay analysis", () => {
     expect(flipped).toHaveLength(1);
     expect(flipped[0].x).toBeCloseTo(20.42);
     expect(flipped[0].y).toBeCloseTo(60.44);
+  });
+
+  it("keeps a pass's path point through its reception keyframe", () => {
+    const keyframe = (event_type: string, phase: ReplayKeyframe["phase"] = "build_up"): ReplayKeyframe => ({
+      period: 1, match_second: 0, phase, event_type, player_id: null, receiver_id: null, ball: [0, 0], positions: [],
+    });
+    const frames = [keyframe("pass"), keyframe("reception"), keyframe("carry"), keyframe("pass"),
+      keyframe("reception"), keyframe("shot", "shot")];
+    expect(frames.map((_, i) => pathIndex(frames, i))).toEqual([0, 0, 1, 2, 2, 3]);
   });
 
   it("shows the replay xG at three decimals, the same value goal chance is computed from", () => {

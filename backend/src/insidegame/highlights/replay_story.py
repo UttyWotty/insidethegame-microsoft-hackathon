@@ -1,14 +1,15 @@
 """Pure instant-replay story for one shot: build-up keyframes, the strike, the ball's flight, and the shot analysis.
 
 Keyframes are built from events (true start and end points and times) plus the tracking frame stored after each
-event for player positions, so the ball travels along each pass and carry and then into the goal mouth where the
-shot card says it crossed the line, stops at the blocker for a blocked shot, or stops in front of the line at the
-keeper for a saved shot, with the keeper shown at the save. Coordinates are in the absolute home
-frame, and only stored analytics are used.
+event for player positions, so the ball travels along each pass (reaching the receiver at the pass's own speed) and
+carry and then into the goal mouth where the shot card says it crossed the line, stops at the blocker for a blocked
+shot, or stops in front of the line at the keeper for a saved shot, with the keeper shown at the save. Coordinates are
+in the absolute home frame, only stored analytics are used, and off-ball players are capped at a running speed
+(replay_motion).
 """
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 
 from insidegame.analytics.shot_block import block_point
@@ -17,7 +18,7 @@ from insidegame.analytics.shot_save import save_point
 from insidegame.analytics.threat import ThreatAction
 from insidegame.core.constants import GOAL_CENTER_Y_M, PITCH_LENGTH_M
 from insidegame.core.geometry import GOAL_CENTER, Point, distance
-from insidegame.domain.enums import EventType, Position, ShotResult
+from insidegame.domain.enums import EventType, Outcome, Position, ShotResult
 from insidegame.domain.events import MatchEvent
 from insidegame.domain.match import MatchMetadata
 from insidegame.highlights.replay_analysis import (
@@ -29,6 +30,7 @@ from insidegame.highlights.replay_analysis import (
     team_possession,
     to_absolute,
 )
+from insidegame.highlights.replay_motion import MAX_OFF_BALL_SPEED_MS, MotionStep, capped_positions
 from insidegame.tracking.model import Frame
 
 REPLAY_MAX_ACTIONS: int = 4
@@ -39,6 +41,9 @@ MIN_FLIGHT_S: float = 0.4
 DEFAULT_SHOT_SPEED_KMH: float = 90.0
 KMH_PER_MS: float = 3.6
 BALL_DECIMALS: int = 1
+DEFAULT_PASS_SPEED_KMH: float = 54.0
+RECEPTION_MAX_SHARE: float = 0.8
+RECEPTION_EVENT: str = "reception"
 
 
 class ReplayPhase(StrEnum):
@@ -160,22 +165,65 @@ def _flight_positions(shot: MatchEvent, shot_positions: Frame, landing: tuple[fl
     return aligned_frame(shot_positions, _keeper_id(shot, metadata), landing)
 
 
+def reception_keyframe(action: MatchEvent, frame: Frame, team_id: str, metadata: MatchMetadata,
+                       next_second: float) -> ReplayKeyframe | None:
+    """The BUILD_UP keyframe of a completed pass reaching its receiver, or None for any other action.
+
+    The ball sits at the pass's end with the receiver aligned on it, flight_seconds after the pass at its ball speed
+    (DEFAULT_PASS_SPEED_KMH when None), but no later than RECEPTION_MAX_SHARE of the way to next_second, so the
+    receiver is shown on the ball before the next action. None also when next_second is not after the pass.
+    """
+    if (action.event_type is not EventType.PASS or action.outcome is not Outcome.SUCCESS
+            or action.receiver_id is None or action.start is None or action.end is None):
+        return None
+    gap = next_second - action.match_second
+    if gap <= 0:
+        return None
+    flight = flight_seconds(action.start, action.end, action.ball_speed_kmh or DEFAULT_PASS_SPEED_KMH)
+    ball = rounded(to_absolute(action.end, team_id, metadata), BALL_DECIMALS)
+    return ReplayKeyframe(action.period, action.match_second + min(flight, gap * RECEPTION_MAX_SHARE),
+                          ReplayPhase.BUILD_UP, RECEPTION_EVENT, action.receiver_id, None, ball,
+                          aligned_frame(frame, action.receiver_id, ball))
+
+
+def smooth_keyframes(keyframes: Sequence[ReplayKeyframe]) -> list[ReplayKeyframe]:
+    """The keyframes with off-ball players capped at MAX_OFF_BALL_SPEED_MS (replay_motion.capped_positions).
+
+    Players on the ball and every player in the last keyframe are shown exactly.
+    """
+    steps = [MotionStep(k.match_second, k.ball, k.positions) for k in keyframes]
+    shown = capped_positions(steps, MAX_OFF_BALL_SPEED_MS)
+    return [replace(k, positions=positions) for k, positions in zip(keyframes, shown, strict=True)]
+
+
+def _build_up_keyframes(actions: Sequence[MatchEvent], frames: Mapping[str, Frame], team_id: str,
+                        metadata: MatchMetadata, shot_second: float) -> list[ReplayKeyframe]:
+    """BUILD_UP keyframes of the actions with a stored frame and start, each completed pass followed by its reception."""
+    shown = [a for a in actions if a.event_id in frames and a.start is not None]
+    keyframes = []
+    for i, action in enumerate(shown):
+        frame = frames[action.event_id]
+        keyframes.append(action_keyframe(action, frame, team_id, metadata))
+        next_second = shown[i + 1].match_second if i + 1 < len(shown) else shot_second
+        reception = reception_keyframe(action, frame, team_id, metadata, next_second)
+        if reception is not None:
+            keyframes.append(reception)
+    return keyframes
+
+
 def build_keyframes(shot: MatchEvent, actions: Sequence[MatchEvent], frames: Mapping[str, Frame], card: ShotCard,
                     metadata: MatchMetadata) -> list[ReplayKeyframe]:
     """BUILD_UP keyframes for actions with a stored frame, then SHOT and FLIGHT keyframes from the shot's frame.
 
-    Each BUILD_UP ball is the action's start; the SHOT ball is the shot's start; the FLIGHT ball is flight_end at
-    the shot time plus flight_seconds. The shooter stays at the shot origin during the flight; for a saved shot the
-    defending keeper moves onto the save point in the FLIGHT keyframe. The shot must have a team, start, and stored
-    frame.
+    Each action keyframe's ball is the action's start, and a completed pass adds its reception (reception_keyframe);
+    the SHOT ball is the shot's start; the FLIGHT ball is flight_end at the shot time plus flight_seconds. The
+    shooter stays at the shot origin during the flight; for a saved shot the defending keeper moves onto the save
+    point in the FLIGHT keyframe. Off-ball motion up to the SHOT keyframe is smoothed (smooth_keyframes), which
+    leaves the strike on the stored frame. The shot must have a team, start, and stored frame.
     """
     assert shot.team_id is not None and shot.start is not None
     team_id = shot.team_id
-    keyframes = []
-    for action in actions:
-        if action.event_id not in frames or action.start is None:
-            continue
-        keyframes.append(action_keyframe(action, frames[action.event_id], team_id, metadata))
+    keyframes = _build_up_keyframes(actions, frames, team_id, metadata, shot.match_second)
     origin = rounded(to_absolute(shot.start, team_id, metadata), BALL_DECIMALS)
     shot_positions = aligned_frame(frames[shot.event_id], shot.player_id, origin)
     outfield, keeper = shot_opponents(shot, frames[shot.event_id], metadata)
@@ -184,10 +232,9 @@ def build_keyframes(shot: MatchEvent, actions: Sequence[MatchEvent], frames: Map
     arrival = shot.match_second + flight_seconds(shot.start, end, shot.ball_speed_kmh)
     keyframes.append(ReplayKeyframe(shot.period, shot.match_second, ReplayPhase.SHOT, shot.event_type.value,
                                     shot.player_id, None, origin, shot_positions))
-    keyframes.append(ReplayKeyframe(shot.period, arrival, ReplayPhase.FLIGHT, shot.event_type.value,
-                                    shot.player_id, None, landing,
-                                    _flight_positions(shot, shot_positions, landing, metadata)))
-    return keyframes
+    flight = ReplayKeyframe(shot.period, arrival, ReplayPhase.FLIGHT, shot.event_type.value, shot.player_id, None,
+                            landing, _flight_positions(shot, shot_positions, landing, metadata))
+    return [*smooth_keyframes(keyframes), flight]
 
 
 def build_story(events: Sequence[MatchEvent], frames: Mapping[str, Frame], threats: Mapping[str, ThreatAction],

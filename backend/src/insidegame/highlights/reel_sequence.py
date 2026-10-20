@@ -1,8 +1,9 @@
 """Pure keyframes for non-shot highlights clips: the passes and carries played in the clip's window, in order.
 
 Each action becomes a BUILD_UP keyframe built exactly like the instant replay's build-up (the ball at the action's
-true start with the acting player aligned on it), and a final keyframe lands the ball at the last action's end when
-the next event happens. Shot moments and windows without a pass or carry get no sequence, so their clips keep the
+true start with the acting player aligned on it, each completed pass followed by its reception), and a final keyframe
+lands the ball at the last action's end when the next event happens; off-ball motion is smoothed the same way too.
+Shot moments and windows without a pass or carry get no sequence, so their clips keep the
 shot's story or the stored frames.
 """
 
@@ -20,6 +21,8 @@ from insidegame.highlights.replay_story import (
     ReplayPhase,
     action_keyframe,
     aligned_frame,
+    reception_keyframe,
+    smooth_keyframes,
 )
 from insidegame.tracking.model import Frame
 
@@ -80,6 +83,8 @@ def clip_sequence(moment: KeyMoment, source: StorySource, lead_s: float,
                   tail_s: float) -> list[ReplayKeyframe] | None:
     """Keyframes of the passes and carries from lead_s before the moment to tail_s after it, then the arrival.
 
+    Each completed pass is followed by its reception keyframe, and off-ball motion is smoothed (smooth_keyframes).
+
     Returns None for a moment about a shot (it plays the shot's story or its stored frames) and for a window with
     no qualifying action.
     """
@@ -90,12 +95,17 @@ def clip_sequence(moment: KeyMoment, source: StorySource, lead_s: float,
                              moment.match_second + tail_s)
     if not indices:
         return None
+    last = events[indices[-1]]
+    arrival = arrival_second(events, indices[-1])
     keyframes = []
-    for i in indices:
+    for n, i in enumerate(indices):
         action = events[i]
         assert action.team_id is not None
-        keyframes.append(action_keyframe(action, frames[action.event_id], action.team_id, source.metadata))
-    last = events[indices[-1]]
-    keyframes.append(arrival_keyframe(last, frames[last.event_id], arrival_second(events, indices[-1]),
-                                      source.metadata))
-    return keyframes
+        frame = frames[action.event_id]
+        keyframes.append(action_keyframe(action, frame, action.team_id, source.metadata))
+        next_second = events[indices[n + 1]].match_second if n + 1 < len(indices) else arrival
+        reception = reception_keyframe(action, frame, action.team_id, source.metadata, next_second)
+        if reception is not None:
+            keyframes.append(reception)
+    keyframes.append(arrival_keyframe(last, frames[last.event_id], arrival, source.metadata))
+    return smooth_keyframes(keyframes)

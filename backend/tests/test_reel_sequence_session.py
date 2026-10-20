@@ -26,8 +26,9 @@ PASS_SEED = 2
 SWING_HALF_TIME_CLIPS = [("great_save", "20'", "story"), ("momentum_swing", "22'", "story"),
                          ("great_save", "26'", "story"), ("big_chance_missed", "28'", "story"),
                          ("goal", "28'", "story")]
-SWING_BALLS = [[70.2, 62.5], [56.7, 68.0], [54.2, 58.6], [48.4, 60.4], [35.3, 60.3]]
-THREAT_KEYFRAMES = 6
+SWING_BALLS = [[70.2, 62.5], [56.7, 68.0], [56.7, 68.0], [54.2, 58.6], [54.2, 58.6], [48.4, 60.4],
+               [35.3, 60.3]]
+THREAT_KEYFRAMES = 10
 THREAT_FIRST_BALL = [67.4, 64.0]
 THREAT_LAST_BALL = [99.0, 38.0]
 THREAT_RECEIVER = "kba-08"

@@ -6,6 +6,7 @@ They also pin the arrival clamps, the shot and empty-window cases, the shared bu
 """
 
 import ast
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -26,7 +27,13 @@ from insidegame.highlights.reel_sequence import (
     window_actions,
 )
 from insidegame.highlights.reel_story import StorySource
-from insidegame.highlights.replay_story import ReplayPhase, action_keyframe, build_story
+from insidegame.highlights.replay_story import (
+    DEFAULT_PASS_SPEED_KMH,
+    RECEPTION_EVENT,
+    ReplayPhase,
+    action_keyframe,
+    build_story,
+)
 from insidegame.simulation.roster import build_fixture
 from insidegame.tracking.model import Frame
 
@@ -116,11 +123,13 @@ def test_clip_sequence_has_one_build_up_keyframe_per_action_then_the_arrival(met
     keyframes = clip_sequence(_moment(MomentKind.THREAT_CREATED, MOMENT_AT, ("a3",)), _source(metadata),
                               LEAD_S, TAIL_S)
     assert keyframes is not None
-    assert [k.phase for k in keyframes] == [ReplayPhase.BUILD_UP] * 5
-    assert [k.match_second for k in keyframes] == [91.0, 93.0, MOMENT_AT, 97.0, LATE_AT]
-    assert [k.ball for k in keyframes[:3]] == [(20.0, 30.0), (40.0, 30.0), (50.0, 34.0)]
-    assert [k.player_id for k in keyframes[:4]] == ["kba-04", "kba-08", "kba-08", "irv-05"]
-    for k in keyframes[:4]:
+    assert [k.phase for k in keyframes] == [ReplayPhase.BUILD_UP] * 6
+    reception_at = 91.0 + 20.0 / (DEFAULT_PASS_SPEED_KMH / 3.6)
+    assert [k.match_second for k in keyframes] == pytest.approx([91.0, reception_at, 93.0, MOMENT_AT, 97.0, LATE_AT])
+    assert [k.event_type for k in keyframes[:2]] == ["pass", RECEPTION_EVENT]
+    assert [k.ball for k in keyframes[:4]] == [(20.0, 30.0), (40.0, 30.0), (40.0, 30.0), (50.0, 34.0)]
+    assert [k.player_id for k in keyframes[:5]] == ["kba-04", "kba-08", "kba-08", "kba-08", "irv-05"]
+    for k in keyframes[:5]:
         assert k.player_id is not None and _position(k.positions, k.player_id) == k.ball
 
 
@@ -128,7 +137,7 @@ def test_an_away_action_is_mirrored_into_the_home_frame(metadata: MatchMetadata)
     keyframes = clip_sequence(_moment(MomentKind.THREAT_CREATED, MOMENT_AT, ("a3",)), _source(metadata),
                               LEAD_S, TAIL_S)
     assert keyframes is not None
-    away = keyframes[3]
+    away = keyframes[4]
     start = mirror(Point(35.0, 48.0))
     assert away.ball == (start.x, start.y) == (70.0, 20.0)
 
@@ -201,8 +210,11 @@ def test_action_keyframe_matches_the_replay_story_build_up(metadata: MatchMetada
     frames = {e.event_id: _frame(metadata) for e in events}
     story = build_story(events, frames, {}, metadata, 1, 99.0)
     assert story is not None
-    build_up = [k for k in story.keyframes if k.phase is ReplayPhase.BUILD_UP]
-    assert build_up == [action_keyframe(e, frames[e.event_id], HOME, metadata) for e in events[:2]]
+    build_up = [k for k in story.keyframes if k.phase is ReplayPhase.BUILD_UP and k.event_type != RECEPTION_EVENT]
+    expected = [action_keyframe(e, frames[e.event_id], HOME, metadata) for e in events[:2]]
+    assert [replace(k, positions=[]) for k in build_up] == [replace(k, positions=[]) for k in expected]
+    for k in build_up:
+        assert k.player_id is not None and _position(k.positions, k.player_id) == k.ball
 
 
 def test_reel_sequence_imports_no_higher_layer() -> None:

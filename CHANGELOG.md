@@ -340,6 +340,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Instant replays and highlight reels no longer show a passer running alongside a slow-rolling ball: each completed
+  pass now has a reception keyframe, so the ball reaches the receiver at the pass's own speed while the passer stays
+  where they struck it, and a new `highlights/replay_motion.py` caps off-ball players at 7 m/s between keyframes,
+  with players on the ball and the strike frame fixed, so the shot analysis still matches what is drawn. The replay's
+  build-up path skips reception keyframes (`pathIndex`).
 - Template persona cards always fit the persona's word budget (`max_words` x `WORD_BUDGET_TOLERANCE`, the card
   validator's bound): the new pure `agents/card_text.py` keeps the prefix plus the leading whole sentences of
   `why_it_matters` that fit, or cuts a single long first sentence at a word boundary with a trailing `...`. It is
