@@ -66,7 +66,8 @@ TRANSLATOR_INSTRUCTIONS: str = (
 FACT_CHECKER_INSTRUCTIONS: str = (
     "You are the Broadcast Standards Editor. Before anything goes to air, check a draft against the facts JSON. "
     "Reject it if it attributes an action to the wrong player or team, describes an outcome that did not happen "
-    "(for example a goal that was saved or missed), invents events or statistics, or is disrespectful. Style and "
+    "(for example a goal that was saved or missed), puts an attack on the wrong side of the pitch (a left flank "
+    "that the facts call right, or the other way round), invents events or statistics, or is disrespectful. Style and "
     "persona voice are not errors. Approve accurate drafts. Reply with JSON matching the requested schema only."
 )
 

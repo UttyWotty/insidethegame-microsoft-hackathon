@@ -92,6 +92,17 @@ def test_translation_that_changes_numbers_is_rejected() -> None:
     assert outcome.source is OutputSource.FALLBACK and outcome.value.title == card.title
 
 
+def test_translation_titled_with_the_schema_name_is_rejected_then_corrected() -> None:
+    card = PersonaCard(title="Brekke makes it 2-1", body="Zane Brekke puts them 2-1 up.",
+                       stat_callouts=[StatCallout(label="Score", value="2-1")])
+    placeholder = json.dumps({"title": "TranslatedCard", "body": "Zane Brekke anota el 2-1.", "stat_labels": ["Marcador"]})
+    fixed = json.dumps({"title": "Brekke pone el 2-1", "body": "Zane Brekke anota el 2-1.", "stat_labels": ["Marcador"]})
+    client = ScriptedChatClient({TRANSLATOR_KEY: [placeholder, fixed]})
+    outcome = asyncio.run(translate(create_agent_suite(client), card, "es", POLICY))
+    assert outcome.source is not OutputSource.FALLBACK and outcome.value.title == "Brekke pone el 2-1"
+    assert "translated into the target language" in client.requests[1][1][-1].text
+
+
 def test_numbers_from_tool_results_are_grounded(
     goal_context: MomentContext, analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
 ) -> None:

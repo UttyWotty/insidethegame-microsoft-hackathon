@@ -25,7 +25,7 @@ param modelName string = 'gpt-4.1-mini'
 param modelVersion string = '2025-04-14'
 
 @description('Deployment capacity in thousands of tokens per minute.')
-param modelCapacity int = 30
+param modelCapacity int = 150
 
 @secure()
 @description('Optional bearer token required by the /mcp endpoint. Empty leaves MCP open.')

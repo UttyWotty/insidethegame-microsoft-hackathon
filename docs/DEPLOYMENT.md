@@ -17,7 +17,7 @@ azd up
 | Resource | Purpose |
 |---|---|
 | Microsoft Foundry (AI Services account) with a project | Hosts the model deployment used by all five agents |
-| Model deployment (`gpt-4.1-mini`, GlobalStandard, 30K TPM by default) | Analyst, commentator, personalizer, translator, editor |
+| Model deployment (`gpt-4.1-mini`, GlobalStandard, 150K TPM by default; billed per token, so capacity costs nothing) | Analyst, commentator, personalizer, translator, editor |
 | Azure Container Apps (1 replica, 1 vCPU, 2 GiB) | Runs the single container: API under `/api`, frontend at `/` |
 | Azure Container Registry (Basic) | Stores the image built from `Dockerfile` |
 | User-assigned managed identity | Pulls the image and calls the model; no keys anywhere |
@@ -54,7 +54,7 @@ Optional overrides before `azd up`:
 azd env set MCP_API_KEY "$(openssl rand -hex 24)"   # require a bearer token on /mcp
 azd env set AZURE_MODEL_NAME gpt-4.1-mini
 azd env set AZURE_MODEL_VERSION 2025-04-14
-azd env set AZURE_MODEL_CAPACITY 30
+azd env set AZURE_MODEL_CAPACITY 150   # lower it if your quota is smaller; at 30 a 30x match hits 429s
 ```
 
 ## Verify

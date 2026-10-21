@@ -340,6 +340,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Spanish (and every translated) card titles no longer read "TranslatedCard": the translator schema describes its
+  fields and the validator rejects the schema name as a title, so the agent corrects it. The fact-checker also rejects
+  an attack placed on the wrong flank.
+- Persona cards no longer fall back to templates under load: the model deployment defaults to 150K tokens per minute
+  (was 30K, which a 30x match with two viewers exceeded with 429s); GlobalStandard is billed per token.
 - A first `azd up` on a new subscription no longer fails with `RequestConflict`: the Foundry project is created after
   the model deployment, since Azure rejects two concurrent changes to one AI Services account.
 - The 3D replay camera behind the goal sits higher (15 m, 16 m back, in the front of the end stand) and 6 m toward the

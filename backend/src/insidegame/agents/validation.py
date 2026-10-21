@@ -57,8 +57,10 @@ def card_validator(evidence: Callable[[], object], max_words: int) -> Callable[[
 
 
 def translation_validator(source: PersonaCard) -> Callable[[TranslatedCard], str | None]:
-    """Validator for translations: same numbers as the source and one label per callout."""
+    """Validator for translations: a real title (not the schema name), the same numbers, and one label per callout."""
     def validate(value: TranslatedCard) -> str | None:
+        if value.title.strip() in {"", TranslatedCard.__name__}:
+            return "title must be the card's title translated into the target language"
         if len(value.stat_labels) != len(source.stat_callouts):
             return f"provide exactly {len(source.stat_callouts)} stat labels"
         expected = sorted(extract_numbers(f"{source.title} {source.body}"))
