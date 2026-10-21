@@ -63,8 +63,8 @@ class PersonaCard(BaseModel):
 class TranslatedCard(BaseModel):
     """Translator output: a persona card rendered in the viewer's language."""
 
-    title: str
-    body: str
+    title: str = Field(description="The card's title translated into the target language.")
+    body: str = Field(description="The card's body translated into the target language.")
     stat_labels: list[str] = Field(description="Translated stat labels in the same order as the input.")
 
 
