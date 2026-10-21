@@ -25,7 +25,7 @@ flowchart LR
 
 ## Status
 
-As of 2026-10-19 (develop at PR #80, release v0.1.0 on main):
+As of 2026-10-21 (release v0.2.0 on main):
 
 - Stage 1 (Ingest): synthetic match engine calibrated against top-flight reference bands (13 of 13 metrics within
   band over 480 matches, see [docs/CALIBRATION.md](docs/CALIBRATION.md)), with home advantage, a weak defensive
