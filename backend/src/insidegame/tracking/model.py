@@ -22,6 +22,7 @@ from insidegame.tracking.formation import DEFENDER_INDICES, FORWARD_INDICES, GOA
 from insidegame.tracking.game_state import protect_drop_m
 from insidegame.tracking.keeper import keeper_spot
 from insidegame.tracking.motion import fastest_sprinter, speed_kmh, step_toward, timed_target, top_speed_kmh
+from insidegame.tracking.offside import onside_positions
 
 POSITION_DECIMALS: int = 1
 ATTACK_PIVOT_X: float = 45.0
@@ -163,6 +164,22 @@ class TrackingModel:
             ratio = (gap - CLOSE_DOWN_M) / gap
             positions[nearest] = Point(current.x + (ball.x - current.x) * ratio, current.y + (ball.y - current.y) * ratio)
 
+    def _played_from(self, event: MatchEvent) -> Point:
+        """Where the event plays the ball from, in the home frame: its start, else the current ball."""
+        if event.start is None or event.team_id is None:
+            return self.ball_home_frame
+        return self._to_home(event.start, self.metadata.side_of(event.team_id))
+
+    def _hold_onside(self, positions: dict[str, Point], played_from: Point) -> None:
+        """Keep the possessing team's formation spots onside of the ball as played (pinned actors are exempt)."""
+        side = self.possessing
+        attackers = [p.player_id for p in self.metadata.team(side).players]
+        defenders = [self._to_home(positions[p.player_id], side) for p in self.metadata.team(side.opponent).players]
+        held = onside_positions([self._to_home(positions[pid], side) for pid in attackers], defenders,
+                                self._to_home(played_from, side))
+        for pid, point in zip(attackers, held, strict=True):
+            positions[pid] = self._to_home(point, side)
+
     def _cap(self, player_id: str, involved: set[str]) -> float:
         """Speed limit: full top speed on or toward the ball, OFF_BALL_PACE of it while holding shape."""
         top = self.top_speeds[player_id]
@@ -212,6 +229,7 @@ class TrackingModel:
             for player, point in zip(team.players, shape, strict=True):
                 positions[player.player_id] = self._to_home(point, side)
         self._close_down(positions, event)
+        self._hold_onside(positions, self._played_from(event))
         involved = self._pin_actors(event, positions)
         self._anticipate(event, upcoming, positions, involved)
         positions = self._move(event, positions, involved)

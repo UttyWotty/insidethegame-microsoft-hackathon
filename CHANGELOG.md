@@ -341,6 +341,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Attackers off the ball no longer stand on the goal line in an offside position: `tracking/offside.py` holds the
+  possessing team behind the offside line (second-last defender or the ball as played, never inside their own half,
+  0.5 m margin); at the strike, 10 of 11 demo replays had an offside attacker, now 2 (both within about 1 m).
+- Pressed toggle chips (Auto replays, Tactics) now look on: they turn green, so the state is visible.
 - `insidegame.foundry.register --ask` uses `agent_reference`, which Foundry now requires instead of `agent`.
 - Registering the Foundry hosted agent no longer fails with `invalid_payload`: the MCP bearer key lives in a Foundry
   project connection created by `azd provision`, and the agent references it instead of sending a header.

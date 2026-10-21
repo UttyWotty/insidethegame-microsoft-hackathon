@@ -39,6 +39,7 @@ main:focus { outline: none; }
   display: inline-flex; align-items: center; gap: var(--space-1); padding: 2px var(--space-2); border-radius: 999px;
   font-size: var(--text-xs); font-weight: 600; background: var(--color-muted); color: var(--color-fg);
 }
+button.chip[aria-pressed="true"] { background: var(--color-accent); color: var(--color-on-accent); }
 .chip--live { background: var(--color-danger); color: #1a0505; }
 .chip--model { background: var(--color-accent); color: var(--color-on-accent); }
 .chip--check { background: var(--color-info); color: var(--color-on-info); }
