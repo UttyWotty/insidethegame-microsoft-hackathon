@@ -39,7 +39,7 @@ def main() -> None:
     if args.ask:
         with client.get_openai_client() as openai_client:
             response = openai_client.responses.create(
-                input=args.ask, extra_body={"agent": {"name": agent.name, "type": AGENT_REFERENCE_TYPE}})
+                input=args.ask, extra_body={"agent_reference": {"name": agent.name, "type": AGENT_REFERENCE_TYPE}})
             print(response.output_text)
 
 

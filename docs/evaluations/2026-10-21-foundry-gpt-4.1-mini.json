@@ -1,0 +1,182 @@
+{
+  "broadcasts": 6,
+  "roles": {
+    "analyst": {
+      "calls": 6,
+      "model_rate": 1.0,
+      "corrected_rate": 0.0,
+      "fallback_rate": 0.0,
+      "latency_p50_ms": 2273,
+      "latency_p95_ms": 6615,
+      "top_problems": []
+    },
+    "narrator": {
+      "calls": 6,
+      "model_rate": 0.833,
+      "corrected_rate": 0.0,
+      "fallback_rate": 0.167,
+      "latency_p50_ms": 1110,
+      "latency_p95_ms": 1126,
+      "top_problems": [
+        [
+          "replaced after fact-check",
+          1
+        ]
+      ]
+    },
+    "card": {
+      "calls": 17,
+      "model_rate": 0.824,
+      "corrected_rate": 0.0,
+      "fallback_rate": 0.176,
+      "latency_p50_ms": 2394,
+      "latency_p95_ms": 4058,
+      "top_problems": []
+    },
+    "translation": {
+      "calls": 3,
+      "model_rate": 0.667,
+      "corrected_rate": 0.0,
+      "fallback_rate": 0.333,
+      "latency_p50_ms": 1566,
+      "latency_p95_ms": 2640,
+      "top_problems": []
+    },
+    "editor": {
+      "calls": 1,
+      "model_rate": 1.0,
+      "corrected_rate": 0.0,
+      "fallback_rate": 0.0,
+      "latency_p50_ms": 2918,
+      "latency_p95_ms": 2918,
+      "top_problems": []
+    }
+  },
+  "fact_checks": {
+    "approved": 10,
+    "replaced": 3,
+    "revised": 4
+  },
+  "fact_check_issues": [
+    [
+      "Draft states Kestrel Bay achieved 86% of final-third entries through Ironvale's right side, but facts show the channel i",
+      1
+    ],
+    [
+      "Draft incorrectly states 'Kestrel Bay keeps pushing down Ironvale's right side' but facts show it is Ironvale United's r",
+      1
+    ],
+    [
+      "Draft states 'Ironvale's right side' was bullied 6 times, which is correct, but incorrectly says the flank was 'Thorne's",
+      1
+    ]
+  ],
+  "samples": [
+    {
+      "minute": "3'",
+      "kind": "speed_threshold",
+      "explanation": {
+        "headline": "Zane Brekke’s High-Speed Shot Early On",
+        "why_it_matters": "This moment sets an aggressive tone for Kestrel Bay Athletic, signaling their early control and intent to press forward. The shot speed surpassing the threshold indicates individual quality and the potential to energize the team and destabilize the opposition's defense. ",
+        "evidence": [
+          "Shot speed by Zane Brekke was 120.6 km/h, exceeding the 115.0 km/h threshold.",
+          "Kestrel Bay Athletic held 54.7% possession and created the first shot of the match.",
+          "The moment occurred under 'home_control' rhythm with low chaos, indicating structured pressure by the home team.",
+          "Zane Brekke added positive expected threat (xT) of 0.011 via his carry and shot, contributing to team’s overall xT of 0.026."
+        ],
+        "theme": "individual_brilliance"
+      },
+      "commentary": "Zane Brekke launches a blistering 120.6 km/h shot, setting Kestrel Bay Athletic's aggressive tone early in the match with commanding possession and sharp attack.",
+      "cards": {
+        "analyst": {
+          "title": "Brekke’s Early High-Speed Shot Sets Tone",
+          "body": "At 3', Zane Brekke’s shot speed of 120.6 km/h surpasses the 115 km/h threshold, delivering a significant expected threat (xT) contribution of 0.011. This occurs during a low-chaos 'home_control' phase with Kestrel Bay Athletic holding 54.7% possession, establishing structured pressure and an aggressive tempo early in the match."
+        },
+        "player_tracker": {
+          "title": "Brekke's Early Power Shot",
+          "body": "At 3', I fired a 120.6 km/h shot, surpassing the 115 km/h threshold. My 14.2 m carry and 0.011 xT boost set a strong tone while completing 1 pass with 50% accuracy."
+        }
+      }
+    },
+    {
+      "minute": "14'",
+      "kind": "tactical_pattern",
+      "explanation": {
+        "headline": "Kestrel Bay exploits Ironvale's right flank via Wes Thorne",
+        "why_it_matters": "Kestrel Bay Athletic penetrated Ironvale United's right side 6 times in 15 minutes, dominating final-third entries and creating scoring chances. Ironvale's defense is vulnerable on this flank, risking goals unless they reinforce or adjust coverage on Wes Thorne's side.",
+        "evidence": [
+          "6 of 7 final-third entries by Kestrel Bay were down Ironvale's right flank",
+          "This flank exploitation constitutes 86% share in the 15-minute window",
+          "Kestrel Bay holds 56.9% possession with 4 shots and 2 on target",
+          "Wes Thorne completed only 5 passes at 83.3% accuracy but made no tackles or defensive interventions"
+        ],
+        "theme": "pressure_shift"
+      },
+      "commentary": "Kestrel Bay Athletic relentlessly pressure Ironvale United's right flank, exploiting Wes Thorne with six final-third entries in 15 minutes, signaling defensive vulnerability.",
+      "cards": {
+        "analyst": {
+          "title": "Kestrel Bay exploits Ironvale's right flank via Wes Thorne",
+          "body": "Kestrel Bay Athletic penetrated Ironvale United's right side 6 times in 15 minutes, dominating final-third entries and creating scoring chances. Ironvale's defense is vulnerable on this flank, risking goals unless they reinforce or adjust coverage on Wes Thorne's side."
+        },
+        "casual/es": {
+          "title": "Kestrel Bay ataca por la banda derecha de Ironvale",
+          "body": "Kestrel Bay avanza con fuerza por la banda derecha de Ironvale. La mayoría de sus disparos vienen de esa zona. ¡Ironvale debe vigilar de cerca a Wes Thorne!"
+        },
+        "superfan": {
+          "title": "Kestrel Bay exploits Ironvale's right flank via Wes Thorne",
+          "body": "Get in! Kestrel Bay Athletic penetrated Ironvale United's right side 6 times in 15 minutes, dominating final-third entries and creating scoring chances. Ironvale's defense is vulnerable on this flank, risking goals unless they reinforce or adjust coverage on Wes Thorne's side."
+        },
+        "newcomer": {
+          "title": "Kestrel Bay attacks Ironvale's right side",
+          "body": "A tactical pattern means a team is doing the same thing again and again. Here, Kestrel Bay keeps going down Ironvale's right side. This is making them dangerous chances to score. Ironvale needs to fix this or risk letting in goals."
+        }
+      }
+    },
+    {
+      "minute": "20'",
+      "kind": "big_chance_missed",
+      "explanation": {
+        "headline": "Ansel Juarez misses big chance saved from 6 meters",
+        "why_it_matters": "Missing a high-quality chance at 0-0 keeps the score level and allows Kestrel Bay Athletic to maintain their slight possession advantage. This moment represents a potential shift that could have pressured Kestrel Bay, but the save maintains balance in the match.",
+        "evidence": [
+          "Ansel Juarez's shot had an expected goal (xG) value of 0.273, showing the high quality of the opportunity.",
+          "Shot was taken from a close distance of 6.07 meters, increasing goal threat.",
+          "The score remained 0-0, keeping the match balanced.",
+          "Kestrel Bay Athletic had slightly higher possession (54%) and expected goals (0.5) at this point, suggesting Ironvale United needed a breakthrough to shift momentum."
+        ],
+        "theme": "missed_opportunity"
+      },
+      "commentary": "Ansel Juarez fires a close-range shot from six meters but it's brilliantly saved, denying Ironvale United a crucial breakthrough at 0-0.",
+      "cards": {
+        "analyst": {
+          "title": "Missed 0.273 xG Chance Maintains Balance",
+          "body": "At 20', Ansel Juarez's 0.273 xG shot from 6.07 meters was saved, preserving the 0-0 scoreline. Kestrel Bay's slight 54% possession and 0.5 xG advantage remain, keeping match momentum and threat levels stable. Ironvale's chance represented a key moment to disrupt Kestrel Bay's control but was neutralized, maintaining tactical equilibrium."
+        },
+        "casual": {
+          "title": "Juarez misses on close shot",
+          "body": "At 20 minutes, Juarez had a good shot saved from six meters. The score stays zero-zero, keeping the game even and tense."
+        },
+        "newcomer": {
+          "title": "Goalkeeper Saves Big Chance",
+          "body": "Ansel Juarez took a \"big chance\" shot, which is a shot usually expected to score. He shot from close, 6 meters away. The goalkeeper saved it, so the score stays 0-0 and the game is balanced."
+        }
+      }
+    }
+  ],
+  "recaps": [
+    {
+      "headline": "Kestrel Bay Athletic Secures 2-1 Victory Over Ironvale United",
+      "summary": "In a closely contested match, Kestrel Bay Athletic capitalized on their dominance down Ironvale United's right flank, yielding two crucial goals. Despite Ansel Juarez's equalizer and relentless efforts, Ironvale United could not convert their chances late in the game. Both teams matched shots at 13 each, but Kestrel Bay's slightly better possession and precision passes made the difference. The game hinged on tactical exploitation of flanks and clinical finishing from Kestrel Bay athletes Oskar Pereira and Zane Brekke.",
+      "turning_points": [
+        "14' Kestrel Bay Athletic exposed Ironvale United's right flank repeatedly, creating key opportunities.",
+        "28' Oskar Pereira opened the scoring from close range after a flank exploit.",
+        "34' Ansel Juarez equalized for Ironvale United with a powerful shot.",
+        "65' Zane Brekke scored the go-ahead goal for Kestrel Bay Athletic.",
+        "89' Ansel Juarez missed a crucial chance off target late in the game."
+      ],
+      "standout_player": "Ansel Juarez",
+      "tactical_story": "Kestrel Bay Athletic's consistent pressure down Ironvale United's right flank, exploiting Wes Thorne's side, shaped the match outcome. Ironvale United struggled to similarly exploit the opposite flank and failed to capitalize on their chances, highlighting the impact of structured control and tactical precision."
+    }
+  ],
+  "provider": "foundry"
+}
