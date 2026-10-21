@@ -78,8 +78,9 @@ eval "$(azd env get-values)"
 .venv/bin/python -m insidegame.foundry.register --ask "Which matches are live, and who is on top?"
 ```
 
-The hosted agent may only use read and question tools (it cannot start matches). If `MCP_API_KEY` is set, the
-agent sends it as a bearer token.
+The hosted agent may only use read and question tools (it cannot start matches). If `MCP_API_KEY` is set,
+`azd provision` stores it as the bearer token in a Foundry project connection (`inside-the-game-mcp`, Custom keys) and
+the agent references that connection (`AZURE_MCP_CONNECTION_ID`); Foundry refuses secrets in an MCP tool's headers.
 
 ## Run locally against the deployed model
 

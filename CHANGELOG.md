@@ -340,8 +340,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Registering the Foundry hosted agent no longer fails with `invalid_payload`: the MCP bearer key lives in a Foundry
+  project connection created by `azd provision`, and the agent references it instead of sending a header.
 - Spanish (and every translated) card titles no longer read "TranslatedCard": the translator schema describes its
-  fields and the validator rejects the schema name as a title, so the agent corrects it. The fact-checker also rejects
+  output title field is `card_title` (gpt-4.1-mini copied the schema name into a field called `title`), and the
+  validator rejects the schema name as a title. The fact-checker also rejects
   an attack placed on the wrong flank.
 - Persona cards no longer fall back to templates under load: the model deployment defaults to 150K tokens per minute
   (was 30K, which a 30x match with two viewers exceeded with 429s); GlobalStandard is billed per token.

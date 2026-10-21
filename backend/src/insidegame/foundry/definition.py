@@ -29,19 +29,20 @@ INSTRUCTIONS: str = (
 class HostedAgentSettings:
     """Inputs for the hosted agent definition.
 
-    Defaults: mcp_api_key is empty, meaning the MCP endpoint is called without an Authorization header.
+    Defaults: mcp_connection_id is empty, meaning the MCP endpoint is called without authentication. Otherwise it is
+    the resource id of a Foundry project connection (Custom keys, key Authorization = "Bearer <MCP_API_KEY>"), since
+    Foundry refuses secrets in the MCP tool's headers.
     """
 
     model_deployment: str
     mcp_server_url: str
-    mcp_api_key: str = ""
+    mcp_connection_id: str = ""
 
 
 def build_agent_definition(settings: HostedAgentSettings) -> PromptAgentDefinition:
     """Return the prompt agent definition with the MCP tool restricted to read and question tools."""
-    headers = {"Authorization": f"Bearer {settings.mcp_api_key}"} if settings.mcp_api_key else None
     tool = MCPTool(
         server_label=MCP_SERVER_LABEL, server_url=settings.mcp_server_url, allowed_tools=list(ALLOWED_TOOLS),
-        require_approval=APPROVAL_NEVER, headers=headers,
+        require_approval=APPROVAL_NEVER, project_connection_id=settings.mcp_connection_id or None,
     )
     return PromptAgentDefinition(model=settings.model_deployment, instructions=INSTRUCTIONS, tools=[tool])
