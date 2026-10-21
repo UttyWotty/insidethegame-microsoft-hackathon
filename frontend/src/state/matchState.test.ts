@@ -4,7 +4,7 @@
  * The reducer is pure, so no DOM or network is needed.
  */
 import { describe, expect, it } from "vitest";
-import { activeCue, initialMatchState, matchReducer, MOMENTUM_SAMPLE_S, TRAIL_LENGTH } from "./matchState";
+import { activeCue, initialMatchState, matchReducer, MOMENTUM_SAMPLE_S, STALE_CUE_MATCH_S, TRAIL_LENGTH } from "./matchState";
 import type { EventUpdate, OverlayCue, SessionInfo } from "../types";
 
 const session = {
@@ -30,7 +30,7 @@ const update = (second: number, type = "pass", overrides: Partial<EventUpdate["e
 const cue = (id: string, priority: number, duration = 6): OverlayCue => ({
   cue_id: id, moment_id: id, viewer_id: "v", persona: "casual", language: "en", layout: "lower_third", period: 1,
   display_from_s: 600, duration_s: duration, priority, title: "t", body: "b", stat_callouts: [], commentary: `line ${id}`,
-  theme: "control", provenance: {},
+  commentary_language: "en", commentary_intensity: "normal", theme: "control", provenance: {},
 });
 
 const withSession = matchReducer(initialMatchState, { type: "message", name: "match", data: session, receivedAt: 0 });
@@ -44,10 +44,12 @@ describe("matchReducer", () => {
     expect(state.momentum).toHaveLength(Math.ceil((39 * 5 + 1) / MOMENTUM_SAMPLE_S));
   });
 
-  it("adds goals to the ticker with the scorer's name", () => {
-    const state = matchReducer(withSession, { type: "message", name: "event", data: update(10, "goal"), receivedAt: 0 });
-    expect(state.ticker[0].text).toBe("GOAL - Ada Striker. 1-0");
-    expect(state.ticker[0].tone).toBe("goal");
+  it("shows the server's excited goal line once, instead of adding its own", () => {
+    let state = matchReducer(withSession, { type: "message", name: "event", data: update(10, "goal"), receivedAt: 0 });
+    expect(state.ticker.filter((t) => t.tone === "goal")).toHaveLength(0);
+    const goal = { line_id: "e10-pbp", minute: "1'", text: "GOAL! Ada Striker scores!", kind: "goal", intensity: "peak" };
+    state = matchReducer(state, { type: "message", name: "commentary", data: goal, receivedAt: 1 });
+    expect(state.ticker[0]).toMatchObject({ tone: "goal", intensity: "peak", text: "GOAL! Ada Striker scores!" });
   });
 
   it("deduplicates cues and recaps", () => {
@@ -64,5 +66,130 @@ describe("activeCue", () => {
     expect(activeCue(cues, 1500)?.cue.cue_id).toBe("high");
     expect(activeCue(cues, 2500)?.cue.cue_id).toBe("low");
     expect(activeCue(cues, 10_000)).toBeNull();
+  });
+});
+
+describe("activeCue freshness", () => {
+  it("never shows replayed history cues as live overlays", () => {
+    const replayed = { cue: { ...cue("old", 0.9), replay: true }, receivedAt: 1000 };
+    expect(activeCue([replayed], 1500)).toBeNull();
+  });
+  it("skips cues that are stale against the match clock or from another period", () => {
+    const late = { cue: cue("late", 0.9), receivedAt: 1000 };
+    expect(activeCue([late], 1500, { period: 1, second: 600 + 100 })?.cue.cue_id).toBe("late");
+    expect(activeCue([late], 1500, { period: 1, second: 600 + STALE_CUE_MATCH_S + 10 })).toBeNull();
+    expect(activeCue([late], 1500, { period: 2, second: 2800 })).toBeNull();
+  });
+});
+
+describe("viewer switches and play-by-play", () => {
+  it("keeps match-wide state but drops persona-specific state on a viewer switch", () => {
+    let state = matchReducer(withSession, { type: "message", name: "event", data: update(30, "goal"), receivedAt: 0 });
+    state = matchReducer(state, { type: "message", name: "cue", data: cue("c1", 0.5), receivedAt: 1 });
+    const switched = matchReducer(state, { type: "switch-viewer" });
+    expect(switched.ticker).toEqual(state.ticker);
+    expect(switched.momentum).toEqual(state.momentum);
+    expect(switched.cues).toEqual([]);
+  });
+
+  it("adds play-by-play lines once and de-duplicates moment commentary across segments", () => {
+    const line = { line_id: "e1-pbp", minute: "2'", text: "Kick-off!", kind: "kick_off" };
+    let state = matchReducer(withSession, { type: "message", name: "commentary", data: line, receivedAt: 0 });
+    state = matchReducer(state, { type: "message", name: "commentary", data: line, receivedAt: 1 });
+    state = matchReducer(state, { type: "message", name: "cue", data: { ...cue("seg-a", 0.5), moment_id: "m9" }, receivedAt: 2 });
+    state = matchReducer(state, { type: "message", name: "cue", data: { ...cue("seg-b", 0.5), moment_id: "m9" }, receivedAt: 3 });
+    expect(state.ticker.filter((t) => t.tone === "play")).toHaveLength(1);
+    expect(state.ticker.filter((t) => t.tone === "commentary")).toHaveLength(1);
+  });
+
+  it("labels each feed line with the language its text is in, for spoken commentary", () => {
+    const line = { line_id: "e1-pbp", minute: "2'", text: "Kick-off!", kind: "kick_off" };
+    const spanishCue = { ...cue("seg-es", 0.5), moment_id: "m7", language: "es", commentary_language: "es" };
+    let state = matchReducer(withSession, { type: "message", name: "commentary", data: line, receivedAt: 0 });
+    state = matchReducer(state, { type: "message", name: "cue", data: spanishCue, receivedAt: 1 });
+    expect(state.ticker.find((t) => t.tone === "play")?.language).toBe("en");
+    expect(state.ticker.find((t) => t.tone === "commentary")?.language).toBe("es");
+  });
+});
+
+describe("tracking frames", () => {
+  it("places players in the screen frame and swaps ends in the second half", () => {
+    const first = { ...update(10), positions: [["h-09", 80, 30]] as [string, number, number][] };
+    let state = matchReducer(withSession, { type: "message", name: "event", data: first, receivedAt: 0 });
+    expect(state.players["h-09"]).toEqual({ x: 80, y: 30 });
+    const second = { ...update(2800), positions: [["h-09", 80, 30]] as [string, number, number][] };
+    second.event = { ...second.event, period: 2 };
+    state = matchReducer(state, { type: "message", name: "event", data: second, receivedAt: 0 });
+    expect(state.players["h-09"]).toEqual({ x: 25, y: 38 });
+  });
+});
+
+describe("action effects", () => {
+  it("records the latest shot trace and goal flash with their arrival time", () => {
+    const shot = { ...update(100, "shot", { start: { x: 90, y: 30 }, end: { x: 105, y: 34 }, shot_result: "saved" }), xg: 0.21 };
+    let state = matchReducer(withSession, { type: "message", name: "event", data: shot, receivedAt: 500 });
+    expect(state.lastShot).toMatchObject({ xg: 0.21, result: "saved", side: "home", at: 500 });
+    state = matchReducer(state, { type: "message", name: "event", data: update(101, "goal"), receivedAt: 700 });
+    expect(state.goalFlash).toMatchObject({ scorer: "Ada Striker", side: "home", score: "1-0", at: 700 });
+  });
+});
+
+describe("Tactical Scout", () => {
+  const flagMoment = {
+    moment_id: "m-6", kind: "tactical_pattern", period: 1, match_second: 1850, minute: 31, importance: 0.62,
+    team_id: "h", player_ids: [], facts: { pattern: "channel_overload", channel: "left", third: "final", count: 7,
+                                           share_pct: 64, summary: "Home sent 7 of 11 final-third entries down the left" },
+  };
+
+  it("stores the latest Scout flag from the event's moments and keeps it on later events", () => {
+    const flagged = { ...update(1850), moments: [flagMoment] };
+    let state = matchReducer(withSession, { type: "message", name: "event", data: flagged, receivedAt: 900 });
+    expect(state.scoutFlag).toMatchObject({ momentId: "m-6", minute: "31'", channel: "left", sharePct: 64, at: 900 });
+    state = matchReducer(state, { type: "message", name: "event", data: update(1860), receivedAt: 950 });
+    expect(state.scoutFlag?.momentId).toBe("m-6");
+  });
+
+  it("puts the payoff on the goal flash only when the goal moment links to a flag", () => {
+    const goalMoment = { ...flagMoment, moment_id: "m-7", kind: "goal",
+                         facts: { scorer: "Ada Striker", flagged_minute: "31'", flagged_summary: "7 of 11 down the left" } };
+    const linked = { ...update(2100, "goal"), moments: [goalMoment] };
+    let state = matchReducer(withSession, { type: "message", name: "event", data: linked, receivedAt: 1000 });
+    expect(state.goalFlash?.payoff).toBe("Scout flagged 31': 7 of 11 down the left");
+    const plain = { ...update(2200, "goal"), moments: [{ ...goalMoment, facts: { scorer: "Ada Striker" } }] };
+    state = matchReducer(state, { type: "message", name: "event", data: plain, receivedAt: 1100 });
+    expect(state.goalFlash?.payoff).toBeNull();
+  });
+});
+
+describe("Line-breaking passes", () => {
+  const threatMoment = {
+    moment_id: "m-9", kind: "threat_created", period: 1, match_second: 900, minute: 16, importance: 0.5, team_id: "h",
+    player_ids: ["h-09"], facts: { passer: "Ada Striker", receiver: "Bo Runner", xt_added: 0.031, xt_start: 0.012,
+                                   xt_end: 0.043, opponents_bypassed: 4, lines_broken: "defence", length_m: 22.4 },
+  };
+
+  it("stores the threat flash from an event message and keeps it on later events", () => {
+    const flagged = { ...update(900), moments: [threatMoment] };
+    let state = matchReducer(withSession, { type: "message", name: "event", data: flagged, receivedAt: 500 });
+    expect(state.threatFlash).toMatchObject({ momentId: "m-9", passer: "Ada Striker", side: "home", bypassed: 4, at: 500 });
+    state = matchReducer(state, { type: "message", name: "event", data: update(910), receivedAt: 600 });
+    expect(state.threatFlash?.momentId).toBe("m-9");
+    expect(initialMatchState.threatFlash).toBeNull();
+  });
+});
+
+describe("Shape shifts", () => {
+  const shiftMoment = {
+    moment_id: "m-12", kind: "shape_shift", period: 1, match_second: 1500, minute: 26, importance: 0.56, team_id: "a",
+    player_ids: [], facts: { direction: "dropped", line_before_m: 31.1, line_after_m: 20.0, block_after: "low" },
+  };
+
+  it("stores the shape shift from an event message and keeps it on later events", () => {
+    const shifted = { ...update(1500), moments: [shiftMoment] };
+    let state = matchReducer(withSession, { type: "message", name: "event", data: shifted, receivedAt: 700 });
+    expect(state.shapeShift).toMatchObject({ momentId: "m-12", side: "away", lineBeforeM: 31.1, lineAfterM: 20, at: 700 });
+    state = matchReducer(state, { type: "message", name: "event", data: update(1510), receivedAt: 800 });
+    expect(state.shapeShift?.momentId).toBe("m-12");
+    expect(initialMatchState.shapeShift).toBeNull();
   });
 });

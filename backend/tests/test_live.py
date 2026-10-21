@@ -24,6 +24,8 @@ from insidegame.simulation.roster import build_fixture
 OFFLINE_POLICY = RunPolicy(timeout_s=1.0, max_attempts=0, prompt_suffix="")
 SPEED = 10.0
 
+GOALS_SEED = 1  # a seed whose match has goals, so every persona receives cues and some moments do not air
+
 
 async def _instant(seconds: float) -> None:
     await asyncio.sleep(0)
@@ -68,7 +70,7 @@ async def _consume(queue: asyncio.Queue[LiveMessage]) -> list[LiveMessage]:
 
 
 async def _run_session() -> tuple[MatchSession, list[LiveMessage], list[LiveMessage], list[LiveMessage]]:
-    result = simulate_match(build_fixture("brookhaven", "silverlake", 3))
+    result = simulate_match(build_fixture("brookhaven", "silverlake", GOALS_SEED))
     service = MatchIntelligenceService(result.metadata, _offline_suite(), OFFLINE_POLICY, viewers=())
     session = MatchSession("s1", result, service, SPEED, _instant)
     analyst = session.subscribe(build_segment_profile("analyst"))
@@ -98,11 +100,12 @@ def test_late_subscriber_receives_history_and_end() -> None:
     types = [m.type for m in late]
     assert MessageType.CUE in types and types.count(MessageType.RECAP) == 2
     assert types[-1] is MessageType.END
+    assert all(m.data.get("replay") is True for m in late if m.type is MessageType.CUE)
 
 
 def test_slow_subscriber_keeps_the_newest_messages() -> None:
     async def scenario() -> list[LiveMessage]:
-        result = simulate_match(build_fixture("brookhaven", "silverlake", 3))
+        result = simulate_match(build_fixture("brookhaven", "silverlake", GOALS_SEED))
         service = MatchIntelligenceService(result.metadata, _offline_suite(), OFFLINE_POLICY, viewers=())
         session = MatchSession("s2", result, service, SPEED, _instant)
         sleepy = session.subscribe(build_segment_profile("analyst"))
@@ -116,7 +119,7 @@ def test_slow_subscriber_keeps_the_newest_messages() -> None:
 
 def test_new_segment_mid_match_is_backfilled_with_recent_moments() -> None:
     async def scenario() -> list[LiveMessage]:
-        result = simulate_match(build_fixture("brookhaven", "silverlake", 3))
+        result = simulate_match(build_fixture("brookhaven", "silverlake", GOALS_SEED))
         service = MatchIntelligenceService(result.metadata, _offline_suite(), OFFLINE_POLICY, viewers=())
         session = MatchSession("s3", result, service, SPEED, _instant)
         early = session.subscribe(build_segment_profile("analyst"))
@@ -131,7 +134,7 @@ def test_new_segment_mid_match_is_backfilled_with_recent_moments() -> None:
 
 def test_subscriber_joining_finished_match_gets_backfill_before_end() -> None:
     async def scenario() -> list[LiveMessage]:
-        result = simulate_match(build_fixture("brookhaven", "silverlake", 3))
+        result = simulate_match(build_fixture("brookhaven", "silverlake", GOALS_SEED))
         service = MatchIntelligenceService(result.metadata, _offline_suite(), OFFLINE_POLICY, viewers=())
         session = MatchSession("s4", result, service, SPEED, _instant)
         early = session.subscribe(build_segment_profile("analyst"))
@@ -145,7 +148,7 @@ def test_subscriber_joining_finished_match_gets_backfill_before_end() -> None:
 
 def test_first_viewer_after_an_unwatched_match_still_gets_moments() -> None:
     async def scenario() -> list[LiveMessage]:
-        result = simulate_match(build_fixture("brookhaven", "silverlake", 3))
+        result = simulate_match(build_fixture("brookhaven", "silverlake", GOALS_SEED))
         service = MatchIntelligenceService(result.metadata, _offline_suite(), OFFLINE_POLICY, viewers=())
         session = MatchSession("s5", result, service, SPEED, _instant)
         await session.run()
@@ -154,3 +157,54 @@ def test_first_viewer_after_an_unwatched_match_still_gets_moments() -> None:
 
     types = [m.type for m in asyncio.run(scenario())]
     assert MessageType.CUE in types and types[-1] is MessageType.END
+
+
+def test_fixture_profiles_validate_ids_and_drop_unused_preferences() -> None:
+    from insidegame.live.segments import fixture_segment_profile
+    metadata = build_fixture("brookhaven", "silverlake", GOALS_SEED)
+    home = metadata.home
+    analyst = fixture_segment_profile(metadata, "analyst", "en", home.team_id, home.players[0].player_id)
+    assert analyst == fixture_segment_profile(metadata, "analyst")
+    assert fixture_segment_profile(metadata, "superfan", "en", home.team_id).favourite_team_id == home.team_id
+    with pytest.raises(PersonaConfigError):
+        fixture_segment_profile(metadata, "superfan", "en", "nowhere")
+    with pytest.raises(PersonaConfigError):
+        fixture_segment_profile(metadata, "player_tracker", "en", None, "ghost-99")
+
+
+def test_segments_per_match_are_capped() -> None:
+    from insidegame.core.exceptions import SessionLimitError
+    from insidegame.live.session import MAX_SEGMENTS
+    result = simulate_match(build_fixture("brookhaven", "silverlake", GOALS_SEED))
+    session = MatchSession("cap", result, MatchIntelligenceService(result.metadata, _offline_suite(), OFFLINE_POLICY, ()),
+                           SPEED, _instant)
+    languages = ["en", "es", "fr", "de", "pt", "it", "ja", "tr", "ar", "hi", "sw"]
+
+    async def scenario() -> None:
+        for language in languages[:MAX_SEGMENTS]:
+            session.subscribe(build_segment_profile("analyst", language))
+        session.subscribe(build_segment_profile("analyst", languages[0]))
+        with pytest.raises(SessionLimitError):
+            session.subscribe(build_segment_profile("analyst", languages[MAX_SEGMENTS]))
+
+    asyncio.run(scenario())
+
+
+def test_each_segment_gets_its_own_persona_take_on_recaps() -> None:
+    async def scenario() -> tuple[list[LiveMessage], list[LiveMessage], str]:
+        result = simulate_match(build_fixture("brookhaven", "silverlake", GOALS_SEED))
+        service = MatchIntelligenceService(result.metadata, _offline_suite(), OFFLINE_POLICY, viewers=())
+        session = MatchSession("takes", result, service, SPEED, _instant)
+        fan = session.subscribe(build_segment_profile("superfan", "en", result.metadata.away.team_id))
+        learner = session.subscribe(build_segment_profile("newcomer"))
+        _, fan_messages, learner_messages = await asyncio.gather(
+            session.run(), _consume(fan.queue), _consume(learner.queue))
+        return fan_messages, learner_messages, result.metadata.away.name
+
+    fan, learner, away = asyncio.run(scenario())
+    fan_recaps = [m.data for m in fan if m.type is MessageType.RECAP]
+    learner_recaps = [m.data for m in learner if m.type is MessageType.RECAP]
+    assert [r["persona"] for r in fan_recaps] == ["superfan", "superfan"]
+    assert all("We" in r["take"]["take"] for r in fan_recaps)
+    assert all("Expected goals" in r["take"]["take"] for r in learner_recaps)
+    assert fan_recaps[0]["recap"] == learner_recaps[0]["recap"]

@@ -11,16 +11,19 @@ from agent_framework import Agent, SupportsChatGetResponse
 from insidegame.agents.prompts import (
     ANALYST_INSTRUCTIONS,
     COMPANION_INSTRUCTIONS,
+    FACT_CHECKER_INSTRUCTIONS,
     NARRATOR_INSTRUCTIONS,
     PERSONALIZER_INSTRUCTIONS,
     RECAP_INSTRUCTIONS,
+    SCOUT_INSTRUCTIONS,
     TRANSLATOR_INSTRUCTIONS,
 )
 
 
 @dataclass(frozen=True)
 class AgentSuite:
-    """The six specialised agents: five in the moment and recap pipeline, plus the viewer-facing companion."""
+    """The eight specialised agents: the moment and recap pipeline, the Tactical Scout, its fact-checker, and the
+    viewer companion."""
 
     analyst: Agent
     narrator: Agent
@@ -28,6 +31,8 @@ class AgentSuite:
     translator: Agent
     editor: Agent
     companion: Agent
+    fact_checker: Agent
+    scout: Agent
 
 
 def create_agent_suite(client: SupportsChatGetResponse) -> AgentSuite:
@@ -45,4 +50,8 @@ def create_agent_suite(client: SupportsChatGetResponse) -> AgentSuite:
                      description="Writes automated half-time and full-time recaps."),
         companion=Agent(client, COMPANION_INSTRUCTIONS, name="match_companion",
                         description="Answers viewers' questions about the live match, using statistics tools."),
+        fact_checker=Agent(client, FACT_CHECKER_INSTRUCTIONS, name="standards_editor",
+                           description="Fact-checks cards and commentary before they go to air."),
+        scout=Agent(client, SCOUT_INSTRUCTIONS, name="tactical_scout",
+                    description="Explains tactical patterns mined from the event stream before they are punished."),
     )

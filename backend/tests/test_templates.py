@@ -6,10 +6,16 @@ Inputs come from a real simulated match.
 
 from insidegame.agents.context import MomentContext, ViewerContext
 from insidegame.agents.personas import PERSONAS, PersonaKey, ViewerProfile
-from insidegame.agents.templates import commentary_template, explanation_template, persona_card_template
+from insidegame.agents.templates import (
+    commentary_template,
+    explanation_template,
+    persona_card_template,
+    spoken_units,
+)
 from insidegame.agents.validation import card_validator, commentary_validator, explanation_validator
 from insidegame.analytics.analyzer import MatchAnalyzer
-from insidegame.analytics.moments import MomentKind
+from insidegame.analytics.moments import MomentKind, moment_intensity
+from insidegame.domain.enums import Intensity
 
 MIN_KINDS_COVERED = 5
 
@@ -68,3 +74,46 @@ def test_superfan_tone_matches_whether_the_moment_helps_their_club(
     rival_fan = ViewerContext(ViewerProfile("r", PersonaKey.SUPERFAN, favourite_team_id=rival.team_id), rival.name)
     assert persona_card_template(miss, explanation, own_fan).body.startswith("So close!")
     assert persona_card_template(miss, explanation, rival_fan).body.startswith("Stay strong.")
+
+
+def test_recap_turning_points_are_important_and_readable(
+    analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
+) -> None:
+    from insidegame.agents.recap_context import build_recap_context
+    from insidegame.analytics.recap_basis import MIN_TURNING_POINT_IMPORTANCE, RecapStage
+    from insidegame.agents.templates import recap_template
+    analyzer = analysed_match[0]
+    context = build_recap_context(analyzer, RecapStage.FULL_TIME)
+    minutes = {m.minute_label for m in analyzer.moments if m.importance >= MIN_TURNING_POINT_IMPORTANCE}
+    assert all(str(m["minute"]) in minutes for m in context.moments)
+    assert not any("_" in point for point in recap_template(context).turning_points)
+
+
+def test_commentary_energy_follows_the_moment(
+    analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
+) -> None:
+    contexts = analysed_match[1]
+    for kind, context in contexts.items():
+        line = commentary_template(context, explanation_template(context)).line
+        intensity = moment_intensity(kind)
+        if intensity is Intensity.NORMAL:
+            assert line.endswith(".")
+        else:  # excited, and goals react instead of repeating the play-by-play's "GOAL!"
+            assert line.endswith("!") and not line.upper().startswith("GOAL")
+    assert moment_intensity(MomentKind.GOAL) is Intensity.PEAK
+    assert moment_intensity(MomentKind.GREAT_SAVE) is Intensity.RAISED
+    assert moment_intensity(MomentKind.DIFFICULT_PASS) is Intensity.RAISED
+    assert moment_intensity(MomentKind.MOMENTUM_SWING) is Intensity.NORMAL
+
+
+def test_commentary_speaks_measurements_and_reacts_to_long_passes() -> None:
+    assert spoken_units("Moreau finds Wexley from 40.5 m") == "Moreau finds Wexley from 41 metres"
+    assert spoken_units("strikes at 112.4 km/h") == "strikes at 112 kilometres an hour"
+
+
+def test_tactical_flags_have_a_concept_and_a_readable_label() -> None:
+    from insidegame.agents.glossary import concept_for
+    from insidegame.agents.templates import KIND_LABELS
+    term, meaning = concept_for(MomentKind.TACTICAL_PATTERN)
+    assert term and meaning
+    assert KIND_LABELS[MomentKind.TACTICAL_PATTERN.value] == "Tactical Scout flag"

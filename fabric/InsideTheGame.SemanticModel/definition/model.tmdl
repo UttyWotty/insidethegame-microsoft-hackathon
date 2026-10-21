@@ -1,0 +1,10 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+
+ref table matches
+ref table clubs
+ref table events
+ref table players
+ref table moments

@@ -25,6 +25,15 @@ CONCEPTS: dict[MomentKind, tuple[str, str]] = {
                              "A turnover is when a team loses the ball; many in a row make a match chaotic."),
     MomentKind.MILESTONE: ("Milestones",
                            "A brace is two goals by one player, and a hat-trick is three."),
+    MomentKind.TACTICAL_PATTERN: ("Tactical pattern",
+                                  "A tactical pattern is something a team keeps doing, such as attacking down one "
+                                  "side, that the other team has not stopped yet."),
+    MomentKind.THREAT_CREATED: ("Expected threat (xT)",
+                                "xT is how likely a team is to score from where the ball is; a pass that moves it "
+                                "somewhere more dangerous adds threat."),
+    MomentKind.SHAPE_SHIFT: ("Defensive line",
+                             "The defensive line is how far from their own goal a team's defenders stand; a deeper "
+                             "line invites pressure, a higher one squeezes space but leaves room behind."),
 }
 
 

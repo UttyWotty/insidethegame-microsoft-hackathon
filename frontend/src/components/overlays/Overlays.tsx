@@ -4,9 +4,8 @@
  * player tag anchored to the ball, and an explainer card.
  */
 import type { CSSProperties } from "react";
-import { PITCH_LENGTH, PITCH_WIDTH } from "../../lib/pitch";
-import type { OverlayCue, Point } from "../../types";
-import { ProvenanceBadge } from "../ProvenanceBadge";
+import type { OverlayCue } from "../../types";
+import { FactCheckBadge, ProvenanceBadge } from "../ProvenanceBadge";
 
 const PERCENT = 100;
 
@@ -25,6 +24,7 @@ function Meta({ cue }: { cue: OverlayCue }) {
   return (
     <div className="overlay-meta">
       <ProvenanceBadge provenance={cue.provenance.card} />
+      <FactCheckBadge check={cue.provenance.fact_check} />
       {cue.language !== "en" && <span className="chip">{cue.language.toUpperCase()}</span>}
     </div>
   );
@@ -60,9 +60,8 @@ export function HypeBanner({ cue, teamColor }: { cue: OverlayCue; teamColor: str
   );
 }
 
-export function PlayerTag({ cue, ball }: { cue: OverlayCue; ball: Point | null }) {
-  const anchor = ball ?? { x: PITCH_LENGTH / 2, y: PITCH_WIDTH / 2 };
-  const style = { left: `${(anchor.x / PITCH_LENGTH) * PERCENT}%`, top: `${(anchor.y / PITCH_WIDTH) * PERCENT}%` };
+export function PlayerTag({ cue, anchor }: { cue: OverlayCue; anchor: { left: string; top: string } | null }) {
+  const style = anchor ?? { left: `${PERCENT / 2}%`, top: `${PERCENT / 2}%` };
   return (
     <section className="glass ov-player-tag" aria-label="Player tag" style={style}>
       <h3 className="overlay-title">{cue.title}</h3>
@@ -79,6 +78,20 @@ export function ExplainerCard({ cue }: { cue: OverlayCue }) {
       <h3 className="overlay-title">{cue.title}</h3>
       <p className="overlay-body">{cue.body}</p>
       <Meta cue={cue} />
+    </section>
+  );
+}
+
+export function GoalBanner({ scorer, score, teamColor, payoff = null }: {
+  scorer: string; score: string; teamColor: string;
+  /** "Scout flagged 38': ..." when the goal fulfils a Tactical Scout flag; null (default) shows no third line. */
+  payoff?: string | null;
+}) {
+  return (
+    <section className="goal-banner" aria-hidden="true" style={{ "--team-color": teamColor } as CSSProperties}>
+      <span className="goal-word">GOAL</span>
+      <span className="goal-detail">{scorer} <span className="num">{score}</span></span>
+      {payoff && <span className="goal-payoff">{payoff}</span>}
     </section>
   );
 }

@@ -17,14 +17,15 @@ azd up
 | Resource | Purpose |
 |---|---|
 | Microsoft Foundry (AI Services account) with a project | Hosts the model deployment used by all five agents |
-| Model deployment (`gpt-4.1-mini`, GlobalStandard, 30K TPM by default) | Analyst, commentator, personalizer, translator, editor |
+| Model deployment (`gpt-4.1-mini`, GlobalStandard, 150K TPM by default; billed per token, so capacity costs nothing) | Analyst, commentator, personalizer, translator, editor |
 | Azure Container Apps (1 replica, 1 vCPU, 2 GiB) | Runs the single container: API under `/api`, frontend at `/` |
 | Azure Container Registry (Basic) | Stores the image built from `Dockerfile` |
 | User-assigned managed identity | Pulls the image and calls the model; no keys anywhere |
 | Log Analytics + Application Insights | Container logs plus Agent Framework OpenTelemetry traces |
 
 Security defaults: local (key) auth is **disabled** on the Foundry resource, the app authenticates with its
-managed identity (`Cognitive Services OpenAI User` role only), the registry has no admin user, and the
+managed identity (`Cognitive Services OpenAI User` for models and `Cognitive Services Speech User` for spoken
+commentary, nothing broader), the registry has no admin user, and the
 container runs as a non-root user. Prompt and response contents are not sent to telemetry unless
 `TELEMETRY_SENSITIVE_DATA=true`.
 
@@ -53,7 +54,7 @@ Optional overrides before `azd up`:
 azd env set MCP_API_KEY "$(openssl rand -hex 24)"   # require a bearer token on /mcp
 azd env set AZURE_MODEL_NAME gpt-4.1-mini
 azd env set AZURE_MODEL_VERSION 2025-04-14
-azd env set AZURE_MODEL_CAPACITY 30
+azd env set AZURE_MODEL_CAPACITY 150   # lower it if your quota is smaller; at 30 a 30x match hits 429s
 ```
 
 ## Verify
@@ -65,6 +66,21 @@ curl https://<app-url>/api/diagnostics   # one real model call through the manag
 
 Then open the app URL, kick off a match, and switch personas. The MCP endpoint is at `https://<app-url>/mcp/`. Agent traces (each agent run, tool call, and
 workflow step) appear in Application Insights under Transaction search.
+
+## Register the hosted agent in Microsoft Foundry
+
+The Match Companion can also live in Foundry Agent Service, using this deployment's MCP endpoint as its tool, so
+anyone with project access can question live matches from the Foundry portal playground:
+
+```bash
+uv pip install --python .venv/bin/python -e "backend[foundry]"
+eval "$(azd env get-values)"
+.venv/bin/python -m insidegame.foundry.register --ask "Which matches are live, and who is on top?"
+```
+
+The hosted agent may only use read and question tools (it cannot start matches). If `MCP_API_KEY` is set,
+`azd provision` stores it as the bearer token in a Foundry project connection (`inside-the-game-mcp`, Custom keys) and
+the agent references that connection (`AZURE_MCP_CONNECTION_ID`); Foundry refuses secrets in an MCP tool's headers.
 
 ## Run locally against the deployed model
 
@@ -106,4 +122,5 @@ azd down --purge
 |---|---|
 | `InsufficientQuota` during provisioning | Choose another region or lower `AZURE_MODEL_CAPACITY` |
 | `/api/diagnostics` returns 401 or 403 | Role assignments can take a few minutes to propagate; retry |
+| Voice uses the browser voice, not a neural one | `/api/speech/status` must show available; a 401 from speech means the Speech User role has not propagated yet |
 | Overlays show the `Template` chip | The model call failed or timed out; check `/api/diagnostics` and Application Insights |

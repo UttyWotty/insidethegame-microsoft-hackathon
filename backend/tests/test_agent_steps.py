@@ -14,7 +14,7 @@ from insidegame.agents.factory import create_agent_suite
 from insidegame.agents.personas import PersonaKey, ViewerProfile
 from insidegame.agents.runner import OutputSource, RunPolicy
 from insidegame.agents.schemas import PersonaCard, StatCallout
-from insidegame.agents.steps import explain, narrate, personalize, translate
+from insidegame.agents.steps import explain, narrate, personalize, scout_explain, translate
 from insidegame.agents.templates import explanation_template
 from insidegame.agents.tools import EvidenceLedger, build_analyst_tools
 from insidegame.agents.validation import explanation_validator
@@ -24,7 +24,7 @@ from insidegame.analytics.moments import MomentKind
 POLICY = RunPolicy(timeout_s=5.0, max_attempts=2, prompt_suffix="")
 FAST_TIMEOUT = RunPolicy(timeout_s=0.05, max_attempts=2, prompt_suffix="")
 SLOW_RESPONSE_S = 0.5
-ANALYST_KEY, NARRATOR_KEY = "Match Analyst", "Lead Commentator"
+ANALYST_KEY, NARRATOR_KEY, SCOUT_KEY = "Match Analyst", "Lead Commentator", "Tactical Scout"
 PERSONALIZER_KEY, TRANSLATOR_KEY = "Personalization Producer", "broadcast translator"
 UNGROUNDED_NUMBER = 987
 
@@ -86,10 +86,22 @@ def test_personalizer_prompt_carries_persona_specifics(goal_context: MomentConte
 def test_translation_that_changes_numbers_is_rejected() -> None:
     card = PersonaCard(title="Goal in minute 68", body="A 93 km/h strike.",
                        stat_callouts=[StatCallout(label="Shot speed", value="93")])
-    bad = json.dumps({"title": "Gol en el minuto 86", "body": "Un disparo a 93 km/h.", "stat_labels": ["Velocidad"]})
+    bad = json.dumps({"card_title": "Gol en el minuto 86", "body": "Un disparo a 93 km/h.", "stat_labels": ["Velocidad"]})
     client = ScriptedChatClient({TRANSLATOR_KEY: [bad, bad]})
     outcome = asyncio.run(translate(create_agent_suite(client), card, "es", POLICY))
-    assert outcome.source is OutputSource.FALLBACK and outcome.value.title == card.title
+    assert outcome.source is OutputSource.FALLBACK and outcome.value.card_title == card.title
+
+
+def test_translation_titled_with_the_schema_name_is_rejected_then_corrected() -> None:
+    card = PersonaCard(title="Brekke makes it 2-1", body="Zane Brekke puts them 2-1 up.",
+                       stat_callouts=[StatCallout(label="Score", value="2-1")])
+    placeholder = json.dumps({"card_title": "TranslatedCard", "body": "Zane Brekke anota el 2-1.",
+                              "stat_labels": ["Marcador"]})
+    fixed = json.dumps({"card_title": "Brekke pone el 2-1", "body": "Zane Brekke anota el 2-1.", "stat_labels": ["Marcador"]})
+    client = ScriptedChatClient({TRANSLATOR_KEY: [placeholder, fixed]})
+    outcome = asyncio.run(translate(create_agent_suite(client), card, "es", POLICY))
+    assert outcome.source is not OutputSource.FALLBACK and outcome.value.card_title == "Brekke pone el 2-1"
+    assert "translated into the target language" in client.requests[1][1][-1].text
 
 
 def test_numbers_from_tool_results_are_grounded(
@@ -141,3 +153,73 @@ def test_tracked_player_stats_reach_the_personalizer(
     asyncio.run(personalize(create_agent_suite(client), context, explanation_template(context), viewer, POLICY))
     prompt = client.requests[0][1][-1].text
     assert f"{tracked.name}'s point of view" in prompt
+
+
+def test_tools_answer_as_of_the_moment_not_the_live_match(
+    analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
+) -> None:
+    analyzer, contexts = analysed_match
+    early = min(contexts.values(), key=lambda c: (c.moment.period, c.moment.match_second))
+    ledger = EvidenceLedger()
+    tools = {t.name: t for t in build_analyst_tools(analyzer, ledger, as_of=early)}
+    asyncio.run(tools["compare_teams"].invoke(arguments={}))
+    asyncio.run(tools["recent_moments"].invoke(arguments={"count": 8}))
+    assert ledger.entries[0]["payload"] == early.teams
+    cutoff = (early.moment.period, early.moment.match_second)
+    visible = [m for m in analyzer.moments if (m.period, m.match_second) <= cutoff]
+    assert len(visible) < len(analyzer.moments)
+    assert [e["minute"] for e in ledger.entries[1]["payload"]] == [m.minute_label for m in visible[-8:]]
+
+
+def test_recap_take_uses_the_model_when_grounded_and_falls_back_otherwise(
+    analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
+) -> None:
+    from insidegame.agents.recap_context import build_recap_context
+    from insidegame.agents.steps import personalize_recap
+    from insidegame.agents.templates import recap_template
+    from insidegame.analytics.recap_basis import RecapStage
+    analyzer = analysed_match[0]
+    context = build_recap_context(analyzer, RecapStage.HALF_TIME)
+    recap = recap_template(context)
+    viewer = ViewerContext(ViewerProfile("a", PersonaKey.ANALYST))
+    good = json.dumps({"headline": "Tight first half", "take": "Very little between the sides."})
+    bad = json.dumps({"headline": "Rout", "take": "They had 987 shots."})
+    client = ScriptedChatClient({PERSONALIZER_KEY: [good, bad, bad]})
+    suite = create_agent_suite(client)
+    accepted = asyncio.run(personalize_recap(suite, context, recap, viewer, POLICY))
+    rejected = asyncio.run(personalize_recap(suite, context, recap, viewer, POLICY))
+    assert accepted.source is OutputSource.MODEL and accepted.value.headline == "Tight first half"
+    assert rejected.source is OutputSource.FALLBACK and "numbers at half-time" in rejected.value.headline
+    assert "The Analyst" in client.requests[0][1][-1].text
+
+
+def _scout_json(context: MomentContext, extra: str = "") -> str:
+    facts = context.moment.facts
+    return json.dumps({"headline": f"{facts['team']} have found a weakness{extra}",
+                       "why_it_matters": f"{facts['count']} of {facts['total']} entries went the same way.",
+                       "evidence": [str(facts["summary"])], "theme": "control"})
+
+
+def test_scout_explains_a_tactical_flag_with_its_own_agent(
+    tactical_context: MomentContext, analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
+) -> None:
+    client = ScriptedChatClient({SCOUT_KEY: [_scout_json(tactical_context)]})
+    outcome = asyncio.run(scout_explain(create_agent_suite(client), tactical_context, analysed_match[0], POLICY))
+    assert outcome.source is OutputSource.MODEL and client.requests[0][0] == SCOUT_KEY
+    assert "flagged tactical pattern" in client.requests[0][1][-1].text
+
+
+def test_scout_malformed_or_ungrounded_reply_falls_back_to_the_tactical_template(
+    tactical_context: MomentContext, analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]],
+) -> None:
+    for replies in (["not json", "{}"], [_scout_json(tactical_context, f" {UNGROUNDED_NUMBER} times")] * 2):
+        client = ScriptedChatClient({SCOUT_KEY: list(replies)})
+        outcome = asyncio.run(scout_explain(create_agent_suite(client), tactical_context, analysed_match[0], POLICY))
+        assert outcome.source is OutputSource.FALLBACK
+        assert outcome.value == explanation_template(tactical_context)
+
+
+def test_scout_instructions_never_route_to_analyst_scripts() -> None:
+    from insidegame.agents.prompts import ANALYST_INSTRUCTIONS, SCOUT_INSTRUCTIONS
+    assert SCOUT_INSTRUCTIONS.startswith("You are the Tactical Scout") and ANALYST_KEY not in SCOUT_INSTRUCTIONS
+    assert "flagged_minute" in ANALYST_INSTRUCTIONS and "flagged_summary" in ANALYST_INSTRUCTIONS

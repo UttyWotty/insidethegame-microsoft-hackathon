@@ -25,7 +25,7 @@ param modelName string = 'gpt-4.1-mini'
 param modelVersion string = '2025-04-14'
 
 @description('Deployment capacity in thousands of tokens per minute.')
-param modelCapacity int = 30
+param modelCapacity int = 150
 
 @secure()
 @description('Optional bearer token required by the /mcp endpoint. Empty leaves MCP open.')
@@ -59,5 +59,7 @@ output AZURE_RESOURCE_GROUP string = resourceGroup.name
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = resources.outputs.registryLoginServer
 output AZURE_OPENAI_ENDPOINT string = resources.outputs.openAiEndpoint
 output AZURE_FOUNDRY_PROJECT string = resources.outputs.foundryProjectName
+output AZURE_AI_PROJECT_ENDPOINT string = resources.outputs.projectEndpoint
 output AZURE_MODEL_DEPLOYMENT string = resources.outputs.modelDeploymentName
 output SERVICE_WEB_URI string = resources.outputs.webUri
+output AZURE_MCP_CONNECTION_ID string = resources.outputs.mcpConnectionId

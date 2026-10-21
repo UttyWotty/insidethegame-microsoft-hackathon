@@ -1,0 +1,27 @@
+table clubs
+	lineageTag: 5efcbf75-c803-5d8e-9abd-cb2234f12d66
+
+	column team_id
+		dataType: string
+		lineageTag: 39f7d999-e507-5f8d-851b-87c0773f9f9b
+		summarizeBy: none
+		sourceColumn: team_id
+
+	column club_name
+		dataType: string
+		lineageTag: 42125b6f-a6ba-52d8-923e-f5b8c7d83122
+		summarizeBy: none
+		sourceColumn: club_name
+
+	column style
+		dataType: string
+		lineageTag: 30480fea-c349-566d-a4bd-223d979045db
+		summarizeBy: none
+		sourceColumn: style
+
+	partition clubs = entity
+		mode: directLake
+		source
+			entityName: clubs
+			schemaName: dbo
+			expressionSource: DatabaseQuery

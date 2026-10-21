@@ -8,7 +8,7 @@ import { formatClock, minuteLabel } from "../lib/pitch";
 import { PERSONA_ORDER, teamColor } from "../lib/teams";
 import { personaViewer } from "../lib/viewer";
 import type { MatchMetadata, PersonaInfo, PersonaKey } from "../types";
-import { ProvenanceBadge } from "./ProvenanceBadge";
+import { FactCheckBadge, ProvenanceBadge } from "./ProvenanceBadge";
 
 interface ColumnProps { sessionId: string; persona: PersonaKey; info: PersonaInfo | undefined; language: string; match: MatchMetadata }
 
@@ -34,6 +34,7 @@ function PersonaColumn({ sessionId, persona, info, language, match }: ColumnProp
             <p className="num muted">{cue.stat_callouts.map((c) => `${c.label}: ${c.value}`).join(" | ")}</p>
           )}
           <ProvenanceBadge provenance={cue.provenance.card} />
+          <FactCheckBadge check={cue.provenance.fact_check} />
         </article>
       ))}
     </section>
@@ -42,7 +43,8 @@ function PersonaColumn({ sessionId, persona, info, language, match }: ColumnProp
 
 interface MultiViewProps { sessionId: string; personas: PersonaInfo[]; language: string; match: MatchMetadata }
 
-function MatchBar({ sessionId, language, match }: { sessionId: string; language: string; match: MatchMetadata }) {
+export function MatchBar({ sessionId, language, match, note }:
+  { sessionId: string; language: string; match: MatchMetadata; note?: string }) {
   const [state, status] = useMatchStream(sessionId, personaViewer("analyst", language, match));
   const event = state.lastEvent;
   const score = event?.score ?? { home: 0, away: 0 };
@@ -53,7 +55,7 @@ function MatchBar({ sessionId, language, match }: { sessionId: string; language:
       <span className="team" style={{ borderColor: teamColor(match.away.team_id, false) }}>{match.away.name}</span>
       <span className="num muted">{event ? formatClock(event.match_second, event.period) : "0:00"}</span>
       {state.ended ? <span className="chip">FULL TIME</span> : status === "open" && <span className="chip chip--live">LIVE</span>}
-      <span className="muted">Same match, five audiences. Each column is a separately personalized stream.</span>
+      {note && <span className="muted">{note}</span>}
     </div>
   );
 }
@@ -61,7 +63,8 @@ function MatchBar({ sessionId, language, match }: { sessionId: string; language:
 export function MultiView({ sessionId, personas, language, match }: MultiViewProps) {
   return (
     <>
-    <MatchBar sessionId={sessionId} language={language} match={match} />
+    <MatchBar sessionId={sessionId} language={language} match={match}
+      note="Same match, five audiences. Each column is a separately personalized stream." />
     <div className="multiview">
       {PERSONA_ORDER.map((key) => (
         <PersonaColumn key={key} sessionId={sessionId} persona={key} info={personas.find((p) => p.key === key)}

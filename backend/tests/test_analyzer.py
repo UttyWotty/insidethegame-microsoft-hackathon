@@ -89,3 +89,20 @@ def test_distance_indicators_fire_at_their_thresholds() -> None:
                 assert float(tag.facts["carry_distance_m"]) >= float(tag.facts["threshold_m"])  # type: ignore[arg-type]
         counts.append(len(tags))
     assert 0 < sum(counts) / len(counts) <= 12
+
+
+def test_rhythm_moments_air_at_most_once_per_half() -> None:
+    for seed in range(1, 6):
+        result = simulate_match(build_fixture("kestrel_bay", "ironvale", seed))
+        analyzer = MatchAnalyzer(result.metadata)
+        for event in result.events:
+            analyzer.ingest(event)
+        kinds = [m.kind for m in analyzer.moments]
+        assert kinds.count(MomentKind.CHAOS_SPELL) <= 2 and kinds.count(MomentKind.MOMENTUM_SWING) <= 2
+
+
+def test_ingest_without_positions_still_works_and_reports_no_shape(analysed: tuple[MatchResult, MatchAnalyzer]) -> None:
+    _, analyzer = analysed
+    assert analyzer.snapshot()["shape"] == {"home": None, "away": None}
+    assert not any(m.kind is MomentKind.SHAPE_SHIFT for m in analyzer.moments)
+    assert analyzer.shape_studio() == {"timeline": [], "shifts": []}

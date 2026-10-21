@@ -1,0 +1,144 @@
+{
+  "broadcasts": 5,
+  "roles": {
+    "analyst": {
+      "calls": 5,
+      "model_rate": 1.0,
+      "corrected_rate": 0.0,
+      "fallback_rate": 0.0,
+      "latency_p50_ms": 39697,
+      "latency_p95_ms": 41880,
+      "top_problems": []
+    },
+    "narrator": {
+      "calls": 5,
+      "model_rate": 0.8,
+      "corrected_rate": 0.0,
+      "fallback_rate": 0.2,
+      "latency_p50_ms": 11707,
+      "latency_p95_ms": 13816,
+      "top_problems": [
+        [
+          "replaced after fact-check",
+          1
+        ]
+      ]
+    },
+    "card": {
+      "calls": 12,
+      "model_rate": 0.917,
+      "corrected_rate": 0.083,
+      "fallback_rate": 0.0,
+      "latency_p50_ms": 153792,
+      "latency_p95_ms": 267989,
+      "top_problems": []
+    },
+    "translation": {
+      "calls": 2,
+      "model_rate": 1.0,
+      "corrected_rate": 0.0,
+      "fallback_rate": 0.0,
+      "latency_p50_ms": 12305,
+      "latency_p95_ms": 12305,
+      "top_problems": []
+    },
+    "editor": {
+      "calls": 1,
+      "model_rate": 1.0,
+      "corrected_rate": 0.0,
+      "fallback_rate": 0.0,
+      "latency_p50_ms": 158160,
+      "latency_p95_ms": 158160,
+      "top_problems": []
+    }
+  },
+  "fact_checks": {
+    "approved": 8,
+    "revised": 4
+  },
+  "samples": [
+    {
+      "minute": "6'",
+      "kind": "chaos_spell",
+      "explanation": {
+        "headline": "Early chaos threatens both teams' rhythm",
+        "why_it_matters": "With turnovers at 4.4 per minute, neither side is yet establishing a reliable pattern of build-up. This kind of early disorder often sets the tone, as mistakes in the first ten minutes can quickly become scoring chances.",
+        "evidence": [
+          "turnovers_per_minute is 4.4",
+          "chaos is 0.933",
+          "Kestrel Bay Athletic pass_accuracy is 0.645",
+          "Ironvale United pass_accuracy is 0.677"
+        ],
+        "theme": "chaos"
+      },
+      "commentary": "Six minutes in, chaos reigns as Kestrel Bay and Ironvale United stumble with turnovers everywhere, neither side finding rhythm yet.",
+      "cards": {
+        "analyst": {
+          "title": "Chaos Index 0.933: Rhythm Disrupted",
+          "body": "The 0.933 chaos metric signals severe build-up instability. Turnovers at 4.4 per minute indicate neither side controls possession. Kestrel Bay's 54.8% ball retention fails to translate to xG, highlighting inefficient passing patterns and a lack of structured pressing in the opening phase."
+        }
+      }
+    },
+    {
+      "minute": "11'",
+      "kind": "distance_threshold",
+      "explanation": {
+        "headline": "Moreau's long pass breaks Kestrel Bay's possession dominance",
+        "why_it_matters": "Ironvale United leveraged individual passing quality to escape a low possession position and reset their attack. This transition moment signaled a shift from Kestrel Bay's territorial dominance to Ironvale's vertical threat generation.",
+        "evidence": [
+          "The 40.5m pass exceeded the 40.0m distance threshold.",
+          "Kestrel Bay Athletic held 60.6% possession compared to Ironvale's 39.4%.",
+          "Ironvale United recorded 20 pressures against Kestrel's 17.",
+          "Caio Wexley completed 6 passes despite a 0.6 pass accuracy."
+        ],
+        "theme": "pressure_shift"
+      },
+      "commentary": "Moreau slashes a 40.5-meter pass to Wexley, splitting Kestrel Bay's 60.6% possession grip in the eleventh minute.",
+      "cards": {
+        "analyst": {
+          "title": "Long Pass Fractures Kestrel Bay Possession Dominance",
+          "body": "Hugo Moreau’s 40.5m pass exceeds the 40.0m threshold, breaking Kestrel Bay’s 60.6% possession hold. Despite Caio Wexley’s 0.6 pass accuracy, this vertical surge shifts momentum, turning Ironvale’s 39.4% possession into a tangible offensive threat."
+        }
+      }
+    },
+    {
+      "minute": "20'",
+      "kind": "difficult_pass",
+      "explanation": {
+        "headline": "Sorensen's risky pass extends Kestrel Bay's territorial lead",
+        "why_it_matters": "Despite zero shots and 0.0 xG, the 39.2-meter progressive pass under pressure shows Kestrel Bay Athletic actively choosing risk to build rather than recycle in possession. This mid-pitch boldness is how a 57.7% possession lead converts into shooting chances in a balanced game.",
+        "evidence": [
+          "Kestrel Bay holds 57.7% possession vs Ironvale's 42.3%.",
+          "The 39.2m pass had 82.4 difficulty and was progressive under pressure.",
+          "Sorensen's individual pass accuracy is 0.8 on 4 completed passes.",
+          "Team pass accuracy is 78.9%, down from Marlowe's 0.905."
+        ],
+        "theme": "control"
+      },
+      "commentary": "Sorensen's risky pass extends Kestrel Bay's territorial lead.",
+      "cards": {
+        "analyst": {
+          "title": "Sorensen's 39.2m Pass: xG Implications",
+          "body": "Sorensen's 39.2m pass under pressure (82.4 difficulty) extends Kestrel Bay's 57.7% possession. With 0.0 xG, this progressive action converts control into tactical threat. The 0.8 individual accuracy contrasts with Marlowe's 0.905, highlighting risk in mid-pitch build-up phases."
+        }
+      }
+    }
+  ],
+  "recaps": [
+    {
+      "headline": "Ironvale United crush Kestrel Bay Athletic with double strike",
+      "summary": "Ironvale United dominated the attacking threat, generating 14 shots against Kestrel Bay Athletic's 7. Hugo Moreau opened the scoring in the 39th minute with a close-range finish, creating a significant momentum swing for the visitors. Brio Abernethy doubled the lead just 14 minutes later with a powerful effort from 2.5 meters. Despite Kestrel Bay attempting to rally with a momentum surge in the 67th minute, Ironvale held on for the 2-0 victory.",
+      "turning_points": [
+        "39': Hugo Moreau scores the opener for Ironvale United",
+        "39': Momentum swings decisively to Ironvale United",
+        "53': Cyrus Rocha has a big chance blocked before Abernethy scores",
+        "53': Brio Abernethy extends the lead to 2-0",
+        "67': Kestrel Bay Athletic briefly regain momentum",
+        "78': Jonas Pellegrin's big chance is blocked"
+      ],
+      "standout_player": "Hugo Moreau",
+      "tactical_story": "Ironvale United's high xG of 2.29 compared to Kestrel Bay's 0.7 highlighted a decisive edge in clinical finishing. The visitors maintained a strong away threat level throughout, overwhelming Kestrel Bay's possession-based approach."
+    }
+  ],
+  "provider": "mlx"
+}

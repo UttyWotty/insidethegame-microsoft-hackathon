@@ -1,7 +1,7 @@
 /*
  * Design tokens for the broadcast interface: colours, typography, spacing, radii, and motion.
  * Components reference only these variables, never raw values, so the theme stays consistent.
- * Text colours meet 4.5:1 contrast against the background and card surfaces.
+ * Text colours meet 4.5:1 contrast against the background and card surfaces; form control borders meet 3:1.
  */
 :root {
   --color-bg: #0b1220;
@@ -9,6 +9,9 @@
   --color-card: #1b2336;
   --color-muted: #272f42;
   --color-border: #334155;
+  --color-border-strong: #7c8aa0;
+  --color-info: #38bdf8;
+  --color-on-info: #04121c;
   --color-fg: #f8fafc;
   --color-fg-muted: #a5b4c8;
   --color-accent: #22c55e;
@@ -17,6 +20,7 @@
   --color-warning: #fbbf24;
   --color-pitch: #14532d;
   --color-pitch-stripe: #166534;
+  --color-pitch-runoff: #0f3f22;
   --color-pitch-line: rgba(255, 255, 255, 0.55);
   --color-glass: rgba(11, 18, 32, 0.78);
   --color-glass-border: rgba(255, 255, 255, 0.18);

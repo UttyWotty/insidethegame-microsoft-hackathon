@@ -12,6 +12,7 @@ MAX_EVIDENCE_ITEMS: int = 4
 MAX_STAT_CALLOUTS: int = 3
 MAX_RECAP_MOMENTS: int = 6
 MAX_FOLLOW_UPS: int = 3
+MAX_FACT_ISSUES: int = 3
 
 
 class TacticalTheme(StrEnum):
@@ -62,8 +63,8 @@ class PersonaCard(BaseModel):
 class TranslatedCard(BaseModel):
     """Translator output: a persona card rendered in the viewer's language."""
 
-    title: str
-    body: str
+    card_title: str = Field(description="The card_title from the input, translated into the target language.")
+    body: str = Field(description="The body from the input, translated into the target language.")
     stat_labels: list[str] = Field(description="Translated stat labels in the same order as the input.")
 
 
@@ -87,3 +88,24 @@ class CompanionAnswer(BaseModel):
                                              max_length=MAX_STAT_CALLOUTS)
     follow_ups: list[str] = Field(description="Up to 3 short follow-up questions about this match.",
                                   max_length=MAX_FOLLOW_UPS)
+
+
+class RecapTake(BaseModel):
+    """Personalizer output: one persona's take on a half-time or full-time recap."""
+
+    headline: str = Field(description="At most 10 words, in the persona's voice.")
+    take: str = Field(description="The persona's view of the match so far, within its word budget.")
+
+
+class TranslatedLine(BaseModel):
+    """Translator output for a single commentary line."""
+
+    line: str = Field(description="The commentary line in the target language, names and numbers unchanged.")
+
+
+class FactCheckVerdict(BaseModel):
+    """Fact-checker output: whether a draft is accurate, and what is wrong if not."""
+
+    approved: bool = Field(description="True only if every claim in the draft is supported by the facts.")
+    issues: list[str] = Field(description="Specific factual problems, each naming the wrong claim and the correct fact.",
+                              max_length=MAX_FACT_ISSUES)

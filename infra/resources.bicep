@@ -21,6 +21,7 @@ var roles = {
   acrPull: '7f951dda-4ed3-4680-a7ca-43fe172d538d'
   openAiUser: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
   azureAiUser: '53ca6127-db72-4b80-b1b0-d745d6d5456d'
+  speechUser: 'f2dc8367-1007-4938-bd23-fe263f013447'
 }
 
 resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
@@ -73,15 +74,31 @@ resource foundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   }
 }
 
+// Created after the model deployment: Azure rejects two concurrent changes to one AI Services account.
 resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
   parent: foundry
   name: 'inside-the-game'
   location: location
   tags: tags
+  dependsOn: [modelDeployment]
   identity: { type: 'SystemAssigned' }
   properties: {
     displayName: 'Inside the Game'
     description: 'Explainable, personalized match intelligence agents.'
+  }
+}
+
+// Holds the MCP bearer key for the Foundry hosted agent: Foundry refuses secrets in an MCP tool's headers.
+resource mcpConnection 'Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01' = if (!empty(mcpApiKey)) {
+  parent: foundryProject
+  name: 'inside-the-game-mcp'
+  properties: {
+    category: 'CustomKeys'
+    authType: 'CustomKeys'
+    target: 'https://${webAppName}.${containerEnv.properties.defaultDomain}/mcp/'
+    isSharedToAll: false
+    credentials: { keys: { Authorization: 'Bearer ${mcpApiKey}' } }
+    metadata: {}
   }
 }
 
@@ -118,6 +135,17 @@ resource appModelAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
     principalId: identity.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.openAiUser)
+  }
+}
+
+// Neural text to speech for spoken commentary runs on the same AI Services account, keyless via the app identity.
+resource appSpeechAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(foundry.id, identity.id, roles.speechUser)
+  scope: foundry
+  properties: {
+    principalId: identity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.speechUser)
   }
 }
 
@@ -164,7 +192,7 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
     type: 'UserAssigned'
     userAssignedIdentities: { '${identity.id}': {} }
   }
-  dependsOn: [acrPullAssignment, appModelAccess]
+  dependsOn: [acrPullAssignment, appModelAccess, appSpeechAccess]
   properties: {
     managedEnvironmentId: containerEnv.id
     configuration: {
@@ -195,6 +223,7 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'MODEL_NAME', value: modelDeployment.name }
             { name: 'AZURE_OPENAI_ENDPOINT', value: 'https://${foundry.properties.customSubDomainName}.openai.azure.com/' }
             { name: 'AZURE_CLIENT_ID', value: identity.properties.clientId }
+            { name: 'SPEECH_ENDPOINT', value: 'https://${foundry.properties.customSubDomainName}.cognitiveservices.azure.com/' }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
             { name: 'MODEL_TIMEOUT_S', value: '20' }
             { name: 'MCP_ALLOWED_HOSTS', value: '${webAppName}.${containerEnv.properties.defaultDomain}' }
@@ -224,5 +253,7 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
 output registryLoginServer string = registry.properties.loginServer
 output openAiEndpoint string = 'https://${foundry.properties.customSubDomainName}.openai.azure.com/'
 output foundryProjectName string = foundryProject.name
+output projectEndpoint string = 'https://${foundry.properties.customSubDomainName}.services.ai.azure.com/api/projects/${foundryProject.name}'
 output modelDeploymentName string = modelDeployment.name
+output mcpConnectionId string = empty(mcpApiKey) ? '' : mcpConnection.id
 output webUri string = 'https://${web.properties.configuration.ingress.fqdn}'

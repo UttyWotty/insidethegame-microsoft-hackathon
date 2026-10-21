@@ -1,19 +1,78 @@
 /**
- * The main broadcast experience: the live pitch with persona overlays, score bug, stats, momentum, and commentary.
- * It subscribes to the viewer's personalized stream and opens the recap dialog when a new recap arrives.
+ * The main broadcast experience: the live pitch with persona overlays, score bug, shot and line-breaker cards,
+ * shape-shift lines, stats, physical and danger leaderboards, momentum, and commentary.
+ * It subscribes to the viewer's personalized stream and opens the recap dialog when a new recap arrives, holding it
+ * while an auto replay is rolling, queued, or scheduled, and holds due replays while a recap dialog is open (see
+ * lib/replayQueue for the queue rules).
  * Changing persona or language reconnects to a different segment of the same live match.
  */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { api } from "../api/client";
 import { useMatchStream } from "../api/useMatchStream";
+import { eventPopup } from "../lib/broadcastStats";
+import { sprintSpeed } from "../lib/motion";
+import { playerDots } from "../lib/playerDots";
+import { earnsReplay, REPLAY_DELAY_MS } from "../lib/replay";
+import {
+  emptyReplayQueue, holdsRecap, recapClosed, recapOpened, replayDue, replayFinished, replaysOff, replayScheduled,
+} from "../lib/replayQueue";
+import { SCOUT_CARD_MS, SCOUT_ZONE_MS, scoutZoneFor, stillVisible } from "../lib/scout";
+import { SHAPE_SHIFT_MS } from "../lib/shape";
+import { THREAT_CARD_MS } from "../lib/threat";
+import { analyseFrame, carrierAfter } from "../lib/tactics";
 import { teamColor } from "../lib/teams";
 import { useNow } from "../lib/useNow";
-import { activeCue } from "../state/matchState";
-import type { Recap, ViewerSettings } from "../types";
+import { speechSupported, useSpokenCommentary, type SpeechUrlBuilder } from "../lib/useSpokenCommentary";
+import { activeCue, type ShotTrace } from "../state/matchState";
+import type { HighlightReel, Recap, ViewerSettings } from "../types";
+
+
+const SHOT_VISIBLE_MS = 4000;
+/** The shot card stays longer than the shot trace so its numbers can be read. */
+const SHOT_CARD_MS = 6500;
+const HALF_TIME_RECAP_MS = 15000;
+const GOAL_VISIBLE_MS = 4500;
+/** Replay speed assumed for speech pace until the session description arrives (the server default). */
+const DEFAULT_MATCH_SPEED = 10;
+const VOICE_PREFERENCE_KEY = "inside-the-game.voice";
+
+/** Whether the viewer last left voice on; storage can be unavailable (private mode), which reads as off. */
+function savedVoicePreference(): boolean {
+  try {
+    return window.localStorage.getItem(VOICE_PREFERENCE_KEY) === "on";
+  } catch {
+    return false;
+  }
+}
+
+function saveVoicePreference(on: boolean): void {
+  try {
+    window.localStorage.setItem(VOICE_PREFERENCE_KEY, on ? "on" : "off");
+  } catch {
+    // Storage is a convenience only; the toggle still works for this match.
+  }
+}
+const TYPING_ELEMENTS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
+
+/** True while the viewer is typing in a field, when a recap dialog must not take focus away. */
+function isTyping(): boolean {
+  return TYPING_ELEMENTS.has(document.activeElement?.tagName ?? "");
+}
+
 import { AskPanel } from "./AskPanel";
 import { CommentaryTicker } from "./CommentaryTicker";
+import { DangerPanel } from "./DangerPanel";
 import { MomentumChart } from "./MomentumChart";
+import { PhysicalPanel } from "./PhysicalPanel";
 import { OverlayLayer } from "./overlays/OverlayLayer";
-import { Pitch } from "./Pitch";
+import { GoalBanner } from "./overlays/Overlays";
+import { ScoutCard } from "./overlays/ScoutCard";
+import { ShotCard } from "./overlays/ShotCard";
+import { ThreatCard } from "./overlays/ThreatCard";
+import { HighlightsPlayer } from "./HighlightsPlayer";
+import { ReplayPlayer } from "./ReplayPlayer";
+import { type BallAnchor } from "./Pitch";
+import { PitchView, type Camera } from "./PitchView";
 import { RecapModal } from "./RecapModal";
 import { ScoreBug } from "./ScoreBug";
 import { StatsPanel } from "./StatsPanel";
@@ -22,32 +81,155 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
   const [state, status] = useMatchStream(sessionId, viewer);
   const now = useNow();
   const [openRecap, setOpenRecap] = useState<Recap | null>(null);
-  const [seenRecaps, setSeenRecaps] = useState(0);
+  const [camera, setCamera] = useState<Camera>("broadcast");
+  const [anchor, setAnchor] = useState<BallAnchor>(null);
+  const onBallAnchor = useCallback((next: BallAnchor) => setAnchor(next), []);
+  const dots = useMemo(() => playerDots(state.session?.match, state.players,
+    { actor: state.lastEvent?.player_id ?? null, receiver: state.lastEvent?.receiver_id ?? null }, viewer.player,
+    (id) => sprintSpeed(state.sprint, id, now), (id) => {
+      const popup = eventPopup(state.lastEvent, state.lastEventAt, now);
+      return popup?.playerId === id ? popup.text : null;
+    }),
+  [state.session, state.players, state.lastEvent, state.lastEventAt, viewer.player, state.sprint, now]);
+  const [reelStage, setReelStage] = useState<HighlightReel["stage"] | null>(null);
+  const [autoReplay, setAutoReplay] = useState(true);
+  const [showTactics, setShowTactics] = useState(true);
+  const tactics = useMemo(() => (showTactics && state.lastEvent
+    ? analyseFrame(dots, carrierAfter(state.lastEvent), state.lastEvent.period) : null),
+  [showTactics, dots, state.lastEvent]);
+  const flag = state.scoutFlag;
+  const zoneShown = flag !== null && stillVisible(flag.at, now, SCOUT_ZONE_MS);
+  const sessionMatch = state.session?.match;
+  const scoutZone = useMemo(() => (flag && zoneShown && sessionMatch
+    ? scoutZoneFor(flag, sessionMatch.home.team_id, teamColor(sessionMatch.home.team_id, true),
+      teamColor(sessionMatch.away.team_id, false))
+    : null), [flag, zoneShown, sessionMatch]);
+  const [replays, setReplays] = useState(emptyReplayQueue);
+  const replayShot: ShotTrace | null = replays.current;
+  const lastShot = state.lastShot;
+  const replayTimers = useRef<number[]>([]);
+  const liveSecond = useRef<number | null>(null);
+  liveSecond.current = state.lastEvent?.match_second ?? null;
+  // A qualifying shot's replay is not cancelled by later shots; it queues behind any replay already rolling.
+  useEffect(() => {
+    if (!autoReplay || !lastShot || !earnsReplay(lastShot)) return;
+    setReplays(replayScheduled);
+    replayTimers.current.push(window.setTimeout(() => setReplays((s) => replayDue(s, lastShot)), REPLAY_DELAY_MS));
+  }, [autoReplay, lastShot]);
+  useEffect(() => {
+    const timers = replayTimers.current;
+    if (!autoReplay) {
+      timers.splice(0).forEach((id) => window.clearTimeout(id));
+      setReplays(replaysOff);
+    }
+    return () => timers.splice(0).forEach((id) => window.clearTimeout(id));
+  }, [autoReplay]);
+  const onReplayDone = useCallback(() => setReplays((s) => replayFinished(s, liveSecond.current)), []);
+  const recapHeld = holdsRecap(replays);
+  const [heldRecap, setHeldRecap] = useState<Recap | null>(null);
+  const [seenStages, setSeenStages] = useState<Set<string>>(() => new Set());
+  const [voiceOn, setVoiceOn] = useState(savedVoicePreference);
+  const [neuralVoice, setNeuralVoice] = useState(false);
+  const toggleVoice = useCallback(() => setVoiceOn((on) => {
+    saveVoicePreference(!on);
+    return !on;
+  }), []);
+  useEffect(() => {
+    api.speechStatus().then((s) => setNeuralVoice(s.available)).catch(() => setNeuralVoice(false));
+  }, []);
+  const speechUrl = useMemo<SpeechUrlBuilder>(
+    () => (neuralVoice ? (ref, segment) => api.speechUrl(sessionId, ref, segment) : null), [neuralVoice, sessionId]);
+  const matchSpeed = state.session?.speed ?? DEFAULT_MATCH_SPEED;
+  useSpokenCommentary(state.ticker, viewer.language, voiceOn && !reelStage && !replayShot, matchSpeed, speechUrl);
 
   useEffect(() => {
-    if (state.recaps.length > seenRecaps) {
-      setOpenRecap(state.recaps[state.recaps.length - 1]);
-      setSeenRecaps(state.recaps.length);
+    const fresh = state.recaps.find((r) => !seenStages.has(r.stage));
+    if (fresh) {
+      if (recapHeld) setHeldRecap(fresh);
+      else if (!isTyping()) setOpenRecap(fresh);
+      setSeenStages((current) => new Set(current).add(fresh.stage));
     }
-  }, [state.recaps, seenRecaps]);
+  }, [state.recaps, seenStages, recapHeld]);
+
+  // A recap that arrived during a replay opens once no replay is rolling, queued, or scheduled.
+  useEffect(() => {
+    if (recapHeld || !heldRecap) return;
+    if (!isTyping()) setOpenRecap(heldRecap);
+    setHeldRecap(null);
+  }, [recapHeld, heldRecap]);
+
+  // Due replays wait in the queue while a recap dialog is open and roll once it closes.
+  const recapOpen = openRecap !== null;
+  useEffect(() => {
+    setReplays((s) => (recapOpen ? recapOpened(s) : recapClosed(s, liveSecond.current)));
+  }, [recapOpen]);
+
+  useEffect(() => {
+    if (openRecap?.stage !== "half_time") return undefined;
+    const id = window.setTimeout(() => setOpenRecap(null), HALF_TIME_RECAP_MS);
+    return () => window.clearTimeout(id);
+  }, [openRecap]);
 
   const match = state.session?.match;
   if (!match) return <div className="panel empty">Connecting to the live match ({status})...</div>;
   const homeColor = teamColor(match.home.team_id, true);
   const awayColor = teamColor(match.away.team_id, false);
-  const active = activeCue(state.cues, now);
+  const clock = state.lastEvent ? { period: state.lastEvent.period, second: state.lastEvent.match_second } : null;
+  const active = activeCue(state.cues, now, clock);
   const cueTeamIsAway = active && viewer.team === match.away.team_id;
+  const shot = state.lastShot && now - state.lastShot.at < SHOT_VISIBLE_MS ? state.lastShot : null;
+  const cardShot = state.lastShot && now - state.lastShot.at < SHOT_CARD_MS ? state.lastShot : null;
+  const goal = state.goalFlash && now - state.goalFlash.at < GOAL_VISIBLE_MS ? state.goalFlash : null;
+  const scoutCard = flag && stillVisible(flag.at, now, SCOUT_CARD_MS) ? flag : null;
+  const threat = state.threatFlash;
+  const threatCard = threat && !goal && !cardShot?.card && stillVisible(threat.at, now, THREAT_CARD_MS) ? threat : null;
+  const shapeShift = state.shapeShift && stillVisible(state.shapeShift.at, now, SHAPE_SHIFT_MS) ? state.shapeShift : null;
 
   return (
     <>
       <div className="stage">
-        <Pitch ball={state.ball} trail={state.trail} homeColor={homeColor} awayColor={awayColor}
-          label={`Live pitch: ${match.home.name} versus ${match.away.name}`}>
-          <ScoreBug home={match.home} away={match.away} homeColor={homeColor} awayColor={awayColor} lastEvent={state.lastEvent} />
-          <OverlayLayer active={active} ball={state.ball} teamColor={cueTeamIsAway ? awayColor : homeColor} />
-        </Pitch>
-        <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+        {replayShot && !reelStage ? (
+          <ReplayPlayer key={replayShot.id} sessionId={sessionId} shot={replayShot} match={match} homeColor={homeColor}
+            awayColor={awayColor} camera={camera} voiceOn={voiceOn} language={viewer.language}
+            persona={viewer.persona}
+            onDone={onReplayDone} />
+        ) : reelStage ? (
+          <HighlightsPlayer sessionId={sessionId} stage={reelStage} segment={state.cues[0]?.cue.viewer_id} match={match}
+            homeColor={homeColor} awayColor={awayColor} camera={camera} voiceOn={voiceOn} onClose={() => setReelStage(null)} />
+        ) : (
+          <PitchView ball={state.ball} trail={state.trail} players={dots} moveMs={state.moveMs} homeColor={homeColor} awayColor={awayColor}
+            camera={camera} shot={shot} onBallAnchor={onBallAnchor} tactics={tactics} scoutZone={scoutZone}
+            shapeShift={shapeShift}
+            label={`Live pitch: ${match.home.name} versus ${match.away.name}`}>
+            <ScoreBug home={match.home} away={match.away} homeColor={homeColor} awayColor={awayColor} lastEvent={state.lastEvent}
+              win={state.win} />
+            <OverlayLayer active={goal || cardShot?.card || threatCard ? null : active} anchor={anchor} teamColor={cueTeamIsAway ? awayColor : homeColor} />
+            {goal && <GoalBanner key={goal.id} scorer={goal.scorer} score={goal.score} payoff={goal.payoff}
+              teamColor={goal.side === "home" ? homeColor : awayColor} />}
+            {scoutCard && !goal && <ScoutCard key={scoutCard.momentId} flag={scoutCard}
+              color={scoutCard.teamId === match.home.team_id ? homeColor : awayColor} />}
+            {cardShot?.card && <ShotCard key={cardShot.id} card={cardShot.card}
+              color={cardShot.side === "home" ? homeColor : awayColor}
+              shooter={[...match.home.players, ...match.away.players].find((p) => p.player_id === cardShot.shooter)?.name ?? ""} />}
+            {threatCard && <ThreatCard key={threatCard.momentId} flash={threatCard}
+              color={threatCard.side === "home" ? homeColor : awayColor} persona={viewer.persona} />}
+          </PitchView>
+        )}
+        <p className="visually-hidden" aria-live="assertive">
+          {state.goalFlash ? `Goal, ${state.goalFlash.scorer}. ${state.goalFlash.score}` : ""}
+          {state.goalFlash?.payoff ? ` ${state.goalFlash.payoff}` : ""}
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)", alignItems: "center" }}>
           {status === "open" && !state.ended && <span className="chip chip--live">LIVE</span>}
+          <div className="tabs camera-toggle" role="group" aria-label="Camera">
+            {(["broadcast", "tactical", "3d"] as Camera[]).map((c) => (
+              <button key={c} className="tab" aria-pressed={camera === c} onClick={() => setCamera(c)}>
+                {{ broadcast: "Broadcast cam", tactical: "Tactical", "3d": "3D" }[c]}
+              </button>
+            ))}
+          </div>
+          <button className="chip" aria-pressed={showTactics} onClick={() => setShowTactics((on) => !on)}>Tactics</button>
+          <button className="chip" aria-pressed={autoReplay} onClick={() => setAutoReplay((on) => !on)}>Auto replays</button>
           {state.ended && <span className="chip">FULL TIME</span>}
           <span className="muted" style={{ fontSize: "var(--text-sm)" }}>{match.venue} - {match.competition}</span>
           {state.recaps.map((r) => (
@@ -55,16 +237,26 @@ export function BroadcastView({ sessionId, viewer }: { sessionId: string; viewer
               {r.stage === "half_time" ? "Half-time recap" : "Full-time recap"}
             </button>
           ))}
+          {state.recaps.map((r) => (
+            <button key={`${r.stage}-reel`} className="chip" aria-pressed={reelStage === r.stage}
+              onClick={() => setReelStage(r.stage)}>
+              {r.stage === "half_time" ? "Half-time highlights" : "Full-time highlights"}
+            </button>
+          ))}
         </div>
-        <CommentaryTicker items={state.ticker} />
+        <CommentaryTicker items={state.ticker}
+          voice={speechSupported || neuralVoice ? { on: voiceOn, onToggle: toggleVoice } : undefined} />
       </div>
       <aside className="rail">
         <AskPanel sessionId={sessionId} viewer={viewer} />
-        <StatsPanel snapshot={state.snapshot} homeColor={homeColor} awayColor={awayColor} />
+        <StatsPanel snapshot={state.snapshot} homeColor={homeColor} awayColor={awayColor} persona={viewer.persona} />
+        <PhysicalPanel physical={state.snapshot?.physical} match={match} homeColor={homeColor} awayColor={awayColor} />
+        <DangerPanel leaders={state.snapshot?.threat_leaders} match={match} homeColor={homeColor} awayColor={awayColor} />
         <MomentumChart points={state.momentum} rhythm={state.rhythm} homeColor={homeColor} awayColor={awayColor}
           homeName={match.home.short_name} awayName={match.away.short_name} />
       </aside>
-      {openRecap && <RecapModal recap={openRecap} onClose={() => setOpenRecap(null)} />}
+      {openRecap && <RecapModal recap={openRecap} onClose={() => setOpenRecap(null)}
+        onWatch={() => { setReelStage(openRecap.stage); setOpenRecap(null); }} />}
     </>
   );
 }

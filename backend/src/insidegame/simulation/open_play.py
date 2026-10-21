@@ -1,13 +1,26 @@
 """Resolvers for open-play actions: pressure, passes, and carries.
 
 Each resolver samples an outcome, emits the corresponding events, and updates SimState.
-Turnovers hand possession to the defending side with coordinates mirrored into its frame.
+Turnovers hand possession to the defending side with coordinates mirrored into its frame. Near the byline, wide
+of the goal, passes become cutbacks or crosses into the box and carries cut inside, as attackers do in real play.
+Attacks lean toward the defending club's weak flank, where passes complete slightly more often and tackles fail.
+Deep forward carries stop at a depth drawn from CARRY_STOP_X_M, 3 to 12 m from the goal line, never at the line.
 """
 
+from insidegame.core.constants import GOAL_CENTER_Y_M
 from insidegame.core.geometry import Point, clamp_to_pitch, distance, mirror
 from insidegame.domain.enums import EventType, Outcome
 from insidegame.domain.teams import TeamStyle
+from insidegame.simulation.flanks import (
+    WEAK_FLANK_PASS_BONUS,
+    WEAK_FLANK_TACKLE_REDUCTION,
+    in_exploited_final_third,
+    in_exploited_flank,
+    lateral_shift,
+)
 from insidegame.simulation.probabilities import (
+    PROBABILITY_MAX,
+    PROBABILITY_MIN,
     pass_success_probability,
     pressure_probability,
     tackle_probability,
@@ -25,7 +38,7 @@ PASS_FORWARD_DIRECTNESS_M: float = 15.0
 PASS_FORWARD_SD_M: float = 9.0
 PASS_LATERAL_SD_M: float = 13.0
 MIN_PASS_X_M: float = 1.0
-MAX_PASS_X_M: float = 103.0
+MAX_PASS_X_M: float = 99.0
 
 BALL_SPEED_BASE_KMH: float = 25.0
 BALL_SPEED_PER_M_KMH: float = 1.4
@@ -42,7 +55,17 @@ CARRY_LATERAL_SD_M: float = 4.0
 CARRY_SPEED_BASE_MS: float = 4.0
 CARRY_SPEED_PACE_MS: float = 3.0
 CARRY_EXTRA_S: float = 1.0
-CARRY_MAX_X_M: float = 104.0
+# A forward carry that would end beyond the first value stops at a depth drawn uniformly from this band, 3 to 12 m
+# from the goal line; it never moves behind its start.
+CARRY_STOP_X_M: tuple[float, float] = (93.0, 102.0)
+
+CROSS_ZONE_X_M: float = 97.0
+CROSS_ZONE_WIDE_M: float = 7.0
+CROSS_TARGET_X_M: tuple[float, float] = (90.0, 101.0)
+CROSS_SUCCESS_FACTOR: float = 0.6
+CROSS_TARGET_Y_SD_M: float = 7.0
+CUT_INSIDE_M: tuple[float, float] = (3.0, 9.0)
+CUT_BACK_M: tuple[float, float] = (0.0, 3.0)
 
 FOUL_PROBABILITY: float = 0.15
 FREE_KICK_DELAY_S: float = 15.0
@@ -61,10 +84,18 @@ def apply_pressure(state: SimState, defending_style: TeamStyle) -> None:
                opponent_id=state.carrier.player_id)
 
 
-def _pass_target(state: SimState, style: TeamStyle) -> Point:
+def in_cross_zone(ball: Point) -> bool:
+    """True near the byline and wide of the goal, where attackers cross or cut back instead of going forward."""
+    return ball.x >= CROSS_ZONE_X_M and abs(ball.y - GOAL_CENTER_Y_M) > CROSS_ZONE_WIDE_M
+
+
+def _pass_target(state: SimState, style: TeamStyle, defending_style: TeamStyle) -> Point:
     rng = state.rng
+    if in_cross_zone(state.ball):
+        x = rng.uniform(*CROSS_TARGET_X_M)
+        return clamp_to_pitch(Point(x, GOAL_CENTER_Y_M + rng.gauss(0.0, CROSS_TARGET_Y_SD_M)))
     forward = rng.gauss(PASS_FORWARD_BASE_M + PASS_FORWARD_DIRECTNESS_M * style.directness, PASS_FORWARD_SD_M)
-    lateral = rng.gauss(0.0, PASS_LATERAL_SD_M)
+    lateral = rng.gauss(lateral_shift(state.ball, defending_style), PASS_LATERAL_SD_M)
     target = clamp_to_pitch(Point(state.ball.x + forward, state.ball.y + lateral))
     return Point(min(max(target.x, MIN_PASS_X_M), MAX_PASS_X_M), target.y)
 
@@ -77,11 +108,16 @@ def _ball_speed(state: SimState, length_m: float) -> float:
 def resolve_pass(state: SimState, style: TeamStyle, defending_style: TeamStyle) -> None:
     """Simulate a pass, completing it or turning possession over via interception."""
     rng, origin, passer = state.rng, state.ball, state.carrier
-    target = _pass_target(state, style)
+    crossing = in_cross_zone(origin)
+    target = _pass_target(state, style, defending_style)
     length = distance(origin, target)
     receiver = pick_receiver(state.attacking_team, passer, target.x, rng)
     p_success = pass_success_probability(length, target.x, passer.attributes, state.under_pressure,
                                          defending_style.pressing, state.clock_s)
+    if in_exploited_final_third(target, defending_style):
+        p_success = min(p_success + WEAK_FLANK_PASS_BONUS, PROBABILITY_MAX)
+    if crossing:
+        p_success *= CROSS_SUCCESS_FACTOR
     success = rng.random() < p_success
     state.emit(EventType.PASS, state.attacking, passer, origin, end=target,
                outcome=Outcome.SUCCESS if success else Outcome.FAILURE, receiver_id=receiver.player_id,
@@ -98,12 +134,23 @@ def resolve_pass(state: SimState, style: TeamStyle, defending_style: TeamStyle) 
     state.give_possession(state.attacking.opponent, interceptor, mirror(target))
 
 
+def carry_stop_x(end_x: float, start_x: float, stop_x: float) -> float:
+    """Return a carry's end depth capped at stop_x, but never behind start_x when the carry starts beyond the stop."""
+    return max(min(end_x, stop_x), min(start_x, end_x))
+
+
 def _carry_end(state: SimState) -> Point:
     rng, pace = state.rng, state.carrier.attributes.pace
+    if in_cross_zone(state.ball):
+        toward_goal = 1.0 if state.ball.y < GOAL_CENTER_Y_M else -1.0
+        return clamp_to_pitch(Point(state.ball.x - rng.uniform(*CUT_BACK_M),
+                                    state.ball.y + toward_goal * rng.uniform(*CUT_INSIDE_M)))
     forward = rng.gauss(CARRY_FORWARD_BASE_M + CARRY_FORWARD_PACE_M * pace, CARRY_FORWARD_SD_M)
     forward = min(max(forward, CARRY_MIN_M), CARRY_MAX_M)
     end = clamp_to_pitch(Point(state.ball.x + forward, state.ball.y + rng.gauss(0.0, CARRY_LATERAL_SD_M)))
-    return Point(min(end.x, CARRY_MAX_X_M), end.y)
+    if end.x > CARRY_STOP_X_M[0]:
+        return Point(carry_stop_x(end.x, state.ball.x, rng.uniform(*CARRY_STOP_X_M)), end.y)
+    return end
 
 
 def _contest_point(start: Point, end: Point) -> Point:
@@ -116,6 +163,8 @@ def resolve_carry(state: SimState, defending_style: TeamStyle) -> None:
     end = _carry_end(state)
     defender = pick_defender(state.defending_team, origin.x, rng)
     p_tackle = tackle_probability(carrier.attributes, defender.attributes, defending_style.pressing)
+    if in_exploited_flank(origin, defending_style):
+        p_tackle = max(p_tackle - WEAK_FLANK_TACKLE_REDUCTION, PROBABILITY_MIN)
     if rng.random() >= p_tackle:
         length = distance(origin, end)
         state.emit(EventType.CARRY, state.attacking, carrier, origin, end=end, outcome=Outcome.SUCCESS,

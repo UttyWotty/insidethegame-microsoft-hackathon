@@ -1,18 +1,23 @@
 /**
- * Application shell: loads metadata, starts matches, and switches between the broadcast view and multiview.
+ * Application shell: loads metadata, starts matches, and switches between the broadcast, multiview, studio, and
+ * producer views.
  * Viewer preferences are resolved into a valid segment before any stream is opened.
  * The header shows which model provider powers the agents.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError, type CreateMatch, type Health } from "./api/client";
 import { BroadcastView } from "./components/BroadcastView";
+import { Landing } from "./components/Landing";
 import { MultiView } from "./components/MultiView";
+import { StudioView } from "./components/StudioView";
+import { ProducerConsole } from "./components/producer/ProducerConsole";
 import { SetupPanel } from "./components/SetupPanel";
 import { ViewerControls } from "./components/ViewerControls";
+import { withRetry } from "./lib/retry";
 import { resolveViewer } from "./lib/viewer";
 import type { ClubInfo, PersonaInfo, SessionInfo, ViewerSettings } from "./types";
 
-type View = "broadcast" | "multiview";
+type View = "broadcast" | "multiview" | "studio" | "producer";
 
 export function App() {
   const [clubs, setClubs] = useState<ClubInfo[]>([]);
@@ -25,11 +30,14 @@ export function App() {
   const [view, setView] = useState<View>("broadcast");
   const [rawViewer, setRawViewer] = useState<ViewerSettings>({ persona: "analyst", language: "en", team: null, player: null });
 
-  useEffect(() => {
-    Promise.all([api.clubs(), api.personas(), api.languages(), api.health()])
+  const [loadFailed, setLoadFailed] = useState(false);
+  const loadMetadata = useCallback(() => {
+    setLoadFailed(false);
+    withRetry(() => Promise.all([api.clubs(), api.personas(), api.languages(), api.health()]))
       .then(([c, p, l, h]) => { setClubs(c); setPersonas(p); setLanguages(l); setHealth(h); })
-      .catch((e: Error) => setError(`Backend unavailable: ${e.message}`));
+      .catch(() => setLoadFailed(true));
   }, []);
+  useEffect(loadMetadata, [loadMetadata]);
 
   const match = session?.match ?? null;
   const viewer = useMemo(() => resolveViewer(rawViewer, match), [rawViewer, match]);
@@ -48,32 +56,43 @@ export function App() {
 
   return (
     <>
+      <a className="skip-link" href="#main">Skip to the match</a>
       <header className="app-header">
         <div className="brand">
           <h1 className="display">Inside the Game</h1>
-          <span className="muted">Explainable match intelligence</span>
+          <span className="muted tagline">Explainable match intelligence</span>
         </div>
-        <div className="tabs" role="tablist" aria-label="View">
-          {(["broadcast", "multiview"] as View[]).map((v) => (
-            <button key={v} role="tab" className="tab" aria-selected={view === v} onClick={() => setView(v)}>
-              {v === "broadcast" ? "Broadcast" : "All personas"}
+        <div className="tabs" role="group" aria-label="View">
+          {(["broadcast", "multiview", "studio", "producer"] as View[]).map((v) => (
+            <button key={v} className="tab" aria-pressed={view === v} onClick={() => setView(v)}>
+              {{ broadcast: "Broadcast", multiview: "All personas", studio: "Studio", producer: "Producer" }[v]}
             </button>
           ))}
         </div>
-        {health && <span className="chip">Agents: {health.model_provider}</span>}
+        {health && <span className="chip provider">Agents: {health.model_provider}</span>}
       </header>
+      {loadFailed && (
+        <div className="banner" role="alert">
+          The match service is not reachable yet.
+          <button className="chip" onClick={loadMetadata}>Retry</button>
+        </div>
+      )}
       {view === "broadcast" || !session || !match ? (
-        <main className="layout">
-          <div className="stack">
+        <main id="main" tabIndex={-1} className="layout">
+          <div className="stack controls">
             <SetupPanel clubs={clubs} busy={busy} error={error} onStart={start} />
-            <ViewerControls personas={personas} languages={languages} match={match} viewer={viewer} onChange={setRawViewer} />
+            <ViewerControls aiOnline={health?.model_provider !== "offline"} personas={personas} languages={languages} match={match} viewer={viewer} onChange={setRawViewer} />
           </div>
           {session
-            ? <BroadcastView sessionId={session.session_id} viewer={viewer} />
-            : <div className="panel empty" style={{ gridColumn: "span 2" }}>Pick two clubs and kick off a synthetic match.</div>}
+            ? <BroadcastView key={session.session_id} sessionId={session.session_id} viewer={viewer} />
+            : <Landing busy={busy} onDemo={start} />}
         </main>
+      ) : view === "studio" ? (
+        <StudioView key={session.session_id} sessionId={session.session_id} match={match} language={viewer.language} />
+      ) : view === "multiview" ? (
+        <main id="main" tabIndex={-1}><MultiView sessionId={session.session_id} personas={personas} language={viewer.language} match={match} /></main>
       ) : (
-        <main><MultiView sessionId={session.session_id} personas={personas} language={viewer.language} match={match} /></main>
+        <ProducerConsole sessionId={session.session_id} match={match} language={viewer.language} />
       )}
     </>
   );

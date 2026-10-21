@@ -11,7 +11,8 @@ from insidegame.agents.glossary import concept_for
 from insidegame.agents.personas import PersonaKey
 from insidegame.agents.question_context import QuestionContext
 from insidegame.agents.recap_context import RecapContext
-from insidegame.agents.schemas import Explanation, PersonaCard
+from insidegame.agents.schemas import Explanation, MatchRecap, PersonaCard
+from insidegame.analytics.moments import moment_intensity
 
 GROUNDING_RULE: str = (
     "Use only names and numbers that appear in the input JSON or in your tool results. "
@@ -21,13 +22,33 @@ GROUNDING_RULE: str = (
 ANALYST_INSTRUCTIONS: str = (
     "You are the Match Analyst for a live football broadcast. Explain why a key moment matters for the match: "
     "its consequence, the tactical pattern behind it (control, chaos, pressure shifts, individual quality), "
-    "and the evidence. Do not simply restate what happened. You may call tools to look up player or team "
-    f"statistics. {GROUNDING_RULE}"
+    "and the evidence. Do not simply restate what happened. When the facts include flagged_minute and "
+    "flagged_summary, connect the moment to that earlier Tactical Scout flag and cite its minute. xt_added is the "
+    "expected threat (xT) a pass or carry added, moving the ball from a zone worth xt_start to one worth xt_end; "
+    "opponents_bypassed counts the opponents it took out of the game and lines_broken names the lines it broke. "
+    f"You may call tools to look up player or team statistics. {GROUNDING_RULE}"
+)
+
+SCOUT_INSTRUCTIONS: str = (
+    "You are the Tactical Scout for a live football broadcast. You watch the whole match for repeated patterns, "
+    "not single actions. Explain the flagged pattern in the input: what the team keeps doing, which zone or "
+    "defender it exploits, the count and share that prove it, and what the opponent must change before it costs "
+    "them. Speak as a scout warning the studio, not as a reporter. For a shape shift, explain how the team's line "
+    "and block changed, cite the before and after numbers, connect it to the change in space control and "
+    "possession over the same minutes, and name the trigger when the facts give one. "
+    f"{GROUNDING_RULE}"
 )
 
 NARRATOR_INSTRUCTIONS: str = (
     "You are the Lead Commentator. Turn the analyst's explanation into one vivid, broadcast-ready line that "
-    f"could be spoken live over the pictures. Keep it under 30 words. {GROUNDING_RULE}"
+    "could be spoken live over the pictures. Keep it under 30 words. Use the right football verb for the action: "
+    "a pass is played, hit, or switched, never a strike or shot; only shots are strikes. Do not repeat a word in "
+    "the same line. Match the energy field: peak (goals, milestones) is an explosive reaction ending with an "
+    "exclamation mark that names the scorer and says what the goal means; the play-by-play has just shouted the "
+    "goal, so never open with the word goal; raised (big chances, great saves, thunderous strikes, long or "
+    "defence-splitting passes, long runs) is urgent and dramatic, an audible reaction; normal is measured and "
+    "insightful, without exclamation marks. "
+    f"{GROUNDING_RULE}"
 )
 
 PERSONALIZER_INSTRUCTIONS: str = (
@@ -40,6 +61,14 @@ TRANSLATOR_INSTRUCTIONS: str = (
     "You are a broadcast translator. Translate the card into the target language with natural football "
     "phrasing used by commentators in that market. Keep player names, club names, and every number unchanged. "
     "Reply with JSON matching the requested schema only."
+)
+
+FACT_CHECKER_INSTRUCTIONS: str = (
+    "You are the Broadcast Standards Editor. Before anything goes to air, check a draft against the facts JSON. "
+    "Reject it if it attributes an action to the wrong player or team, describes an outcome that did not happen "
+    "(for example a goal that was saved or missed), puts an attack on the wrong side of the pitch (a left flank "
+    "that the facts call right, or the other way round), invents events or statistics, or is disrespectful. Style and "
+    "persona voice are not errors. Approve accurate drafts. Reply with JSON matching the requested schema only."
 )
 
 COMPANION_INSTRUCTIONS: str = (
@@ -64,10 +93,15 @@ def analyst_prompt(context: MomentContext) -> str:
     return f"Explain this key moment.\n{_dump(context.to_prompt_dict())}"
 
 
+def scout_prompt(context: MomentContext) -> str:
+    """Prompt asking the Tactical Scout to explain one flagged pattern."""
+    return f"Explain this flagged tactical pattern.\n{_dump(context.to_prompt_dict())}"
+
+
 def narrator_prompt(context: MomentContext, explanation: Explanation) -> str:
     """Prompt asking the narrator for a commentary line."""
-    payload = {"minute": context.moment.minute_label, "explanation": explanation.model_dump(mode="json"),
-               "facts": dict(context.moment.facts)}
+    payload = {"minute": context.moment.minute_label, "energy": moment_intensity(context.moment.kind).value,
+               "explanation": explanation.model_dump(mode="json"), "facts": dict(context.moment.facts)}
     return f"Write the commentary line.\n{_dump(payload)}"
 
 
@@ -102,7 +136,7 @@ def personalizer_prompt(context: MomentContext, explanation: Explanation, viewer
 
 def translator_prompt(card: PersonaCard, language: str) -> str:
     """Prompt asking the translator to localise a card."""
-    payload = {"target_language": language, "title": card.title, "body": card.body,
+    payload = {"target_language": language, "card_title": card.title, "body": card.body,
                "stat_labels": [c.label for c in card.stat_callouts]}
     return f"Translate this card.\n{_dump(payload)}"
 
@@ -122,3 +156,24 @@ def companion_prompt(question: str, context: QuestionContext, viewer: ViewerCont
     payload = {"question": question, "answer_language": viewer.viewer.language,
                "persona_brief": _persona_brief(viewer), "match": context.to_prompt_dict()}
     return f"Answer the viewer's question.\n{_dump(payload)}"
+
+
+def recap_take_prompt(context: RecapContext, recap: MatchRecap, viewer: ViewerContext) -> str:
+    """Prompt asking the personalizer for one persona's take on a recap."""
+    payload: dict[str, object] = {"persona_brief": _persona_brief(viewer), "write_in_language": viewer.viewer.language,
+                                  "recap": recap.model_dump(mode="json"), "match": context.to_prompt_dict()}
+    if viewer.tracked_player_name:
+        payload["tracked_player_stats"] = context.players.get(viewer.tracked_player_name, {})
+    return f"Write this persona's take on the {context.stage.value.replace('_', '-')} recap.\n{_dump(payload)}"
+
+
+def line_translation_prompt(line: str, language: str) -> str:
+    """Prompt asking the translator to localise one commentary line."""
+    return f"Translate this commentary line.\n{_dump({'target_language': language, 'line': line})}"
+
+
+def fact_check_prompt(context: MomentContext, explanation: Explanation, draft_kind: str, draft: str) -> str:
+    """Prompt asking the fact-checker to approve or reject one draft."""
+    payload = {"draft_kind": draft_kind, "draft": draft, "facts": context.to_prompt_dict(),
+               "analyst_explanation": explanation.model_dump(mode="json")}
+    return f"Check this draft before it goes to air.\n{_dump(payload)}"

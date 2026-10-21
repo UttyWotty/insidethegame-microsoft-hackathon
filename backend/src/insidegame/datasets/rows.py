@@ -1,12 +1,14 @@
 """Pure conversion of an analysed match into flat dataset rows.
 
 Events are enriched with absolute pitch coordinates (home attacking left to right throughout), xG, pass difficulty,
-and the key moment they triggered, so each row is self-contained for analytics and supervised learning.
+expected threat (xT) added by completed passes and carries, and the key moment they triggered, so each row is
+self-contained for analytics and supervised learning.
 """
 
 from dataclasses import dataclass, field
 
 from insidegame.analytics.analyzer import MatchAnalyzer
+from insidegame.analytics.threat import XT_DECIMALS
 from insidegame.core.clock import minute_label
 from insidegame.core.geometry import Point, mirror
 from insidegame.domain.match import MatchResult
@@ -49,6 +51,7 @@ def _event_rows(result: MatchResult, analyzer: MatchAnalyzer) -> list[Row]:
             "score_home": event.score_home, "score_away": event.score_away,
             "xg": update.xg, "pass_difficulty": update.pass_quality.difficulty if update.pass_quality else None,
             "momentum": round(update.rhythm.momentum, COORD_DECIMALS), "rhythm_state": update.rhythm.state.value,
+            "xt_added": round(update.threat.xt_added, XT_DECIMALS) if update.threat else None,
             "moment_kinds": [m.kind.value for m in update.moments],
         })
     return rows
@@ -63,6 +66,7 @@ def build_tables(result: MatchResult) -> MatchTables:
     match: Row = {
         "match_id": metadata.match_id, "seed": metadata.seed, "competition": metadata.competition,
         "venue": metadata.venue, "home": metadata.home.name, "away": metadata.away.name,
+        "home_team_id": metadata.home.team_id, "away_team_id": metadata.away.team_id,
         "home_style": metadata.home.style.label, "away_style": metadata.away.style.label,
         "home_goals": result.home_goals, "away_goals": result.away_goals, "events": len(result.events),
         "home_possession_pct": round(stats.possession_share(metadata.home.team_id), COORD_DECIMALS),

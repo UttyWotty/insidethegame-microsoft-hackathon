@@ -1,21 +1,85 @@
 <!--
-Shot-by-shot script for the demo video, which must run under two minutes.
-Each beat lists the screen, the action, and the voice-over, with cumulative timing.
-Record at 30x replay speed so a key moment appears within the first beats.
+Shot-by-shot script for the demo video, which must run under two minutes, told as one story about one goal.
+Each beat lists the screen, the action, and the burned-in subtitle, with contiguous timing and every match fact taken from the demo fixture.
+Record raw takes of the demo match at 30x on the deployed app, then cut the beats and add the subtitles with ffmpeg, so each one shows the app exactly as it plays.
 -->
 
-# Demo Video Script (1:55)
+# Demo Video Script (1:57)
 
-Setup before recording: deployed app (or local with a Foundry model), seed 7, Kestrel Bay vs Ironvale, 30x speed.
-No real club names, crests, footage, or copyrighted music.
+## Final cut (2026-10-21)
 
-| Time | Screen | Action | Voice-over |
+The published video (1:25, silent with burned-in subtitles) follows this script with three changes: the MCP beat
+shows the Foundry hosted agent `inside-the-game-companion` answering in the Foundry playground instead of GitHub
+Copilot, the Danger leaderboard beat is dropped, and the agent-handoff beat shows the Producer console's agent trace
+for the 65' goal. At 30x the 65' persona cards arrive a few match minutes after the goal, so the cut takes them from
+the moment they land.
+
+## Recording and subtitles
+
+There is no voice-over: each beat carries short burned-in subtitle cards (`/` in the table starts the next card;
+each card is at most two lines of about 42 characters and reads at under 15 characters a second), and the same text ships as an `.srt` file for YouTube captions. Record raw
+takes with no narration and do not worry about pauses or mistakes; the cut removes them.
+
+1. Record the browser window: Cmd+Shift+5, Record Selected Portion. That captures no sound, so the video is silent
+   with subtitles. To keep the in-app commentator (Voice on), record with OBS instead (free; add a macOS Screen
+   Capture source and a macOS Audio Capture source for the browser). Either is within the rules; the audio take
+   is stronger because the commentator says the Scout link on air at 0:31.
+2. Record the takes listed below as separate files and note which take each file is.
+3. The editor pulls a frame every 0.5 s from each take, times every beat against what is actually on screen, cuts to
+   under 2:00, burns in the subtitles, and writes `demo.srt`. Check the cut, then upload it to YouTube as Public with
+   the `.srt` as English captions.
+
+Card text is written by the model on Foundry, so its wording differs from run to run. The subtitles quote only
+numbers, which come from the analytics and are the same on every run (6 of 7 entries, 86%, 0.136 xG, the xT
+leaders, 27.1 m to 17.8 m); never put a card's model wording into a subtitle without checking the take.
+
+Takes: (A) English, Analyst, Auto replays off, broadcast view through 65' for beats 0:00-0:31 and 1:04-1:23; (B)
+English, Analyst, All personas opened at 63' for beats 0:31-1:04; (C) Spanish, Casual Fan, All personas opened at
+63', then full time and highlights for beats 0:42-0:55 and 1:40-1:48; (D) producer console and VS Code Copilot,
+during or after take A's match, for beats 1:23-1:40.
+
+## Setup
+
+Setup before recording: the deployed app at
+https://ca-web-e57jcjawvpd5a.blackriver-4dd5512b.eastus2.azurecontainerapps.io/ (agents on Foundry). Press **Watch a demo match** for the demo
+fixture: seed 1407, Kestrel Bay vs Ironvale (2-1, goals at 28', 34', and 65'), played as Kestrel Bay Athletic vs
+Ironvale United at 30x (one match minute is two seconds). Oskar Pereira (28') puts Kestrel Bay ahead, Ansel Juarez
+(34') levels for Ironvale United, and Zane Brekke (65') wins it. Broadcast cam on, Voice on, Analyst persona,
+English. Turn **Auto replays** off for the take that supplies beats 0:00-0:08 and 2b: with it on, the replay covers the pitch
+3.5 s after the shot, so a goal banner is readable for only about 3.5 s, and the 28' replay hides the 34' banner.
+With Auto replays on, the 34' replay now waits in the replay queue and follows the 28' one, so the Auto replays off
+take is still the one for beat 0:00-0:08. At 58' a shot card ("Blocked", Kofi Quintero)
+is on screen next to the Tactical Scout card; frame or crop the shot on the Scout card. Every chip must show **AI**,
+not **Template**, before recording, and the 65' Analyst card must cite the 58' Scout flag (the template wording
+always does; re-record if a model answer drops it). In every take, including the Spanish one,
+open **All personas** at 63', before the 65' goal: a persona column opened later is backfilled with only the two
+most recent moments, so the goal card never arrives live in it. Beat 2b therefore comes from a separate pass that
+stays on the broadcast view through 65'. In the All personas view cards are newest first, so each column's first
+card is the 65' goal (in the Analyst and Casual Fan columns the 58' Scout card sits under it); zoom on it in the
+Analyst and the Casual Fan columns. Record a second take with the Casual Fan persona and Language set to Spanish
+before kick-off; the same seed replays the same match, so beat 2d and the highlights cut to it. Shape shift at 83':
+after going ahead at 65', Kestrel Bay Athletic's back line drops from 27.1 m to 17.8 m; capture it before the
+full-time recap opens. VS Code open with GitHub Copilot agent mode and `.vscode/mcp.json` pointing at
+the deployed `/mcp/` with the `MCP_API_KEY` bearer token (`azd env get-value MCP_API_KEY`; VS Code prompts for it),
+so Copilot queries the same live match that is being recorded. No real club names, crests, footage, or copyrighted music.
+
+Story: Kestrel Bay Athletic and Ironvale United are level at 1-1, and at 58' the Tactical Scout notices Kestrel Bay
+keep beating Wes Thorne down Ironvale's right flank, the same flank it flagged at 14' before Oskar Pereira's opener.
+At 65' Zane Brekke scores the winner from that attack, and the AI explains the goal through that earlier flag, in
+depth for the analyst and in one line, in Spanish, for the casual fan. Everything after the arc is the same goal seen
+through another part of the system, ending with Kestrel Bay sitting deeper to protect it.
+
+| Time | Screen | Action | Subtitles (`/` starts the next card) |
 |---|---|---|---|
-| 0:00-0:10 | Broadcast view, empty | Title card over the app | "Football stories don't end with the scoreline. Inside the Game turns raw match events into explainable intelligence, made for every fan." |
-| 0:10-0:25 | Broadcast view | Press Kick off; ball and trail move, stats fill in | "A seeded simulator streams football-realistic events. Our analytics engine turns them into xG, pass difficulty, momentum, and control versus chaos, live." |
-| 0:25-0:45 | Analyst stat panel appears | Hover the AI chip | "When a key moment happens, a team of Microsoft Agent Framework agents runs on Microsoft Foundry. The Analyst explains why it matters, using tools to pull evidence. Every number is checked against the match data before it reaches the screen." |
-| 0:45-1:10 | All personas view | Slow pan across the five columns at the same moment | "The same moment, five experiences. The Analyst gets the metrics. The Casual Fan gets one clear line. The Superfan celebrates with their club. The Player Tracker follows one player. The Newcomer learns what xG means." |
-| 1:10-1:22 | Broadcast view, language Spanish | Switch language; a translated card appears | "Any market, any language, with names and numbers preserved." |
-| 1:22-1:37 | Ask the analyst | Ask "Who has been the best player so far?" | "Fans can ask the Match Companion anything about the match, answered in their own voice and language." |
-| 1:37-1:47 | Half-time recap dialog | Recap opens automatically | "Automated recaps are ready for the studio at half-time and full-time." |
-| 1:47-1:55 | Architecture diagram, then app | Show the diagram, end on the multiview | "Agent Framework, Foundry, MCP, and Azure Container Apps: explainable, personalized match intelligence, ready for live broadcast." |
+| 0:00-0:08 | Landing screen, then broadcast view | Hold "Every match, made for every fan." for 3 s, press Watch a demo match, cut to 34' (from the Auto replays off take) as the GOAL banner reads "ANSEL JUAREZ 1-1" | "Fans see the score, rarely why it happened. / Inside the Game explains every match, live." |
+| 0:08-0:21 | Broadcast view, broadcast cam (arc: pattern flagged) | At 58' the Tactical Scout card appears: "Flank exposed", "Kestrel Bay Athletic beat Wes Thorne down Ironvale United's right flank: 6 of 7 final-third entries in 15 minutes", "6 entries, 86%"; the flagged zone, the left channel of the final third Kestrel Bay attack, lights up on the pitch, labelled "Flank exposed" | "1-1. At 58' the Tactical Scout agent spots a pattern: / Kestrel Bay beat Wes Thorne on the right, 6 of 7 entries." |
+| 0:21-0:31 | Broadcast view (arc: goal) | Auto replays off; start the cut at 63' so the shot is in frame. At 65' Zane Brekke scores; the GOAL banner reads "ZANE BREKKE 2-1" with "Scout flagged 58': Kestrel Bay Athletic beat Wes Thorne down Ironvale United's right flank: 6 of 7 final-third entries in 15 minutes" | "65': the winner comes from that same flank. / The goal banner links straight back to the Scout's flag." |
+| 0:31-0:42 | All personas view (arc: the AI connects them) | All personas opened at 63', before the goal, in this and the Spanish take; zoom on the Analyst column's first card, the 65' goal, "Zane Brekke puts their side in front, just as the Scout flagged at 58'", whose explanation must cite the 58' Scout flag (the template wording ends with "The finish came from a chance worth 0.136 xG. The Tactical Scout flagged it at 58': Kestrel Bay Athletic beat Wes Thorne down Ironvale United's right flank: 6 of 7 final-third entries in 15 minutes."; a model card words it its own way, so check the take); with audio (OBS take) the commentator says the card headline on air | "The Analyst agent explains the goal / through the Scout's 58th-minute flag." |
+| 0:42-0:55 | All personas view, then the Spanish take (arc: analyst vs casual fan) | Pan from the Analyst card (xG 0.136, 2-1, the Scout's 6 of 7) to the Casual Fan column's first card, the 65' goal, "Zane Brekke puts their side in front, just as the Scout flagged at 58'. It is 2-1."; cut to the Spanish take's Casual Fan column on the same 65' card | "Same goal, two fans. The analyst: 0.136 xG and the Scout's numbers. / The casual fan: one line, and in Spanish." |
+| 0:55-1:04 | All personas view | Hover the AI and Fact-checked chips on the 65' Analyst card | "Agent Framework agents on Microsoft Foundry hand off in turn, / and a Standards Editor fact-checks every number." |
+| 1:04-1:12 | Broadcast view, Danger leaderboard | At the 65' goal the leaderboard reads Umar Ulloa 0.228, Luca Baptiste 0.186, Dario Halloran 0.177 xT added | "Expected threat shows who builds danger: / all three leaders play for Ironvale, yet Kestrel Bay lead." |
+| 1:12-1:23 | Broadcast view, then studio | Shape shift at 83': the shape layer draws Kestrel Bay's back line "Before 27.1 m" and "Now 17.8 m" with "Low block"; cut to the studio back-line height timeline with the 83' mark | "Ahead, Kestrel Bay sit deeper: / back line 27 m to 18 m, possession 61% to 49%." |
+| 1:23-1:32 | Producer console | Select the 65' Goal row: its agent trace (Intake, Match Analyst, Lead Commentator, Personalization Producer, Standards Editor, Broadcast Translator) and broadcast record show; toggle "Holding AI overlays for approval", then back to "AI overlays airing live" | "The producer sees every agent handoff / and can hold AI overlays for human approval." |
+| 1:32-1:40 | VS Code, Copilot agent mode | Ask "How has Kestrel Bay Athletic's shape changed since they went ahead?"; Copilot calls `get_team_shape` and answers with the 83' shift, back line 27.1 m to 17.8 m after going ahead at 65' | "It is also an MCP server: / GitHub Copilot asks the live match how Kestrel Bay changed." |
+| 1:40-1:48 | Full-time highlights, Spanish take | In the full-time recap press "Watch highlights" (not "Back to the match"), then press Next to the fifth of six clips, the 65' winner, narrated in Spanish | "At full time the highlights cut themselves, / in each viewer's language." |
+| 1:48-1:57 | Architecture diagram, then app | Show the diagram, end on the broadcast with an overlay | "One seeded synthetic match. / Agent Framework, Foundry, AI Speech, MCP, Container Apps. / Explainable match intelligence for every fan." |

@@ -8,6 +8,10 @@ This README describes the project status, setup, usage, and repository structure
 
 AI-powered match intelligence built on synthetic football event data: ingest live events, interpret them into statistics and patterns, explain why moments matter, render overlay-ready output, and personalize it for analysts and casual fans in multiple languages.
 
+![Broadcast view: live pitch with an analyst overlay, stats, momentum, commentary, and Ask the analyst](docs/images/broadcast.jpg)
+
+![The same match through all five personas](docs/images/multiview.jpg)
+
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for diagrams of the pipeline, the multi-agent workflow,
 and the Azure deployment, and [docs/SUBMISSION.md](docs/SUBMISSION.md) for the project summary.
 
@@ -21,38 +25,72 @@ flowchart LR
 
 ## Status
 
-- Stage 1 (Ingest source): synthetic match engine implemented and calibrated.
-- Stage 2 (Interpret): streaming analytics implemented (xG, pass difficulty, stats, rhythm, key moments).
-- Stages 3-5 (Explain, Render, Personalize): multi-agent workflow, overlay cues, and recaps implemented.
-- Live API: real-time replay with personalized server-sent event streams implemented.
-- Broadcast frontend: live pitch, five persona overlays, stats, momentum, commentary, recaps, and multiview implemented.
-- Azure deployment: infrastructure as code, container, CI, and keyless Foundry auth ready (`azd up`).
+As of 2026-10-21 (release v0.2.0 on main):
+
+- Stage 1 (Ingest): synthetic match engine calibrated against top-flight reference bands (13 of 13 metrics within
+  band over 480 matches, see [docs/CALIBRATION.md](docs/CALIBRATION.md)), with home advantage, a weak defensive
+  flank per club, and speed-limited tracking for all 22 players.
+- Stage 2 (Interpret): streaming analytics implemented (xG, expected threat (xT) with line-breaking passes, pass
+  difficulty, stats, rhythm, key moments, tactical pattern mining that links later goals to earlier flags, and team
+  shape with line-height shifts explained as changes in control).
+- Stages 3-5 (Explain, Render, Personalize): eight-agent workflow, including the Tactical Scout, with fact-checking,
+  overlay cues, persona recaps, and a Match Companion implemented; validated on a local model through the evaluation
+  harness and in the live UI (model-written cards and fact-checks aired end to end), with template fallbacks that
+  never lose a moment.
+- Live API: real-time replay with personalized server-sent event streams, moment backpressure, and rate limits.
+- Broadcast frontend: live pitch with sprint tags, five persona overlays, stats, momentum, spoken play-by-play
+  commentary that reacts to big moments, recaps, multiview, and a streamed producer console implemented. Instant
+  replays re-play the real build-up and shot with an analysis card, queue instead of overlapping, and wait for open
+  recaps; half-time and full-time highlights replay the real passes, carries, and shots.
+- Microsoft Fabric: a lakehouse notebook and a Direct Lake semantic model with ten measures are ready and checked
+  offline against the dataset (see [docs/FABRIC.md](docs/FABRIC.md)); not yet run in a live Fabric workspace.
+- Azure deployment: live on Azure Container Apps in eastus2 since 2026-10-20
+  (https://ca-web-e57jcjawvpd5a.blackriver-4dd5512b.eastus2.azurecontainerapps.io/), deployed with `azd up`.
+  The agents run on gpt-4.1-mini in Microsoft Foundry through the app's managed identity (no keys), and neural
+  speech is available. Verified on the live site: seed 1407 to 34' with every aired moment model-written and
+  fact-checked (no template fallbacks), including both Tactical Scout flags and both goals.
 
 ## Synthetic Match Engine
 
 A seeded, deterministic possession-chain simulator generates full 90-minute matches between fictional clubs.
 Each team has a tactical style (possession, direct, high press, counter) that adapts to the game state:
-trailing teams chase late, leading teams protect. Outcomes are driven by player attributes, pitch geometry,
-pressure, and fatigue.
+trailing teams chase late, leading teams protect. Every club also has a weak defensive flank (Brookhaven and Kestrel
+Bay on the left, Ironvale and Silverlake on the right): opponents drift toward it in the attacking half, and passes
+into it and dribbles down it succeed slightly more often, so the Tactical Scout has real patterns to find. Outcomes are driven by player attributes, pitch geometry,
+pressure, and fatigue. Tracking follows the same game state: from 70' (the simulator's `PROTECT_START_SECOND`), a
+leading team defends 10 m deeper out of possession (`tracking/game_state.py`, keeper and in-possession shapes
+unchanged). The protect drop only moves tracked positions, so events, scorelines, the calibration report, and the
+event and moment datasets are unchanged. Finishing is realistic rather than walk-in: a forward dribble that would
+end deeper than 93 m stops at a depth drawn from 93 to 102 m (`CARRY_STOP_X_M`, 3 to 12 m from the goal line), and
+inside 20 m of goal the tracked keeper stands on the line from the goal centre to the ball (or the strike point of a
+shot), 30% of the way out, so the keeper is between a close shooter and the goal (`tracking/keeper.py`).
 
-Calibrated averages over 100 simulated matches:
+Calibrated averages over 480 simulated matches (every pairing, seeds 1 to 480; full table and reference bands in
+[docs/CALIBRATION.md](docs/CALIBRATION.md), regenerated with `python -m insidegame.datasets.calibrate`):
 
 | Metric | Simulated | Typical top-flight range |
 |---|---|---|
-| Shots per match | 24.4 | 22-28 |
-| Goals per match | 2.82 | 2.5-3.0 |
-| Goals per shot | 0.115 | 0.10-0.12 |
-| Pass accuracy | 80% | 75-88% |
-| Tackles per team | ~21 | 15-22 |
+| Goals per match | 2.89 | 2.5-3.1 |
+| Expected goals per match | 2.89 | 2.4-3.2 |
+| Shots per match | 27.0 | 22-28 |
+| Shots on target | 34.3% | 30-40% |
+| Shot conversion | 10.7% | 9-13% |
+| Pass accuracy | 79.5% | 78-86% |
+| Shots from inside the box / byline | 71.1% / 0.1% | 55-72% / 0-4% |
+| Mean shot distance | 15.1 m | 14-19 m |
+| Home wins / draws / away wins | 46.3% / 25.4% / 28.3% | 40-48% / 22-30% / 25-33% |
 
 Event types: `period_start`, `period_end`, `kick_off`, `pass`, `carry`, `shot`, `goal`, `save`, `pressure`,
 `tackle`, `interception`, `foul`, `possession_change`. Coordinates are metres on a 105 x 68 pitch, relative to the
 acting team (attacking toward x = 105).
 
-## Planned Stack
+## Stack
 
 - Microsoft Agent Framework: agents, tools, structured outputs, workflow orchestration, OpenTelemetry
-- Microsoft Foundry: project and model deployment, keyless managed identity access
+- Microsoft Foundry: project and model deployment, keyless managed identity access, hosted agent in Foundry
+  Agent Service using the project's MCP server (provisioned by Bicep; first deployment pending)
+- Azure AI Speech: neural text to speech for spoken commentary on the same AI Services account, keyless via the
+  app's managed identity (browser speech is the fallback)
 - Azure Container Apps, Azure Container Registry, Log Analytics, Application Insights
 - Model Context Protocol server exposing match intelligence to GitHub Copilot and Foundry agents
 - Azure Developer CLI with Bicep infrastructure as code; GitHub Actions CI and OIDC deployment
@@ -69,14 +107,33 @@ JSON Lines tables across every fixture pairing:
 | File | Contents |
 |---|---|
 | `matches.jsonl` | Clubs, styles, score, possession, xG, key moment count |
-| `events.jsonl` | Every event with absolute coordinates, xG, pass difficulty, momentum, rhythm state, triggered moments |
+| `events.jsonl` | Every event with absolute coordinates, xG, pass difficulty, `xt_added` (expected threat added by completed passes and carries), momentum, rhythm state, triggered moments |
 | `players.jsonl` | Per-player match statistics |
 | `moments.jsonl` | Labelled key moments with importance and facts |
+| `tracking.jsonl` | Ball, all 22 player positions in the absolute home frame, and any sprinter, sampled every fifth event |
 | `README.md` | Generated dataset card: parameters, schema, statistics, intended uses, limitations |
+
+Realism is measured, not claimed: `python -m insidegame.datasets.calibrate --matches 480` compares goals, xG,
+shots, accuracy, conversion, and home, draw, and away shares with approximate top-flight bands, and every dataset
+card carries the same table. The current report ([docs/CALIBRATION.md](docs/CALIBRATION.md)) has all 13 metrics
+inside their band. Home advantage comes from a shot-volume factor, so goals stay consistent with the independent
+xG model. The report ends with an expected threat (xT) sanity section: the grid's peak cell lies in the penalty
+area, value rises third by third, teams add positive xT per match, and most completed passes and carries add threat.
+
+The demo seed is chosen by a tool, not by hand: `python -m insidegame.datasets.demo_search --start-seed 1
+--end-seed 4000 --top 10` simulates Kestrel Bay vs Ironvale per seed and prints a Markdown table of the seeds whose
+match tells the demo story (a home go-ahead goal from 6 m or more linked to a Tactical Scout flank flag 3 to 12
+minutes earlier, a later dropped shape shift with falling control, a big save, a passing build-up, and an auto replay
+for that goal that plays under the frontend's replay queue rules), ranked by preferences such as a held winner, a
+comeback, or a late goal. The demo seed (1407) passes every rule.
 
 Twelve matches (about 30,000 events) generate in under two seconds. A two-match sample is committed in
 [`data/sample/`](data/sample/README.md). The files load directly into Microsoft Fabric lakehouses, notebooks,
-or training pipelines.
+or training pipelines. [`docs/FABRIC.md`](docs/FABRIC.md) walks through the Fabric path: a PySpark notebook
+(`fabric/notebooks/load_lakehouse.ipynb`) loads them into six Delta tables with explicit schemas, a Direct Lake
+semantic model in TMDL (`fabric/InsideTheGame.SemanticModel/`) adds relationships and ten DAX measures, and a
+three-page report is described field by field. `python -m insidegame.fabric.check` (from `backend/`) verifies the
+data, notebook, and model against the Python schemas offline.
 
 ## Match Interpretation (Stage 2)
 
@@ -93,19 +150,64 @@ or training pipelines.
   great saves, speed indicators (shots of 115 km/h or more), distance indicators (completed passes of 40 m or
   more, players passing 300 m and 400 m carried), difficult passes, momentum swings, chaos spells, and
   milestones (braces, hat-tricks, pass counts). Each moment carries an importance score and structured facts for the
-  explanation agents. About 19 moments are detected per match.
+  explanation agents. About 30 moments are detected per match with player tracking (about 26 from events alone).
+- **Tactical patterns (Tactical Scout):** a deterministic miner watches a rolling 15-minute window of final-third
+  entries and ball wins and flags three patterns as `tactical_pattern` moments: a flank exposed (6 or more completed entries
+  down one wide channel at a success rate of 85% or more, naming the beaten full-back), a channel overload (at least
+  7 successful entries and 60% of them down one channel), and a turnover zone (at least 5 ball wins in one zone
+  outside the winner's defensive third). Flags are at least 10 minutes apart, and the same pattern waits 15 minutes
+  before it can be flagged again; about 6 to 7 are raised per match. When a goal or big chance comes from a flagged
+  pattern within 15 minutes, it carries `flagged_minute` and `flagged_summary`, so the broadcast can say "Scout
+  flagged 31'". Over seeds 1 to 30 of Kestrel Bay vs Ironvale, about 93% of wide flank flags point at the defending
+  club's configured weak flank.
+- **Expected threat (xT):** every completed pass and carry is credited with the expected threat it added (xT where
+  the ball ended minus xT where it started) to the player and team (`xt_added`). The 12 x 8 grid is fitted to our
+  own synthetic league, never a published grid: `python -m insidegame.datasets.xt_fit --matches 480 --start-seed 1
+  --out backend/src/insidegame/analytics/xt_grid.py` simulates every pairing, counts shots (valued by our xG
+  model), moves, and completed transitions per cell in the acting team's frame (tackles count as failed moves of the
+  tackled team), solves `xT = shot share x mean xG + move share x sum of transition share x xT` by value iteration,
+  and averages mirrored rows so neither flank is favoured. The committed `analytics/xt_grid.py` is generated (no
+  date, so it regenerates byte for byte) and must be refitted whenever the simulator changes. Values run from about
+  0.007 at the own goal line to 0.051 in the central cells of the penalty area: flatter than grids fitted to real
+  leagues, because simulated possessions take many actions per shot. About 65% of completed passes and carries add
+  threat, and a team adds about 1.2 xT per match.
+- **Line-breaking passes:** in the live pipeline, each completed pass is checked against the opponents' tracked
+  positions from the frame before it (goalkeeper excluded): `opponents_bypassed` counts outfield opponents nearer
+  goal at the start than at the end, and a midfield or defensive line is broken only when the pass starts behind
+  every player in that line and ends beyond every one (about 16% of completed passes). Tracking positions are
+  synthetic formation shapes, not motion capture, so these counts are illustrative; dataset files carry no line
+  breaks because generation does not run tracking. A line-breaking pass adding 0.025 xT or more raises a
+  `threat_created` key moment (importance 0.50, at most one per 5 minutes of a half, about 3 per match) whose facts
+  (`xt_added`, `xt_start`, `xt_end`, `opponents_bypassed`, `lines_broken`) agents can cite; difficult and long
+  passes also carry `xt_added`. The snapshot ranks the top five players by xT added (`threat_leaders`).
+- **Team shape and shape shifts:** in the live pipeline, each team's shape is measured out of possession from the
+  tracked positions before each event: back-line height (mean distance of the four defenders from their own goal
+  line), length, width, compactness, and a high (33 m or more), mid, or low (under 24 m) block. The snapshot's
+  `shape` gives each team's five-minute reading. A `ShapeTracker` compares the last 10 minutes with the 10 minutes
+  before; when the back line moves 6 m or more and that holds for 4 minutes (15-minute cooldown per team, reset at
+  each period), it raises a `shape_shift` key moment (importance 0.56) whose facts carry the line height, block,
+  length, and width before and after, the team's space-control and possession shares over the same two windows, the
+  score, the trigger (the goal of the period that preceded it, such as `went_ahead` or `conceded`), and who has
+  momentum: "After going ahead at 65', Kestrel Bay Athletic's back line dropped from 27.1 m to 17.8 m; over the same
+  10 minutes their share of the pitch went from 51.6% to 43.0% and their possession from 60.6% to 49.3%". Wording
+  stays "over the same minutes", never "because". Over Kestrel Bay vs Ironvale seeds 1 to 20 there are about 1.0
+  shifts per match, 75% of late protect-the-lead spells (a team leading for 10 or more minutes after 70') produce a
+  dropped shift by the leader, and space control moves with the line in 95% of shifts (97% over every pairing,
+  seeds 1 to 10). Dataset files carry no shape because generation does not run tracking through the analyzer.
 
 ## Agents and Personas (Stages 3-5)
 
-Six specialised Microsoft Agent Framework agents, each with a single role:
+Eight specialised Microsoft Agent Framework agents, each with a single role:
 
 | Agent | Role | Output schema |
 |---|---|---|
 | Match Analyst | Explains why a moment matters; calls statistics tools (`get_player_stats`, `compare_teams`, `recent_moments`) | `Explanation` |
+| Tactical Scout | Explains a flagged tactical pattern (which zone or defender it exploits, the count and share that prove it) or a shape shift (how the back line and block changed, with space control and possession over the same minutes); the workflow routes `tactical_pattern` and `shape_shift` moments to it instead of the Match Analyst | `Explanation` |
 | Lead Commentator | Writes one broadcast-ready commentary line | `Commentary` |
 | Personalization Producer | Rewrites the explanation for a viewer persona | `PersonaCard` |
 | Broadcast Translator | Localises cards, keeping names and numbers intact | `TranslatedCard` |
 | Match Editor | Writes half-time and full-time recaps | `MatchRecap` |
+| Standards Editor | Fact-checks every model-written card and commentary line before air; rejected cards go back to the personalizer with the issues | `FactCheckVerdict` |
 | Match Companion | Answers viewers' questions about the live match in their persona and language; calls statistics tools; declines off-topic or betting questions | `CompanionAnswer` |
 
 Five personas, each a genuinely different experience:
@@ -135,9 +237,9 @@ Every viewer also chooses a language, and optionally a favourite club and player
 Each broadcast-worthy moment runs through a Microsoft Agent Framework workflow:
 
 ```
-intake -> analyst -> +-> narrator -------+-> assembler -> overlay cues
-                     +-> personalizer ---+
-                         (per viewer, concurrently; translator when language is not English)
+intake -> analyst -> +-> narrator -------+-> fact-checker -> assembler -> overlay cues
+                     +-> personalizer ---+        |              (translator for non-English viewers)
+                         (per viewer)             +-> rejected card -> personalizer revises -> re-check
 ```
 
 - **Shared state:** intake and analyst write the job and explanation to workflow state; the assembler joins the
@@ -147,10 +249,14 @@ intake -> analyst -> +-> narrator -------+-> assembler -> overlay cues
 - **Overlay cues (stage 4, render):** one timed, machine-readable cue per viewer with layout, display start
   (match second), duration, priority, title, body, stat callouts, commentary line, theme, and provenance
   (source, attempts, latency per agent).
+- **Fact-checking:** a roster rule rejects invented players, then the Standards Editor agent checks attribution
+  and outcomes. A rejected card returns to the personalizer with the issues for one revision; if it still fails,
+  a grounded template airs instead. Every cue records the verdict (approved, revised, replaced, or skipped).
 - **Recaps:** the Match Editor writes half-time and full-time recaps at each period end, with a grounded
   standout-player check.
 - **Failure recovery:** each agent falls back individually; if the workflow itself fails, a degraded
-  template path still produces cues for every viewer.
+  template path still produces cues for every viewer. If a template on that path raises, only that piece is
+  replaced by a minimal grounded output (minute and moment kind), noted as "template failed", so the moment still airs.
 
 `MatchIntelligenceService.handle_event(event)` runs the whole pipeline for one event.
 
@@ -158,7 +264,10 @@ intake -> analyst -> +-> narrator -------+-> assembler -> overlay cues
 
 A FastAPI service replays simulated matches in real time and streams personalized intelligence over
 server-sent events. Interpretation runs inline at match pace; agent workflows and recaps run as background
-tasks and publish when ready, so the event feed never waits for a model.
+tasks and publish when ready, so the event feed never waits for a model. Under a slow or rate-limited model,
+moments queue in order for a few production slots (`PARALLEL_MOMENTS`); a non-goal moment that falls more than five
+match minutes behind the clock while queued is skipped, since its overlay would no longer be shown. Goals are never
+skipped.
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -168,6 +277,14 @@ tasks and publish when ready, so the event feed never waits for a model.
 | POST | `/api/matches` | Start a replay: `{home, away, seed, speed}` (speed = match seconds per real second) |
 | GET | `/api/matches`, `/api/matches/{id}` | List sessions; session state, snapshot, and recaps |
 | GET | `/api/matches/{id}/stream?persona=&language=&team=&player=` | Personalized SSE feed |
+| GET | `/api/matches/{id}/producer` | Producer console state: timeline, broadcast records, pipeline health |
+| GET | `/api/matches/{id}/producer/stream` | Server-sent events: the producer console state whenever it changes, then `end` |
+| GET | `/api/matches/{id}/replay?period=&at=` | Instant replay story of a played shot (`at` within 0.01 s): build-up, strike, and flight keyframes plus its analysis (xG, goal chance, shot cone, assist, build-up); 404 when no shot matches |
+| GET | `/api/matches/{id}/studio?window=` | Studio visuals for `match` or `last_15`: heat, pressing, and pass maps per team, space control, and the analyst's recommended visual |
+| GET | `/api/matches/{id}/highlights?stage=` | Highlights reel for `half_time` or `full_time` (409 until that recap exists): clips with narration and keyframes (`playback: "story"`: the shot's replay story for shot clips, window keyframes of the passes and carries for other clips) or, when neither exists, stored tracking frames (`playback: "frames"`) |
+| POST | `/api/matches/{id}/producer/hold`, `/producer/release` | Hold AI overlays for approval; release one or all |
+| GET | `/api/speech/status` | Whether neural speech is configured (configuration only, no service call) |
+| GET | `/api/matches/{id}/speech?ref=&segment=` | MP3 of one commentary line this match produced (never arbitrary text) |
 | POST | `/api/matches/{id}/ask` | Ask the Match Companion: `{question, persona, language, team, player}` |
 
 Stream message types: `match`, `event` (raw event with xG, pass quality, rhythm, and moments), `snapshot`
@@ -197,6 +314,8 @@ live session registry with the UI:
 | `get_match_state` | Score, clock, team stats, rhythm, standout players |
 | `get_key_moments` | Recent key moments with importance and facts |
 | `get_player_stats` | Live statistics for one player |
+| `get_threat_leaderboard` | Expected threat (xT) added per team and the danger leaderboard of players, with line-breaking passes |
+| `get_team_shape` | Each team's current back-line height, length, width, compactness, and block, with the last five shape shifts and their before and after numbers |
 | `get_recaps` | Half-time and full-time recaps |
 | `ask_match_companion` | Question the Match Companion agent in any persona and language |
 
@@ -210,6 +329,9 @@ Use it from GitHub Copilot in VS Code (`.vscode/mcp.json`):
 }
 ```
 
+The Match Companion can also be registered as a **hosted agent in Microsoft Foundry Agent Service** that uses
+this MCP server as its tool (`python -m insidegame.foundry.register`); see the deployment guide.
+
 Set `MCP_API_KEY` to require `Authorization: Bearer <key>`; set `MCP_ALLOWED_HOSTS` to the public host name when
 deployed (the Bicep template does this automatically).
 
@@ -217,20 +339,105 @@ deployed (the Bicep template does this automatically).
 
 React + TypeScript (Vite, no UI library) broadcast interface:
 
-- **Live pitch:** the synthetic feed rendered as a 2D pitch with the ball and a trail of recent actions
-  (teams change ends at half-time), plus a broadcast score bug with added-time clock.
+- **Live pitch:** all 22 players from synthetic tracking (formation-aware, reacting to the ball and phase of play,
+  and never faster than a human: each player's pace sets a top speed of about 30 to 35 km/h, and players start
+  running toward their next action so they arrive on time), gliding continuously between events at any replay
+  speed. Sprint tags show the speed of the player chasing the ball at 25.2 km/h or more. The ball and a trail of
+  recent actions, live name tags for the players in the action (kept inside the frame at every edge), and three
+  cameras: a broadcast camera that tilts the pitch like a TV angle, a flat tactical view, and a 3D broadcast view
+  (three.js, loaded only when chosen) with running player figures in club colours, goals, raked stands with a
+  crowd, floating name and sprint tags, and a touchline camera that pans to follow the ball; highlights replay in
+  the chosen camera too. Teams change ends at half-time, and a broadcast
+  score bug shows the added-time clock.
+- **Landing and effects:** a landing screen with a one-click demo match; shot traces with an xG bubble and result,
+  and a GOAL banner in the scoring club's colours.
 - **Persona overlays:** each persona's cue is rendered in its own layout over the pitch: analyst stat panel,
   casual lower third, superfan hype banner in club colours, player tag anchored to the ball, and newcomer
   explainer card. Every overlay shows provenance (AI, corrected, or template, with latency).
 - **Live data rail:** team comparison bars, a diverging momentum chart with a plain-language rhythm label,
-  and a commentary ticker mixing agent commentary with key events.
-- **Recaps:** half-time and full-time recaps open in an accessible dialog.
+  and a commentary ticker mixing continuous play-by-play from kick-off, agent commentary on key moments
+  (translated for non-English viewers), and key events. A **Voice** toggle reads commentary aloud in the viewer's
+  language: with Azure AI Speech neural voices when the deployment has it, otherwise (or if a request fails) with
+  the browser's speech synthesis. Only lines actually in that language are spoken, and play-by-play is dropped
+  first when lines arrive faster than they can be read; calm lines that waited too long are skipped so speech stays
+  with play. The commentator gets excited when it should: goals, close calls, long or defence-splitting passes,
+  and rockets get an audible reaction with faster pace and higher pitch; goals cut in immediately and close calls
+  cut off calm lines. Pace follows the replay speed (natural at 1x real time), lines rotate through varied wordings
+  without near repeats, and the viewer's own system voice (or a natural male commentator voice) is used.
+- **Recaps:** half-time and full-time recaps open in an accessible dialog, led by the viewer's persona take.
+- **Win probability and live stats:** a home win, draw, and away win bar under the score bug moves with every
+  goal, chance, and minute (a Poisson model blending typical top-flight scoring and home advantage with each team's
+  live xG rate); pop-ups flash TACKLE WON, INTERCEPTION, or SAVE over the player; and a Physical leaderboard ranks
+  distance covered and top speed from the tracking, with a Danger leaderboard beside it ranking expected threat (xT)
+  added.
+- **Line-breaker card:** when a pass breaks the opponent's lines and adds enough expected threat, a LINE BREAKER
+  card takes the shot card's top-right slot for 6 seconds with passer, receiver, opponents bypassed, and lines
+  broken; analysts also see the xT added and the zone values, and their match stats panel adds xT and
+  line-breaking pass rows.
+- **Tactics overlay:** on the 2D and 3D pitch, the defending block with its depth and width, the offside line
+  (second-deepest defender), a pressure ring when opponents close in on the ball carrier, and arrows to the
+  carrier's three best passing options with a completion chance from distance and opponents near the lane
+  (green, amber, red). A Tactics toggle hides it.
+- **Shape shift lines:** when a `shape_shift` moment arrives, the 2D pitch draws the team's back line before (dashed,
+  "Before 27.1 m") and now (solid, "Now 17.8 m") with an arrow between them and the team's block outlined and
+  labelled ("Low block") in club colours, for 12 seconds and independent of the Tactics toggle. Analysts' match
+  stats add back-line height and block rows, and the studio's analyst column shows a line-height timeline for both
+  teams across the whole match, with a half-time divider and each shape shift marked at its minute.
+- **Shot card:** right after every shot, a broadcast card shows where it went in the goal mouth and where the
+  keeper dived, with the result, shooter, xG, shot speed, distance, and angle (persona overlays step aside meanwhile).
+- **Instant replays:** a few seconds after every goal and every big chance (xG 0.25 or more), the action replays
+  from another angle (behind the goal in the 3D view, a zoomed crop on the 2D pitch) under a REPLAY bug, with a
+  short commentator line, then returns to live. An Auto replays toggle turns them off. A replay that comes due
+  while another is rolling waits in a queue of at most two (a goal replaces the oldest non-goal when it is full)
+  and is skipped if its shot is more than 10 match minutes behind live by its turn; "Back to live" skips only the
+  replay on screen. A recap that arrives during a replay opens once no replay is rolling, queued, or about to
+  start, and a replay that comes due while a recap dialog is open waits in the queue until it closes. The replay
+  re-plays the real build-up (the last few passes and carries, at real pace), then the strike and the ball's
+  flight into the goal mouth in slow motion (a blocked shot stops at the blocker, and a saved shot stops in front
+  of the line with the keeper at the ball). The 2D crop frames the whole action, from the first build-up pass to
+  the goal mouth, and draws the build-up path and the shot cone from the shooter to both posts; the card and
+  caption sit on the half away from the goal. It ends on an analysis card: xG, goal chance, distance, angle,
+  speed, defenders and keeper in the cone, pressure, the build-up's passes, time, and xT, and the assist (the full
+  set for the analyst, a plain subset for other personas). Cone counts come from the synthetic tracking positions
+  and are illustrative.
+- **Studio:** a pundit screen with four analysis visuals on the pitch: space control (each area owned by the
+  nearest team, with the players), pass networks, heat maps, and pressing maps, per team, for the whole match or
+  the last 15 minutes. By default it follows the Match Analyst: the tactical theme of the newest explanation picks
+  the visual (pressure shift shows the pressing map, chaos shows space control, and so on), with the explanation
+  and its source beside it.
+- **Automated highlights:** at half-time and full-time a highlights reel replays every goal and the biggest
+  moments (up to six) on the pitch, with a broadcast caption and the moment's commentary spoken in the viewer's
+  language. In story clips (shots and non-shot clips alike) the caption keeps clear of the ball and the acting
+  player where the view allows: it moves between the bottom and the top of the view, or becomes a compact corner
+  caption away from the action, but only where it fits inside the view; otherwise it stays the full-width lower
+  third. Shot clips play the build-up and the ball's flight into the goal (the instant replay's story, build-up at
+  real pace and the strike in slow motion). Non-shot clips (line-breaking passes, momentum swings) play the passes
+  and carries around the moment at real pace, with the ball at each action's true start and the acting player on
+  it; a clip with no pass or carry in its window replays the tracking frames recorded live. Pause, skip, replay, or
+  go back to live.
 - **Ask the analyst:** viewers question the Match Companion about the live match and get grounded answers
-  in their persona's voice and language, with supporting stats and suggested follow-ups.
+  in their persona's voice and language, with supporting stats and suggested follow-ups. Without a model, a
+  deterministic engine still answers common questions from live statistics in the persona's voice.
 - **Multiview:** the same live match through all five personas side by side.
+- **Producer console:** the broadcaster's control room. Pipeline health (AI share, fact-check outcomes, latency,
+  skipped backlog, live audiences), a timeline of every detected moment (queued, in production, aired, held,
+  released, skipped as stale, or not aired), and each moment's
+  full broadcast record: the analyst's reasoning, the commentary, and every audience's overlay with source and
+  fact-check verdict. When an output degraded or needed a retry, the moment detail lists why per output (for
+  example "Card (casual fr): workflow degraded; template failed"); clean moments show nothing extra.
+  A producer can hold AI overlays for approval and release them per moment or all at once.
+  A live agent trace shows, per moment, each agent's start, duration, outcome (AI or template, attempts,
+  fact-check verdicts), and handoffs.
 - Switching persona or language mid-match backfills the most recent relevant moments for the new segment.
 - Accessibility: visible focus, `aria-live` announcements, text equivalents for charts, colour never the
   only signal, and reduced-motion support.
+- Accessibility checks (WCAG 2.2 AA): text pairs at least 5.6:1, form control borders and club colours at least
+  3:1 (club colours against both pitch stripes), every button at least 24 px tall, a skip link, overlays and goals
+  announced through live regions that stay mounted, and a recap dialog that keeps focus inside, returns it on close,
+  and never opens over a field the viewer is typing in.
+- Responsive: on phones the live pitch comes first and the layout stacks without horizontal scrolling.
+- Resilient start-up: metadata loads with exponential backoff, and a visible retry appears if the service is
+  unreachable.
 
 ```bash
 MODEL_PROVIDER=offline API_PORT=8000 .venv/bin/python -m insidegame.main   # backend
@@ -275,6 +482,13 @@ Model configuration (environment variables, all optional):
 | `TELEMETRY_SENSITIVE_DATA` | `false` | Include prompts and responses in traces |
 | `STATIC_DIR` | empty | Built frontend directory served at `/` (set in the container) |
 | `MCP_API_KEY` | empty | Bearer token required by `/mcp`; empty leaves it open |
+| `SHUTDOWN_GRACE_S` | `5` | Seconds open streams may delay shutdown |
+| `SPEECH_ENDPOINT` | empty | AI Services endpoint for neural speech (`https://<name>.cognitiveservices.azure.com/`); empty means browser speech only |
+| `SPEECH_MAX_PER_MINUTE` | `40` | Speech requests per client per minute (429 beyond) |
+| `SPEECH_TIMEOUT_S` | `10` | Timeout for one speech synthesis request |
+| `PRODUCER_KEY` | empty | Required in `X-Producer-Key` for producer routes when set |
+| `PARALLEL_MOMENTS` | `2` | Moments per match whose agent workflows run at once; later moments queue in order |
+| `MATCH_CREATE_MAX_PER_MINUTE` | `6` | New matches per client per minute, via the API or the MCP tool (429 beyond) |
 | `ASK_MAX_PER_MINUTE` | `20` | Questions per match per minute for `/ask` and the MCP companion tool (429 beyond) |
 | `MCP_ALLOWED_HOSTS` | `127.0.0.1:*,localhost:*,testserver` | Host headers accepted by `/mcp` (DNS rebinding protection) |
 | `FRONTEND_ORIGINS` | `http://localhost:5199` | Comma-separated CORS origins |
@@ -288,32 +502,49 @@ live agents and reports, per agent role, the share of outputs accepted from the 
 rejection, or replaced by a fallback, with latency percentiles, top rejection reasons, and persona samples.
 Reports are kept in `docs/evaluations/`.
 
-Latest local run (MLX, gemma-3-12b 4-bit, M1 Max, two moments plus recap): analyst, narrator, and translator
-outputs were 100% model-generated and grounded; persona cards 75% (the rest timed out under local load and fell
-back to grounded templates, as designed).
+Latest local run (2026-10-13, MLX, Qwen3.8 27B 6-bit, five moment kinds including a goal, plus the full-time
+recap; [report](docs/evaluations/2026-10-13-mlx-qwen3.8-27b-6bit.json)): analyst, translator, and recap editor
+outputs were 100% model-generated; persona cards 92% accepted first time and 8% after a grounding retry, none
+fell back; the Standards Editor approved 8 cards and sent 4 back for revision, and replaced one commentary line
+with a grounded template. With one local model call at a time, persona cards queue behind each other (median
+154 seconds per card); a cloud deployment runs them in parallel.
 
 ## Project Structure
 
 ```
 backend/
   src/insidegame/
-    core/         constants, pitch geometry, domain exceptions
+    core/         constants, pitch geometry and zones, domain exceptions
     domain/       immutable event, team, and match models
-    simulation/   seeded synthetic match engine (stage 1 source)
-    analytics/    streaming interpretation: xG, pass quality, stats, rhythm, key moments (stage 2)
+    simulation/   seeded synthetic match engine with per-club weak flanks (stage 1 source)
+    analytics/    streaming interpretation: xG, expected threat (xT) and line breaks, pass quality, stats, rhythm,
+                  key moments, tactical patterns, team shape and shape shifts, shot cones and blocks, recap stages
+                  and turning points (stage 2)
+    tracking/     synthetic 22-player positions with speed-limited motion, sprint detection, and the late protect drop
+    highlights/   automated highlights reels (clip selection, shot stories, non-shot sequences, frame windows,
+                  narration) and instant replay stories (build-up and flight keyframes, shot analysis) (pure)
+    studio/       studio visuals: heat and pressing grids, pass networks, space control, theme to visual (pure)
+    speech/       neural voice choice and SSML for spoken commentary (pure)
+    commentary/   deterministic play-by-play lines with intensity for goals and close calls
     agents/       personas, schemas, prompts, grounding, fallbacks, resilient agent steps (stages 3-5)
     orchestration/ producer policy, workflow executors, overlay cues, match service
     live/         real-time replay sessions, viewer segments, pub/sub fan-out
-    api/          FastAPI app, routers, server-sent events, MCP server
-    adapters/     model client (MLX, Ollama, Foundry, offline) and telemetry setup
+    api/          FastAPI app, routers, server-sent events (viewer and producer streams), MCP server
+    adapters/     model client (MLX, Ollama, Foundry, offline), Azure AI Speech client, and telemetry setup
     evaluation/   agent evaluation harness
-    datasets/     synthetic dataset tables, dataset card, generator CLI
+    datasets/     synthetic dataset tables, dataset card, generator, calibration, xT fit (xt_fit), and demo-seed
+                  search (demo_search, scored by the pure demo_story module) CLIs
+    foundry/      hosted agent definition and registration for Foundry Agent Service
+    fabric/       Fabric lakehouse schemas, row validator, TMDL and notebook drift checks (pure), offline check CLI
   tests/          unit and integration tests
+fabric/
+  notebooks/      PySpark notebook loading the JSONL files into lakehouse Delta tables
+  InsideTheGame.SemanticModel/  Direct Lake semantic model in TMDL (tables, relationships, DAX measures)
 frontend/
   src/api/        HTTP client and server-sent event hook
   src/state/      pure stream reducer
-  src/lib/        pitch geometry, viewer resolution, team colours
-  src/components/ pitch, overlays, stats, momentum, ticker, recap, multiview
+  src/lib/        pitch geometry, motion timing, spoken commentary planning, viewer resolution, team colours
+  src/components/ pitch (SVG and 3D), overlays, stats, momentum, ticker, recap, highlights, studio, multiview, producer console
 ```
 
 Dependency direction: `api -> live -> orchestration -> agents -> analytics -> domain -> core`, with `simulation -> domain -> core`. Lower layers never import higher ones.

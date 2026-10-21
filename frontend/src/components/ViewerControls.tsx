@@ -6,6 +6,7 @@
 import type { MatchMetadata, PersonaInfo, PersonaKey, ViewerSettings } from "../types";
 
 interface ViewerProps {
+  aiOnline: boolean;
   personas: PersonaInfo[];
   languages: Record<string, string>;
   match: MatchMetadata | null;
@@ -13,12 +14,16 @@ interface ViewerProps {
   onChange: (viewer: ViewerSettings) => void;
 }
 
-export function ViewerControls({ personas, languages, match, viewer, onChange }: ViewerProps) {
+export function ViewerControls({ aiOnline, personas, languages, match, viewer, onChange }: ViewerProps) {
   const players = match ? [...match.home.players, ...match.away.players] : [];
   const choosePersona = (persona: PersonaKey) => onChange({ ...viewer, persona });
   return (
     <section className="panel stack" aria-label="Your viewing experience">
       <h2 className="display">Your experience</h2>
+      <p className="help">
+        Your persona changes the overlays on the pitch, which moments you see, Ask the analyst answers, and your
+        half-time and full-time take. Play-by-play commentary and match stats are shared by everyone.
+      </p>
       <div className="persona-grid" role="group" aria-label="Persona">
         {personas.map((p) => (
           <button key={p.key} type="button" className="persona-card" aria-pressed={viewer.persona === p.key} onClick={() => choosePersona(p.key)}>
@@ -28,10 +33,16 @@ export function ViewerControls({ personas, languages, match, viewer, onChange }:
         ))}
       </div>
       <label className="field">Language
-        <select value={viewer.language} onChange={(e) => onChange({ ...viewer, language: e.target.value })}>
+        <select value={viewer.language} onChange={(e) => onChange({ ...viewer, language: e.target.value })}
+          aria-describedby="language-help">
           {Object.entries(languages).map(([code, name]) => <option key={code} value={code}>{name}</option>)}
         </select>
       </label>
+      <p className="help" id="language-help">
+        {aiOnline
+          ? "Overlays, moment commentary, answers, and your recap take are written in this language by the AI agents."
+          : "Translation is done by the AI agents, which are offline in this demo, so text stays in English."}
+      </p>
       {viewer.persona === "superfan" && match && (
         <label className="field">Favourite club
           <select value={viewer.team ?? ""} onChange={(e) => onChange({ ...viewer, team: e.target.value })}>

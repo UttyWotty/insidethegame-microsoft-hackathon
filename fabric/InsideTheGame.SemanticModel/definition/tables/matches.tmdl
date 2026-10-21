@@ -1,0 +1,111 @@
+table matches
+	lineageTag: e289d927-ce25-5567-80f2-27a551906fff
+
+	column match_id
+		dataType: string
+		lineageTag: d09e1ae8-dd21-5521-b5c8-cd0605daa9fa
+		summarizeBy: none
+		sourceColumn: match_id
+
+	column seed
+		dataType: int64
+		lineageTag: a02eadda-8680-5d74-98e6-8e2fe6cb928b
+		summarizeBy: none
+		sourceColumn: seed
+
+	column competition
+		dataType: string
+		lineageTag: 9ec0b42c-ae54-52f6-9281-45b6123f828b
+		summarizeBy: none
+		sourceColumn: competition
+
+	column venue
+		dataType: string
+		lineageTag: c1669433-95bc-5758-a0ce-793775b97b94
+		summarizeBy: none
+		sourceColumn: venue
+
+	column home
+		dataType: string
+		lineageTag: b8e40258-11be-5077-8e90-7fe114c5df91
+		summarizeBy: none
+		sourceColumn: home
+
+	column away
+		dataType: string
+		lineageTag: 2d0a673e-d172-539e-a7d8-d4fd912f7824
+		summarizeBy: none
+		sourceColumn: away
+
+	column home_team_id
+		dataType: string
+		lineageTag: 8cf8d9f4-ff04-50f4-8fa7-2824622ba97b
+		summarizeBy: none
+		sourceColumn: home_team_id
+
+	column away_team_id
+		dataType: string
+		lineageTag: c98b86cb-f8a2-5c5a-9f5e-7cc13100f71a
+		summarizeBy: none
+		sourceColumn: away_team_id
+
+	column home_style
+		dataType: string
+		lineageTag: 489352d6-1675-5c3c-a02d-99b1a660fa81
+		summarizeBy: none
+		sourceColumn: home_style
+
+	column away_style
+		dataType: string
+		lineageTag: 7254c237-2c53-5aa5-9c60-02d6de060193
+		summarizeBy: none
+		sourceColumn: away_style
+
+	column home_goals
+		dataType: int64
+		lineageTag: e7345b8d-b0b6-56b1-bd9e-64901b344bf1
+		summarizeBy: sum
+		sourceColumn: home_goals
+
+	column away_goals
+		dataType: int64
+		lineageTag: e5b8e23a-e096-5d2a-a4ac-6ad86b67de34
+		summarizeBy: sum
+		sourceColumn: away_goals
+
+	column events
+		dataType: int64
+		lineageTag: 18816736-1d1d-5ed0-b3ef-58bf19a17b89
+		summarizeBy: sum
+		sourceColumn: events
+
+	column home_possession_pct
+		dataType: double
+		lineageTag: 37d0ca0f-62d5-5a22-b438-4e6e5f145655
+		summarizeBy: none
+		sourceColumn: home_possession_pct
+
+	column home_xg
+		dataType: double
+		lineageTag: 54b0f2a6-263a-58d5-b64c-8a72e04e7b0b
+		summarizeBy: sum
+		sourceColumn: home_xg
+
+	column away_xg
+		dataType: double
+		lineageTag: 43f2c370-64c3-50a4-9410-f1d258850d59
+		summarizeBy: sum
+		sourceColumn: away_xg
+
+	column key_moments
+		dataType: int64
+		lineageTag: 7dd6e144-4872-54b0-bd38-ab4abd497775
+		summarizeBy: sum
+		sourceColumn: key_moments
+
+	partition matches = entity
+		mode: directLake
+		source
+			entityName: matches
+			schemaName: dbo
+			expressionSource: DatabaseQuery

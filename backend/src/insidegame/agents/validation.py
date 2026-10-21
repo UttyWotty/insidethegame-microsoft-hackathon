@@ -13,7 +13,9 @@ from insidegame.agents.schemas import (
     Explanation,
     MatchRecap,
     PersonaCard,
+    RecapTake,
     TranslatedCard,
+    TranslatedLine,
 )
 
 WORD_BUDGET_TOLERANCE: float = 1.3
@@ -55,12 +57,14 @@ def card_validator(evidence: Callable[[], object], max_words: int) -> Callable[[
 
 
 def translation_validator(source: PersonaCard) -> Callable[[TranslatedCard], str | None]:
-    """Validator for translations: same numbers as the source and one label per callout."""
+    """Validator for translations: a real title (not the schema name), the same numbers, and one label per callout."""
     def validate(value: TranslatedCard) -> str | None:
+        if value.card_title.strip() in {"", TranslatedCard.__name__}:
+            return "card_title must be the input card_title translated into the target language"
         if len(value.stat_labels) != len(source.stat_callouts):
             return f"provide exactly {len(source.stat_callouts)} stat labels"
         expected = sorted(extract_numbers(f"{source.title} {source.body}"))
-        if sorted(extract_numbers(f"{value.title} {value.body}")) != expected:
+        if sorted(extract_numbers(f"{value.card_title} {value.body}")) != expected:
             return "numbers must be identical to the source text"
         return None
     return validate
@@ -82,4 +86,22 @@ def answer_validator(evidence: Callable[[], object]) -> Callable[[CompanionAnswe
         if len(value.answer.split()) > ANSWER_MAX_WORDS * WORD_BUDGET_TOLERANCE:
             return f"the answer must be at most {ANSWER_MAX_WORDS} words"
         return _grounding_problem([value.answer, *(c.value for c in value.stat_callouts)], evidence)
+    return validate
+
+
+def take_validator(evidence: Callable[[], object], max_words: int) -> Callable[[RecapTake], str | None]:
+    """Validator for persona recap takes: grounded and within the persona's word budget."""
+    def validate(value: RecapTake) -> str | None:
+        if len(value.take.split()) > max_words * WORD_BUDGET_TOLERANCE:
+            return f"the take must be at most {max_words} words"
+        return _grounding_problem([value.headline, value.take], evidence)
+    return validate
+
+
+def line_translation_validator(source: str) -> Callable[[TranslatedLine], str | None]:
+    """Validator for translated commentary: identical numbers to the source line."""
+    def validate(value: TranslatedLine) -> str | None:
+        if sorted(extract_numbers(value.line)) != sorted(extract_numbers(source)):
+            return "numbers must be identical to the source line"
+        return None
     return validate

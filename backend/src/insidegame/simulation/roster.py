@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 from insidegame.core.constants import ATTRIBUTE_MAX, ATTRIBUTE_MIN
 from insidegame.core.exceptions import FixtureError
+from insidegame.core.zones import Channel
 from insidegame.domain.enums import Position
 from insidegame.domain.match import MatchMetadata
 from insidegame.domain.teams import Player, PlayerAttributes, Team, TeamStyle
@@ -16,6 +17,9 @@ from insidegame.domain.teams import Player, PlayerAttributes, Team, TeamStyle
 DEFAULT_COMPETITION: str = "Inside the Game Synthetic League"
 DEFAULT_KICKOFF_UTC: str = "2026-10-24T14:00:00Z"
 ATTRIBUTE_SPREAD: float = 0.12
+DEMO_HOME: str = "kestrel_bay"
+DEMO_AWAY: str = "ironvale"
+DEMO_SEED: int = 1407
 
 FORMATION: tuple[Position, ...] = (
     (Position.GOALKEEPER,) + (Position.DEFENDER,) * 4 + (Position.MIDFIELDER,) * 3 + (Position.FORWARD,) * 3
@@ -38,7 +42,10 @@ LAST_NAMES: tuple[str, ...] = (
     "Aldana", "Brekke", "Castell", "Dorrance", "Eklund", "Farrow", "Galvao", "Hollis", "Iversen",
     "Jarrow", "Kessler", "Lindqvist", "Marlowe", "Novak", "Okafor", "Pereira", "Quarry", "Rasmus",
     "Soler", "Tavish", "Ulloa", "Varga", "Whitlock", "Yilmaz", "Zarco", "Aubrey", "Baptiste",
-    "Corrigan", "Delacroix", "Esposito",
+    "Corrigan", "Delacroix", "Esposito", "Fennimore", "Garrick", "Halloran", "Ingram", "Juarez", "Kovacic",
+    "Lamberti", "Moreau", "Nakamura", "Ostrander", "Pellegrin", "Quintero", "Rocha", "Sorensen", "Thorne",
+    "Uddin", "Valcourt", "Wexley", "Yardley", "Zielinski", "Abernethy", "Bellamy", "Cardoso", "Drummond",
+    "Ferreira", "Gunnarsson",
 )
 
 
@@ -57,13 +64,17 @@ CLUB_PRESETS: dict[str, ClubPreset] = {
     preset.key: preset
     for preset in (
         ClubPreset("brookhaven", "Brookhaven FC", "BRK", "Brookhaven Park",
-                   TeamStyle(label="possession", directness=0.25, pressing=0.55, risk=0.35)),
+                   TeamStyle(label="possession", directness=0.25, pressing=0.55, risk=0.35,
+                             weak_flank=Channel.LEFT)),
         ClubPreset("ironvale", "Ironvale United", "IRV", "The Foundry Ground",
-                   TeamStyle(label="direct", directness=0.75, pressing=0.40, risk=0.65)),
+                   TeamStyle(label="direct", directness=0.75, pressing=0.40, risk=0.65,
+                             weak_flank=Channel.RIGHT)),
         ClubPreset("kestrel_bay", "Kestrel Bay Athletic", "KBA", "Cliffside Arena",
-                   TeamStyle(label="high_press", directness=0.50, pressing=0.85, risk=0.50)),
+                   TeamStyle(label="high_press", directness=0.50, pressing=0.85, risk=0.50,
+                             weak_flank=Channel.LEFT)),
         ClubPreset("silverlake", "Silverlake Rovers", "SLR", "Lakeshore Stadium",
-                   TeamStyle(label="counter", directness=0.65, pressing=0.30, risk=0.55)),
+                   TeamStyle(label="counter", directness=0.65, pressing=0.30, risk=0.55,
+                             weak_flank=Channel.RIGHT)),
     )
 }
 
@@ -82,20 +93,19 @@ def _draw_attributes(position: Position, rng: random.Random) -> PlayerAttributes
     )
 
 
-def _draw_name(rng: random.Random, taken: set[str]) -> str:
-    while True:
-        name = f"{rng.choice(FIRST_NAMES)} {rng.choice(LAST_NAMES)}"
-        if name not in taken:
-            taken.add(name)
-            return name
+def _draw_name(rng: random.Random, taken_surnames: set[str]) -> str:
+    """Draw a full name whose surname is unique in the fixture, so short names identify one player."""
+    surname = rng.choice([name for name in LAST_NAMES if name not in taken_surnames])
+    taken_surnames.add(surname)
+    return f"{rng.choice(FIRST_NAMES)} {surname}"
 
 
-def build_team(preset: ClubPreset, rng: random.Random, taken_names: set[str]) -> Team:
-    """Generate a starting eleven in a 4-3-3 shape for a club preset."""
+def build_team(preset: ClubPreset, rng: random.Random, taken_surnames: set[str]) -> Team:
+    """Generate a starting eleven in a 4-3-3 shape for a club preset, avoiding surnames already taken."""
     players = tuple(
         Player(
             player_id=f"{preset.short_name.lower()}-{shirt:02d}",
-            name=_draw_name(rng, taken_names),
+            name=_draw_name(rng, taken_surnames),
             shirt_number=shirt,
             position=position,
             attributes=_draw_attributes(position, rng),

@@ -66,8 +66,9 @@ PERSONAS: dict[PersonaKey, PersonaProfile] = {
             PersonaKey.ANALYST, "The Analyst",
             "Data-hungry viewers, coaches, and studio pundits who want the numbers behind the story.",
             "Precise, measured, and evidence-led. Lead with the metric, then the tactical consequence.",
-            "Technical football vocabulary is welcome: xG, progressive passes, pressing, rest defence.",
-            70, 0.30, ("xg", "pass_difficulty", "momentum", "chaos", "possession_pct", "progressive_passes"),
+            "Technical football vocabulary is welcome: xG, expected threat (xT), line-breaking passes, progressive "
+            "passes, pressing, rest defence.",
+            70, 0.30, ("xg", "pass_difficulty", "momentum", "chaos", "possession_pct", "progressive_passes", "xt_added"),
             Perspective.NEUTRAL, False, OverlayStyle.STAT_PANEL),
         PersonaProfile(
             PersonaKey.CASUAL, "The Casual Fan",

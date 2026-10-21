@@ -11,7 +11,8 @@ from fastapi.testclient import TestClient
 
 from insidegame.adapters.model_client import ModelProvider, ModelRuntime
 from insidegame.agents.runner import RunPolicy
-from insidegame.api.app import create_app
+from insidegame.api.app import SpeechFactory, create_app
+from insidegame.simulation.roster import DEMO_SEED
 
 PERSONA_COUNT = 5
 
@@ -20,11 +21,15 @@ async def _instant(seconds: float) -> None:
     await asyncio.sleep(0)
 
 
-def _client(static_dir: str = "") -> TestClient:
+def _no_speech() -> None:
+    return None
+
+
+def _client(static_dir: str = "", speech_factory: SpeechFactory = _no_speech) -> TestClient:
     runtime = ModelRuntime(ModelProvider.OFFLINE,
                            OpenAIChatCompletionClient(model="unused", base_url="http://127.0.0.1:9", api_key="x"),
                            RunPolicy(timeout_s=1.0, max_attempts=0, prompt_suffix=""))
-    return TestClient(create_app(runtime, _instant, static_dir))
+    return TestClient(create_app(runtime, _instant, static_dir, speech_factory))
 
 
 def test_health_and_metadata() -> None:
@@ -42,6 +47,9 @@ def test_errors_map_to_http_status() -> None:
         created = client.post("/api/matches", json={}).json()
         bad = client.get(f"/api/matches/{created['session_id']}/stream", params={"persona": "superfan"})
         assert bad.status_code == 400
+        unknown = client.get(f"/api/matches/{created['session_id']}/stream",
+                             params={"persona": "player_tracker", "player": "ghost-99"})
+        assert unknown.status_code == 400
 
 
 def test_stream_delivers_full_match() -> None:
@@ -67,3 +75,106 @@ def test_built_frontend_is_served_at_root_alongside_the_api(tmp_path) -> None:  
     with _client(str(tmp_path)) as client:
         assert "Inside the Game" in client.get("/").text
         assert client.get("/api/health").json()["status"] == "ok"
+
+
+def test_producer_stream_sends_the_final_summary_then_ends_for_a_finished_match() -> None:
+    with _client() as client:
+        session_id = client.post("/api/matches", json={"home": "brookhaven", "away": "silverlake", "seed": 3}).json()[
+            "session_id"]
+        with client.stream("GET", f"/api/matches/{session_id}/stream", params={"persona": "casual"}) as r:
+            for line in r.iter_lines():
+                if line == "event: end":
+                    break
+        with client.stream("GET", f"/api/matches/{session_id}/producer/stream") as r:
+            assert r.headers["content-type"].startswith("text/event-stream")
+            lines = [line for line in r.iter_lines() if line]
+        assert lines[0] == "event: summary" and lines[-2] == "event: end"
+        assert '"timeline"' in lines[1]
+
+
+def test_highlights_wait_for_the_recap_then_replay_key_moments() -> None:
+    with _client() as client:
+        session_id = client.post("/api/matches", json={"home": "kestrel_bay", "away": "ironvale", "seed": 7}).json()[
+            "session_id"]
+        with client.stream("GET", f"/api/matches/{session_id}/stream", params={"persona": "casual"}) as r:
+            for line in r.iter_lines():
+                if line == "event: end":
+                    break
+        reel = client.get(f"/api/matches/{session_id}/highlights", params={"stage": "full_time"}).json()
+        assert reel["stage"] == "full_time" and reel["headline"].startswith("Full-time")
+        assert reel["clips"] and all(clip["frames"] and clip["commentary"] for clip in reel["clips"])
+        assert len(reel["clips"][0]["frames"][0]["positions"]) == 22
+        assert client.get(f"/api/matches/{session_id}/highlights", params={"stage": "extra"}).status_code == 422
+        goal = next(c for c in reel["clips"] if c["kind"] == "goal")
+        response = client.get(f"/api/matches/{session_id}/replay",
+                              params={"period": goal["period"], "at": goal["match_second"]})
+        assert response.status_code == 200
+        replay = response.json()
+        assert set(replay) == {"period", "at", "frames", "analysis"}
+        frame_keys = {"period", "match_second", "event_type", "player_id", "ball", "positions", "phase"}
+        assert replay["frames"] and all(frame_keys <= set(f) and f["period"] == goal["period"] for f in replay["frames"])
+        assert replay["frames"][-1]["phase"] == "flight" and replay["analysis"]["card"]["result"] == "goal"
+        missing = client.get(f"/api/matches/{session_id}/replay",
+                             params={"period": goal["period"], "at": goal["match_second"] + 5})
+        assert missing.status_code == 404
+        assert client.get("/api/matches/unknown/replay", params={"period": 1, "at": 1}).status_code == 404
+        assert client.get(f"/api/matches/{session_id}/replay", params={"period": 3, "at": 1}).status_code == 422
+
+
+def test_studio_returns_maps_control_and_the_analyst_pick() -> None:
+    with _client() as client:
+        session_id = client.post("/api/matches", json={"home": "kestrel_bay", "away": "ironvale", "seed": 7}).json()[
+            "session_id"]
+        with client.stream("GET", f"/api/matches/{session_id}/stream", params={"persona": "analyst"}) as r:
+            for line in r.iter_lines():
+                if line == "event: end":
+                    break
+        studio = client.get(f"/api/matches/{session_id}/studio", params={"window": "last_15"}).json()
+        assert studio["window"] == "last_15" and studio["events"] > 0
+        assert studio["teams"]["home"]["network"]["nodes"] and len(studio["teams"]["away"]["heat"]) == 8
+        assert 0 < studio["control"]["home_share"] < 100 and studio["analyst"]["theme"]
+        assert studio["recommended"] in {"heat_map", "pressing", "pass_network", "space_control"}
+
+
+def test_producer_traces_every_agent_of_a_produced_moment() -> None:
+    with _client() as client:
+        session_id = client.post("/api/matches", json={"home": "kestrel_bay", "away": "ironvale", "seed": 7}).json()[
+            "session_id"]
+        with client.stream("GET", f"/api/matches/{session_id}/stream", params={"persona": "analyst"}) as r:
+            for line in r.iter_lines():
+                if line == "event: end":
+                    break
+        traces = client.get(f"/api/matches/{session_id}/producer").json()["traces"]
+        assert traces and traces[0]["finished"]
+        agents = [step["agent"] for step in traces[0]["steps"]]
+        assert agents[0] == "Intake" and agents[-1] == "Broadcast Translator" and len(agents) == 6
+        assert all(step["status"] == "done" and step["note"] for step in traces[0]["steps"])
+
+
+def test_match_detail_snapshot_carries_the_threat_leaders() -> None:
+    with _client() as client:
+        session_id = client.post("/api/matches", json={"home": "kestrel_bay", "away": "ironvale", "seed": 7}).json()[
+            "session_id"]
+        with client.stream("GET", f"/api/matches/{session_id}/stream", params={"persona": "analyst"}) as r:
+            for line in r.iter_lines():
+                if line == "event: end":
+                    break
+        snapshot = client.get(f"/api/matches/{session_id}").json()["snapshot"]
+        leaders = snapshot["threat_leaders"]
+        assert 0 < len(leaders) <= 5 and all(leader["xt_added"] > 0 for leader in leaders)
+        assert snapshot["home"]["stats"]["line_breaking_passes"] > 0
+
+
+def test_match_detail_and_studio_carry_team_shape() -> None:
+    with _client() as client:
+        fixture = {"home": "kestrel_bay", "away": "ironvale", "seed": DEMO_SEED}
+        session_id = client.post("/api/matches", json=fixture).json()["session_id"]
+        with client.stream("GET", f"/api/matches/{session_id}/stream", params={"persona": "analyst"}) as r:
+            for line in r.iter_lines():
+                if line == "event: end":
+                    break
+        shape = client.get(f"/api/matches/{session_id}").json()["snapshot"]["shape"]
+        assert shape["home"]["block"] in {"high", "mid", "low"} and shape["away"]["line_height_m"] > 0
+        studio = client.get(f"/api/matches/{session_id}/studio", params={"window": "last_15"}).json()["shape"]
+        assert studio["timeline"] and {p["period"] for p in studio["timeline"]} == {1, 2}
+        assert studio["shifts"] and all(s["direction"] in {"dropped", "pushed_up"} for s in studio["shifts"])

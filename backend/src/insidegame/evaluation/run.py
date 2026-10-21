@@ -13,7 +13,7 @@ from pathlib import Path
 from insidegame.adapters.model_client import build_model_runtime
 from insidegame.agents.factory import create_agent_suite
 from insidegame.agents.personas import PersonaKey
-from insidegame.agents.recap_context import RecapStage
+from insidegame.analytics.recap_basis import RecapStage
 from insidegame.evaluation.report import summarize
 from insidegame.live.segments import build_segment_profile
 from insidegame.orchestration.service import MatchIntelligenceService
@@ -40,7 +40,11 @@ def _parser() -> argparse.ArgumentParser:
 
 
 async def evaluate(home: str, away: str, seed: int, max_moments: int) -> dict[str, object]:
-    """Run the agents over the first max_moments broadcast moments and a full-time recap."""
+    """Run the agents over up to max_moments broadcast moments, one per moment kind, and a full-time recap.
+
+    Taking one moment per kind exercises every persona: long passes air only for the analyst, while goals and
+    saves reach the casual, superfan, and translated segments too.
+    """
     runtime = build_model_runtime()
     result = simulate_match(build_fixture(home, away, seed))
     home_team = result.metadata.home
@@ -53,10 +57,13 @@ async def evaluate(home: str, away: str, seed: int, max_moments: int) -> dict[st
     ]
     service = MatchIntelligenceService(result.metadata, create_agent_suite(runtime.client), runtime.policy, viewers)
     broadcasts = []
+    kinds_done: set[str] = set()
     for event in result.events:
         for job in service.interpret(event).jobs:
-            if len(broadcasts) < max_moments:
-                logger.info("Producing %s at %s", job.context.moment.kind.value, job.context.moment.minute_label)
+            kind = job.context.moment.kind.value
+            if len(broadcasts) < max_moments and kind not in kinds_done:
+                kinds_done.add(kind)
+                logger.info("Producing %s at %s", kind, job.context.moment.minute_label)
                 broadcasts.append(await service.produce(job))
     recap = await service.recap(RecapStage.FULL_TIME)
     report = summarize(broadcasts, [recap])

@@ -14,20 +14,54 @@ Inside the Game analytics engine. Every file is JSON Lines.
 | File | Rows | Description |
 |---|---|---|
 | `matches.jsonl` | 2 | One row per match: clubs, styles, score, possession, xG, key moment count |
-| `events.jsonl` | 5050 | Every event with absolute coordinates, xG, pass difficulty, momentum, rhythm state |
+| `events.jsonl` | 4921 | Every event with absolute coordinates, xG, pass difficulty, xT added, momentum, rhythm state |
 | `players.jsonl` | 44 | Per-player match statistics |
-| `moments.jsonl` | 27 | Labelled key moments with importance and supporting facts |
+| `moments.jsonl` | 33 | Labelled key moments with importance and supporting facts |
+| `tracking.jsonl` | 985 | Ball, all 22 player positions, and any sprinter after every 5th event |
 
 ## Headline statistics
 
 - Matches: 2 (seeds 1 to 2)
-- Mean goals per match: 3.5
-- Mean expected goals per match: 2.96
+- Mean goals per match: 0.5
+- Mean expected goals per match: 1.31
+
+## Calibration
+
+Measured on this dataset against approximate top-flight reference bands (sanity checks, not exact statistics).
+Result shares are noisy below a few hundred matches.
+
+| Metric | Synthetic | Reference band | Within band | Note |
+|---|---|---|---|---|
+| Goals per match | 0.5 | 2.5 to 3.1 | no |  |
+| Expected goals per match | 1.31 | 2.4 to 3.2 | no |  |
+| Goals minus xG per match | -0.81 | -0.3 to 0.3 | no | xG model agrees with simulated finishing |
+| Shots per match | 21.5 | 22.0 to 28.0 | no |  |
+| Shots on target (%) | 32.56 | 30.0 to 40.0 | yes | blocked shots count as not on target |
+| Shot conversion (%) | 2.33 | 9.0 to 13.0 | no |  |
+| Pass accuracy (%) | 78.83 | 78.0 to 86.0 | yes |  |
+| Shots from inside the box (%) | 58.14 | 55.0 to 72.0 | yes |  |
+| Mean shot distance (m) | 19.02 | 14.0 to 19.0 | no |  |
+| Shots from the byline (%) | 0.0 | 0.0 to 4.0 | yes | within 3 m of the goal line, outside the goal width |
+| Home wins (%) | 0.0 | 40.0 to 48.0 | no | needs a few hundred matches to settle |
+| Draws (%) | 50.0 | 22.0 to 30.0 | no | needs a few hundred matches to settle |
+| Away wins (%) | 50.0 | 25.0 to 33.0 | no | needs a few hundred matches to settle |
 
 ## Coordinates
 
 Metres on a 105 x 68 pitch. `start_x`/`end_x` are absolute: the home side attacks toward x = 105 for the whole
-match (no end swap), so heatmaps and models need no per-team normalisation.
+match (no end swap), so heatmaps and models need no per-team normalisation. Tracking rows use the same frame:
+`players` is a list of `[player_id, x, y]`, and positions come from a formation-aware model (teams push up and
+spread in possession, compact and shift toward the ball out of it) rather than physical motion capture. Every
+step is capped at the player's pace-based top speed (about 30 to 35 km/h, three quarters of it off the ball), and
+players about to act start running so they arrive on time; `sprint_player_id` and `sprint_kmh` name the fastest
+player on or toward the ball at 25.2 km/h or more.
+
+## Expected threat
+
+`xt_added` on completed passes and carries is the expected threat (xT) of the cell where the ball ended minus the
+cell where it started, from a 12 x 8 grid fitted by value iteration to the simulator's own matches
+(`python -m insidegame.datasets.xt_fit`); it is empty for every other event. Line breaks and opponents bypassed
+need tracking positions at the moment of the pass, so they are live-only and not part of these files.
 
 ## Intended uses
 
@@ -36,5 +70,6 @@ success, moment detection), and testing broadcast graphics or agent pipelines wi
 
 ## Limitations
 
-Synthetic data calibrated to typical top-flight averages; it has no off-ball tracking, set-piece detail beyond
-kick-offs and restarts, substitutions, or cards. Do not use it to draw conclusions about real players or clubs.
+Synthetic data calibrated to typical top-flight averages; tracking is event-sampled and modelled (speeds are
+bounded to human limits but sampled at event times, not continuously), and there is no set-piece detail beyond
+kick-offs and restarts, no substitutions, and no cards. Do not use it to draw conclusions about real players or clubs.

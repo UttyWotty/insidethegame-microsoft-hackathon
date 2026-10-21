@@ -43,3 +43,27 @@ class SessionLimitError(InsideGameError):
 
 class RateLimitError(InsideGameError):
     """Raised when a caller exceeds the allowed request rate for a model-backed operation."""
+
+
+class SpeechUnavailableError(InsideGameError):
+    """Raised when spoken audio is requested but no speech service is configured or it failed."""
+
+
+class LineNotFoundError(InsideGameError):
+    """Raised when a spoken line is requested that the match session did not produce or no longer holds."""
+
+
+class HighlightsNotReadyError(InsideGameError):
+    """Raised when a highlights reel is requested before the match has reached that recap stage."""
+
+
+class ReplayNotFoundError(InsideGameError):
+    """Raised when an instant replay is requested for a period and second that match no shot played so far."""
+
+
+class XtConvergenceError(InsideGameError):
+    """Raised when expected threat (xT) value iteration does not converge within its iteration budget."""
+
+
+class CardBudgetError(InsideGameError):
+    """Raised when fixed persona card text, such as a superfan prefix, alone exceeds the persona's word budget."""

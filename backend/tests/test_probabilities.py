@@ -7,6 +7,7 @@ Only the choose_action test uses randomness, through a seeded generator.
 import random
 
 from insidegame.core.geometry import Point
+from insidegame.core.zones import Channel
 from insidegame.domain.teams import PlayerAttributes, TeamStyle
 from insidegame.simulation.probabilities import (
     ActionKind,
@@ -17,10 +18,11 @@ from insidegame.simulation.probabilities import (
     pressure_probability,
     scoring_probability,
     shot_probability,
+    venue_factor,
 )
 
 AVERAGE = PlayerAttributes(pace=0.5, passing=0.5, finishing=0.5, tackling=0.5)
-STYLE = TeamStyle(label="balanced", directness=0.5, pressing=0.5, risk=0.5)
+STYLE = TeamStyle(label="balanced", directness=0.5, pressing=0.5, risk=0.5, weak_flank=Channel.LEFT)
 LATE_SECOND = 80 * 60
 EARLY_SECOND = 10 * 60
 
@@ -80,3 +82,10 @@ def test_choose_action_never_shoots_from_own_half() -> None:
     rng = random.Random(7)
     actions = {choose_action(Point(20, 34), AVERAGE, STYLE, False, rng) for _ in range(500)}
     assert ActionKind.SHOT not in actions
+
+
+def test_home_sides_shoot_more_often_than_away_sides() -> None:
+    near_goal = Point(92, 34)
+    home = shot_probability(near_goal, AVERAGE, STYLE, venue_factor(True))
+    away = shot_probability(near_goal, AVERAGE, STYLE, venue_factor(False))
+    assert home > shot_probability(near_goal, AVERAGE, STYLE) > away

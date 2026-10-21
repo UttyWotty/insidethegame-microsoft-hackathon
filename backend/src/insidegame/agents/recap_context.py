@@ -5,9 +5,9 @@ The same context feeds the editor agent's prompt, its grounding check, and the f
 """
 
 from dataclasses import dataclass, field
-from enum import StrEnum
 
 from insidegame.analytics.analyzer import MatchAnalyzer
+from insidegame.analytics.recap_basis import MIN_TURNING_POINT_IMPORTANCE, RecapStage
 from insidegame.analytics.stats import PlayerStats
 
 MAX_RECAP_MOMENTS: int = 6
@@ -18,14 +18,6 @@ IMPACT_XG: float = 2.0
 IMPACT_COMPLETED_PASS: float = 0.02
 IMPACT_DEFENSIVE_ACTION: float = 0.15
 IMPACT_SAVE: float = 0.5
-FACT_PLAYER_KEYS: tuple[str, ...] = ("scorer", "player", "goalkeeper", "passer")
-
-
-class RecapStage(StrEnum):
-    """Point in the match a recap covers."""
-
-    HALF_TIME = "half_time"
-    FULL_TIME = "full_time"
 
 
 @dataclass(frozen=True)
@@ -40,6 +32,7 @@ class RecapContext:
     teams: dict[str, dict[str, object]] = field(default_factory=dict)
     moments: list[dict[str, object]] = field(default_factory=list)
     standout: dict[str, object] = field(default_factory=dict)
+    players: dict[str, dict[str, object]] = field(default_factory=dict)
 
     def to_prompt_dict(self) -> dict[str, object]:
         """Return the context as a JSON-friendly dict for prompts."""
@@ -57,16 +50,12 @@ def impact_score(player: PlayerStats) -> float:
             + IMPACT_DEFENSIVE_ACTION * defensive + IMPACT_SAVE * player.saves)
 
 
-def moment_actor(facts: dict[str, object]) -> str | None:
-    """Return the main player named in a moment's facts, if any."""
-    return next((str(facts[k]) for k in FACT_PLAYER_KEYS if facts.get(k)), None)
-
-
 def build_recap_context(analyzer: MatchAnalyzer, stage: RecapStage) -> RecapContext:
     """Assemble recap evidence from the analyzer's current state."""
     metadata, stats, event = analyzer.metadata, analyzer.stats, analyzer.last_event
     team_names = {metadata.home.team_id: metadata.home.name, metadata.away.team_id: metadata.away.name}
-    top = sorted(analyzer.moments, key=lambda m: m.importance, reverse=True)[:MAX_RECAP_MOMENTS]
+    turning = [m for m in analyzer.moments if m.importance >= MIN_TURNING_POINT_IMPORTANCE]
+    top = sorted(turning, key=lambda m: m.importance, reverse=True)[:MAX_RECAP_MOMENTS]
     moments = [{"minute": m.minute_label, "kind": m.kind.value, "team": team_names.get(m.team_id or ""),
                 "facts": dict(m.facts)} for m in sorted(top, key=lambda m: (m.period, m.match_second))]
     teams = {
@@ -78,5 +67,8 @@ def build_recap_context(analyzer: MatchAnalyzer, stage: RecapStage) -> RecapCont
     best = max(stats.players.values(), key=impact_score)
     standout = {"name": best.name, "team": team_names[best.team_id], "goals": best.goals,
                 "xg": round(best.xg, XG_DECIMALS), "passes_completed": best.passes_completed}
+    players = {p.name: {"team": team_names[p.team_id], "goals": p.goals, "shots": p.shots,
+                        "xg": round(p.xg, XG_DECIMALS), "passes_completed": p.passes_completed,
+                        "tackles": p.tackles} for p in stats.players.values()}
     return RecapContext(stage, metadata.home.name, metadata.away.name, event.score_home if event else 0,
-                        event.score_away if event else 0, teams, moments, standout)
+                        event.score_away if event else 0, teams, moments, standout, players)

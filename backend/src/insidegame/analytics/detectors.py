@@ -1,16 +1,26 @@
 """Rule-based detection of key moments from the interpreted event stream.
 
-MomentDetector watches shots, goals, saves, passes, and rhythm readings and emits KeyMoment records.
+MomentDetector watches shots, goals, saves, passes, and rhythm readings and emits KeyMoment records, and its
+PatternMiner raises tactical patterns and links later goals and big chances back to them; line-breaking passes that
+add enough expected threat (xT) raise threat_created moments, and sustained back-line shifts raise shape_shift moments.
 Every rule threshold is a named constant so moments are reproducible and explainable.
 """
 
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 
 from insidegame.analytics.moments import FactValue, KeyMoment, MomentKind
 from insidegame.analytics.pass_quality import PassQuality
+from insidegame.analytics.pattern_rules import TacticalPattern
+from insidegame.analytics.patterns import FlagRecord, PatternMiner
 from insidegame.analytics.rhythm import RhythmReading
+from insidegame.analytics.shape_moments import SHAPE_SHIFT_IMPORTANCE, shape_facts
+from insidegame.analytics.shape_tracker import ShapeShift
+from insidegame.analytics.tactical_facts import tactical_evidence
+from insidegame.analytics.threat import ThreatAction
+from insidegame.analytics.threat_moments import THREAT_IMPORTANCE, ThreatMomentRule, pass_threat_facts, threat_facts
 from insidegame.core.constants import SECONDS_PER_MINUTE
 from insidegame.core.geometry import distance_to_goal
 from insidegame.domain.enums import EventType, Outcome, Side
@@ -42,12 +52,14 @@ MIN_THREAT_FOR_SWING: float = 0.2
 MOMENTUM_IMPORTANCE: float = 0.55
 CHAOS_THRESHOLD: float = 0.85
 CHAOS_IMPORTANCE: float = 0.40
-RHYTHM_COOLDOWN_S: float = 600.0
+RHYTHM_COOLDOWN_S: float = 2700.0
 RHYTHM_WARMUP_S: float = 300.0
 PASS_MILESTONES: frozenset[int] = frozenset({75})
 PASS_MILESTONE_IMPORTANCE: float = 0.30
 GOAL_MILESTONES: dict[int, tuple[str, float]] = {2: ("brace", 0.70), 3: ("hat_trick", 0.90)}
 FACT_DECIMALS: int = 2
+SPEED_DECIMALS: int = 1
+TACTICAL_IMPORTANCE: float = 0.62
 
 
 class GameStateChange(StrEnum):
@@ -92,23 +104,33 @@ class MomentDetector:
     momentum_side: Side | None = None
     period_start_s: float = 0.0
     count: int = 0
+    miner: PatternMiner = field(init=False)
+    threat_rule: ThreatMomentRule = field(default_factory=ThreatMomentRule)
 
     def __post_init__(self) -> None:
+        self.miner = PatternMiner(self.metadata)
         for team in (self.metadata.home, self.metadata.away):
             self.names.update({p.player_id: p.name for p in team.players})
 
     def detect(
-        self, event: MatchEvent, xg: float | None, quality: PassQuality | None, reading: RhythmReading
+        self, event: MatchEvent, xg: float | None, quality: PassQuality | None, reading: RhythmReading,
+        threat: ThreatAction | None = None, shifts: Sequence[ShapeShift] = (),
     ) -> list[KeyMoment]:
-        """Return the key moments triggered by this event, possibly none."""
+        """Return the key moments triggered by this event, possibly none.
+
+        threat (default None) is the xT credit of a completed pass or carry; it adds xT facts to pass moments and
+        can raise a threat_created moment. shifts (default empty) are the shape shifts this event completed, each
+        raising a shape_shift moment.
+        """
         kind = event.event_type
         if kind is EventType.PERIOD_START:
             self.last_rhythm_moment_s.clear()
             self.momentum_side = None
             self.period_start_s = event.match_second
-        moments: list[KeyMoment] = []
+        pattern = self.miner.observe(event)
+        moments: list[KeyMoment] = [self._on_pattern(event, pattern)] if pattern is not None else []
         if kind is EventType.PASS and quality is not None:
-            moments += self._on_pass(event, quality)
+            moments += self._on_pass(event, quality, threat)
         elif kind is EventType.SHOT and xg is not None:
             moments += self._on_shot(event, xg)
         elif kind is EventType.GOAL:
@@ -117,6 +139,9 @@ class MomentDetector:
             moments += self._on_save(event)
         elif kind is EventType.CARRY:
             moments += self._on_carry(event)
+        if threat is not None:
+            moments += self._on_threat(event, threat)
+        moments += [self._on_shape(event, shift, reading) for shift in shifts]
         return moments + self._on_rhythm(event, reading)
 
     def _moment(
@@ -131,7 +156,31 @@ class MomentDetector:
             player_ids=player_ids, event_ids=event_ids, facts=facts,
         )
 
-    def _on_pass(self, event: MatchEvent, quality: PassQuality) -> list[KeyMoment]:
+    def _on_pattern(self, event: MatchEvent, pattern: TacticalPattern) -> KeyMoment:
+        evidence = tactical_evidence(pattern, self.metadata)
+        moment = self._moment(MomentKind.TACTICAL_PATTERN, event, pattern.team_id, TACTICAL_IMPORTANCE,
+                              evidence.player_ids, (event.event_id,), evidence.facts)
+        self.miner.record_flag(FlagRecord(pattern, moment.moment_id, moment.period, moment.match_second,
+                                          moment.minute_label, str(evidence.facts["summary"])))
+        return moment
+
+    def _on_shape(self, event: MatchEvent, shift: ShapeShift, reading: RhythmReading) -> KeyMoment:
+        return self._moment(MomentKind.SHAPE_SHIFT, event, shift.team_id, SHAPE_SHIFT_IMPORTANCE, (),
+                            (event.event_id,), shape_facts(shift, self.metadata, reading))
+
+    def _payoff_facts(self, event: MatchEvent) -> dict[str, FactValue]:
+        link = self.miner.payoff(event)
+        return link.facts() if link is not None else {}
+
+    def _on_threat(self, event: MatchEvent, threat: ThreatAction) -> list[KeyMoment]:
+        if threat.receiver_id is None or not self.threat_rule.qualifies(threat, event.period, event.match_second):
+            return []
+        length = round(event.length_m, FACT_DECIMALS) if event.length_m is not None else None
+        facts = threat_facts(threat, self.names[threat.player_id], self.names[threat.receiver_id], length)
+        return [self._moment(MomentKind.THREAT_CREATED, event, threat.team_id, THREAT_IMPORTANCE,
+                             (threat.player_id, threat.receiver_id), (event.event_id,), facts)]
+
+    def _on_pass(self, event: MatchEvent, quality: PassQuality, threat: ThreatAction | None) -> list[KeyMoment]:
         if event.outcome is not Outcome.SUCCESS or event.player_id is None or event.receiver_id is None:
             return []
         self.last_pass = (event.possession_id, event.player_id, event.receiver_id)
@@ -147,8 +196,8 @@ class MomentDetector:
                                         (event.player_id, event.receiver_id), (event.event_id,), {
                                             "indicator": "long_pass", "passer": self.names[event.player_id],
                                             "receiver": self.names[event.receiver_id], "length_m": quality.length_m,
-                                            "ball_speed_kmh": round(event.ball_speed_kmh or 0.0, FACT_DECIMALS),
-                                            "threshold_m": LONG_PASS_THRESHOLD_M}))
+                                            "ball_speed_kmh": round(event.ball_speed_kmh or 0.0, SPEED_DECIMALS),
+                                            "threshold_m": LONG_PASS_THRESHOLD_M, **pass_threat_facts(threat)}))
         if quality.difficulty >= DIFFICULT_PASS_THRESHOLD:
             importance = DIFFICULT_PASS_BASE + (quality.difficulty - DIFFICULT_PASS_THRESHOLD) / DIFFICULT_PASS_SCALE
             moments.append(self._moment(MomentKind.DIFFICULT_PASS, event, event.team_id, importance,
@@ -157,7 +206,7 @@ class MomentDetector:
                                             "receiver": self.names[event.receiver_id],
                                             "difficulty": quality.difficulty, "length_m": quality.length_m,
                                             "under_pressure": event.under_pressure,
-                                            "progressive": quality.progressive}))
+                                            "progressive": quality.progressive, **pass_threat_facts(threat)}))
         return moments
 
     def _on_shot(self, event: MatchEvent, xg: float) -> list[KeyMoment]:
@@ -172,14 +221,15 @@ class MomentDetector:
         if speed >= SHOT_SPEED_THRESHOLD_KMH:
             moments.append(self._moment(MomentKind.SPEED_THRESHOLD, event, event.team_id, SPEED_IMPORTANCE, (event.player_id,),
                                         (event.event_id,), {"player": self.names[event.player_id],
-                                                            "shot_speed_kmh": round(speed, FACT_DECIMALS),
+                                                            "shot_speed_kmh": round(speed, SPEED_DECIMALS),
                                                             "threshold_kmh": SHOT_SPEED_THRESHOLD_KMH}))
         if xg >= BIG_CHANCE_XG and event.outcome is not Outcome.SUCCESS:
             moments.append(self._moment(MomentKind.BIG_CHANCE_MISSED, event, event.team_id,
                                         BIG_CHANCE_BASE + BIG_CHANCE_XG_WEIGHT * xg, (event.player_id,),
                                         (event.event_id,), {"player": self.names[event.player_id], "xg": xg,
                                                             "result": event.shot_result.value if event.shot_result else None,
-                                                            "distance_m": round(distance_to_goal(event.start), FACT_DECIMALS)}))
+                                                            "distance_m": round(distance_to_goal(event.start), FACT_DECIMALS),
+                                                            **self._payoff_facts(event)}))
         return moments
 
     def _on_goal(self, event: MatchEvent) -> list[KeyMoment]:
@@ -197,9 +247,10 @@ class MomentDetector:
         facts: dict[str, FactValue] = {
             "scorer": self.names[event.player_id],
             "assist": self.names[shot.assist_id] if shot.assist_id else None,
-            "xg": shot.xg, "shot_speed_kmh": round(shot.event.ball_speed_kmh or 0.0, FACT_DECIMALS),
+            "xg": shot.xg, "shot_speed_kmh": round(shot.event.ball_speed_kmh or 0.0, SPEED_DECIMALS),
             "distance_m": round(distance_to_goal(shot.event.start), FACT_DECIMALS) if shot.event.start else None,
             "game_state_change": change.value, "score_home": event.score_home, "score_away": event.score_away,
+            **self._payoff_facts(event),
         }
         moments = [self._moment(MomentKind.GOAL, event, event.team_id, importance, players, (shot.event.event_id, event.event_id), facts)]
         milestone = GOAL_MILESTONES.get(self.goals_by_player[event.player_id])
@@ -230,7 +281,7 @@ class MomentDetector:
                              (event.player_id, shot.event.player_id), (shot.event.event_id, event.event_id),
                              {"goalkeeper": self.names[event.player_id], "shooter": self.names[shot.event.player_id],
                               "xg_prevented": shot.xg,
-                              "shot_speed_kmh": round(shot.event.ball_speed_kmh or 0.0, FACT_DECIMALS)})]
+                              "shot_speed_kmh": round(shot.event.ball_speed_kmh or 0.0, SPEED_DECIMALS)})]
 
     def _cooled_down(self, kind: MomentKind, now: float) -> bool:
         last = self.last_rhythm_moment_s.get(kind)

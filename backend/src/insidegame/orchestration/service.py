@@ -2,6 +2,7 @@
 
 For each incoming event it interprets (stage 2), lets the producer pick moments, and runs the multi-agent workflow
 (stages 3-5); at each period end it writes a recap. If the workflow itself fails, a degraded template path keeps output flowing.
+If a template on that path raises, a minimal grounded output replaces just that piece, so a broadcast always airs.
 """
 
 import logging
@@ -15,28 +16,43 @@ from pydantic import BaseModel
 from insidegame.agents.context import MomentContext, ViewerContext, build_moment_context, build_viewer_context
 from insidegame.agents.factory import AgentSuite
 from insidegame.agents.personas import ViewerProfile
-from insidegame.agents.recap_context import RecapStage, build_recap_context
+from insidegame.agents.recap_context import build_recap_context
 from insidegame.agents.runner import AgentOutcome, OutputSource, RunPolicy
-from insidegame.agents.schemas import MatchRecap
-from insidegame.agents.steps import write_recap
+from insidegame.agents.recap_context import RecapContext
+from insidegame.agents.schemas import Explanation, MatchRecap, PersonaCard, RecapTake
+from insidegame.agents.steps import personalize_recap, write_recap
 from insidegame.agents.templates import commentary_template, explanation_template, persona_card_template
 from insidegame.analytics.analyzer import AnalysisUpdate, MatchAnalyzer
+from insidegame.analytics.recap_basis import RecapStage
 from insidegame.core.constants import PERIODS
 from insidegame.domain.enums import EventType
 from insidegame.domain.events import MatchEvent
 from insidegame.domain.match import MatchMetadata
 from insidegame.orchestration.cues import MomentBroadcast, build_cue
 from insidegame.orchestration.messages import MomentJob, PersonalizedCard
+from insidegame.orchestration.minimal_outputs import (
+    TEMPLATE_FAILED_NOTE,
+    minimal_card,
+    minimal_commentary,
+    minimal_explanation,
+)
 from insidegame.orchestration.producer import ProducerPolicy
 from insidegame.orchestration.workflow import build_moment_workflow
+from insidegame.orchestration.trace import COMPLETED, FAILED, INVOKED
+from insidegame.tracking.model import Frame, Sprint, TrackingModel
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 WorkflowFactory = Callable[[AgentSuite, MatchAnalyzer, RunPolicy], Workflow]
+TraceObserver = Callable[[str, str], None]
+TRACE_EVENT_TYPES: frozenset[str] = frozenset({INVOKED, COMPLETED, FAILED})
 
 DEGRADED_ATTEMPTS: int = 0
 DEGRADED_LATENCY_MS: int = 0
+WORKFLOW_DEGRADED_NOTE: str = "workflow degraded"
+DEGRADED_NOTES: tuple[str, ...] = (WORKFLOW_DEGRADED_NOTE,)
+TEMPLATE_FAILED_NOTES: tuple[str, ...] = (WORKFLOW_DEGRADED_NOTE, TEMPLATE_FAILED_NOTE)
 
 
 @dataclass(frozen=True)
@@ -51,21 +67,46 @@ class EventResult:
     recap: AgentOutcome[MatchRecap] | None = None
 
 
-def _template_outcome(value: T) -> AgentOutcome[T]:
-    return AgentOutcome(value, OutputSource.FALLBACK, DEGRADED_ATTEMPTS, DEGRADED_LATENCY_MS, ("workflow degraded",))
+def _template_outcome(value: T, notes: tuple[str, ...] = DEGRADED_NOTES) -> AgentOutcome[T]:
+    """Wrap a degraded output; notes defaults to DEGRADED_NOTES and is TEMPLATE_FAILED_NOTES after a template raised."""
+    return AgentOutcome(value, OutputSource.FALLBACK, DEGRADED_ATTEMPTS, DEGRADED_LATENCY_MS, notes)
+
+
+def _guarded(build: Callable[[], T], minimal: Callable[[], T], part: str, moment_id: str) -> AgentOutcome[T]:
+    """Run one template, falling back to its minimal output (noted TEMPLATE_FAILED_NOTE) if the template raises."""
+    try:
+        return _template_outcome(build())
+    except Exception:  # noqa: BLE001 - resilience boundary: the degraded path must always produce a broadcast
+        logger.exception("Degraded %s template failed for %s; using a minimal output", part, moment_id)
+        return _template_outcome(minimal(), TEMPLATE_FAILED_NOTES)
 
 
 def _tracked_players(audience: tuple[ViewerContext, ...]) -> tuple[str, ...]:
     return tuple(v.viewer.favourite_player_id for v in audience if v.viewer.favourite_player_id)
 
 
+def _card_outcome(context: MomentContext, explanation: Explanation, viewer: ViewerContext) -> AgentOutcome[PersonaCard]:
+    """One viewer's guarded template card; a failure falls back to minimal_card for this viewer only."""
+    max_words = viewer.viewer.profile.max_words
+    return _guarded(lambda: persona_card_template(context, explanation, viewer),
+                    lambda: minimal_card(explanation, max_words), "card", context.moment.moment_id)
+
+
 def degraded_broadcast(match_id: str, context: MomentContext, job: MomentJob) -> MomentBroadcast:
-    """Build a broadcast purely from templates when the workflow cannot run."""
-    explanation = _template_outcome(explanation_template(context))
-    commentary = _template_outcome(commentary_template(context, explanation.value))
+    """Build a broadcast purely from templates when the workflow cannot run.
+
+    Each template is guarded separately: a failing explanation becomes minimal_explanation, a failing commentary the
+    explanation headline, and a failing card affects only that viewer, who gets minimal_card. No template error escapes.
+    """
+    moment_id = context.moment.moment_id
+    explanation = _guarded(lambda: explanation_template(context), lambda: minimal_explanation(context),
+                           "explanation", moment_id)
+    value = explanation.value
+    commentary = _guarded(lambda: commentary_template(context, value), lambda: minimal_commentary(value),
+                          "commentary", moment_id)
     cues = tuple(
         build_cue(match_id, context.moment, explanation, commentary,
-                  PersonalizedCard(viewer, _template_outcome(persona_card_template(context, explanation.value, viewer))))
+                  PersonalizedCard(viewer, _card_outcome(context, value, viewer)))
         for viewer in job.viewers
     )
     return MomentBroadcast(context, explanation, commentary, cues, degraded=True)
@@ -75,7 +116,8 @@ def degraded_broadcast(match_id: str, context: MomentContext, job: MomentJob) ->
 class Interpretation:
     """Fast, synchronous result of interpreting one event.
 
-    Defaults: recap_stage is None except on period-end events; contexts is empty when no moment was detected.
+    Defaults: recap_stage is None except on period-end events; contexts is empty when no moment was detected;
+    positions is None only when built without tracking; sprint is None unless an involved player is sprinting.
     contexts holds one prompt context per new key moment, whether or not any viewer received it.
     """
 
@@ -83,6 +125,8 @@ class Interpretation:
     jobs: tuple[MomentJob, ...]
     recap_stage: RecapStage | None = None
     contexts: tuple[MomentContext, ...] = ()
+    positions: Frame | None = None
+    sprint: Sprint | None = None
 
 
 class MatchIntelligenceService:
@@ -92,6 +136,7 @@ class MatchIntelligenceService:
                  viewers: Sequence[ViewerProfile], workflow_factory: WorkflowFactory | None = None) -> None:
         """Create the pipeline; workflow_factory defaults to build_moment_workflow."""
         self.analyzer = MatchAnalyzer(metadata)
+        self.tracking = TrackingModel(metadata)
         self.suite, self.policy = suite, policy
         self.workflow_factory = workflow_factory or build_moment_workflow
         self.viewers: dict[str, ViewerContext] = {}
@@ -109,23 +154,36 @@ class MatchIntelligenceService:
         """Stop personalizing for a viewer segment."""
         self.viewers.pop(viewer_id, None)
 
-    def interpret(self, event: MatchEvent) -> Interpretation:
-        """Interpret an event and decide which moments to send to the agents, without awaiting them."""
-        update = self.analyzer.ingest(event)
+    def interpret(self, event: MatchEvent, upcoming: Sequence[MatchEvent] = ()) -> Interpretation:
+        """Interpret an event and decide which moments to send to the agents, without awaiting them.
+
+        upcoming (default empty) lists the next events so tracked players can start toward their next action.
+        Passes are assessed for line breaks against the tracked positions from before this event (the last frame).
+        """
+        update = self.analyzer.ingest(event, self.tracking.previous or None)
         jobs = tuple(MomentJob(build_moment_context(moment, self.analyzer, _tracked_players(audience)), audience)
                      for moment, audience in self.producer.select(update.moments, tuple(self.viewers.values())))
         stage = None
         if event.event_type is EventType.PERIOD_END:
             stage = RecapStage.HALF_TIME if event.period == PERIODS[0] else RecapStage.FULL_TIME
         contexts = tuple(build_moment_context(moment, self.analyzer) for moment in update.moments)
-        return Interpretation(update, jobs, stage, contexts)
+        positions = self.tracking.frame(event, upcoming)
+        return Interpretation(update, jobs, stage, contexts, positions, self.tracking.sprint)
 
-    async def produce(self, job: MomentJob) -> MomentBroadcast:
-        """Run the multi-agent workflow for one job, degrading to templates if the workflow fails."""
+    async def produce(self, job: MomentJob, observer: TraceObserver | None = None) -> MomentBroadcast:
+        """Run the multi-agent workflow for one job, degrading to templates if the workflow fails.
+
+        observer (default None) receives each executor event as (executor_id, event type) while the workflow runs,
+        which feeds the producer console's live agent trace.
+        """
         match_id = self.analyzer.metadata.match_id
         workflow = self.workflow_factory(self.suite, self.analyzer, self.policy)
         try:
-            outputs = (await workflow.run(job)).get_outputs()
+            stream = workflow.run(job, stream=True)
+            async for event in stream:
+                if observer is not None and event.type in TRACE_EVENT_TYPES and event.executor_id:
+                    observer(str(event.executor_id), str(event.type))
+            outputs = (await stream.get_final_response()).get_outputs()
         except AgentFrameworkException as exc:
             logger.error("Workflow failed for %s: %s", job.context.moment.moment_id, exc)
             outputs = []
@@ -142,3 +200,7 @@ class MatchIntelligenceService:
     async def recap(self, stage: RecapStage) -> AgentOutcome[MatchRecap]:
         """Write a recap of the match so far."""
         return await write_recap(self.suite, build_recap_context(self.analyzer, stage), self.analyzer, self.policy)
+
+    async def recap_take(self, context: RecapContext, recap: MatchRecap, viewer: ViewerContext) -> AgentOutcome[RecapTake]:
+        """Write one viewer segment's persona take on a recap."""
+        return await personalize_recap(self.suite, context, recap, viewer, self.policy)
