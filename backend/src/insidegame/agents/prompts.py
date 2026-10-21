@@ -136,7 +136,7 @@ def personalizer_prompt(context: MomentContext, explanation: Explanation, viewer
 
 def translator_prompt(card: PersonaCard, language: str) -> str:
     """Prompt asking the translator to localise a card."""
-    payload = {"target_language": language, "title": card.title, "body": card.body,
+    payload = {"target_language": language, "card_title": card.title, "body": card.body,
                "stat_labels": [c.label for c in card.stat_callouts]}
     return f"Translate this card.\n{_dump(payload)}"
 

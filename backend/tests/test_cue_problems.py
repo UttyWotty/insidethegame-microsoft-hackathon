@@ -123,7 +123,7 @@ def test_retry_and_translation_problems_are_surfaced(
         goal_context: MomentContext, analysed_match: tuple[MatchAnalyzer, dict[MomentKind, MomentContext]]) -> None:
     viewer = _viewers(analysed_match[0])[2]
     explanation, commentary, item = _normal_outcomes(goal_context, viewer, OutputSource.MODEL_RETRY, (RETRY_NOTE,))
-    translated = TranslatedCard(title="t", body="b", stat_labels=[])
+    translated = TranslatedCard(card_title="t", body="b", stat_labels=[])
     translation = AgentOutcome(translated, OutputSource.FALLBACK, 2, LATENCY_MS, ("timed out after 1.0s",) * 2)
     cue = build_cue(MATCH_ID, goal_context.moment, explanation, commentary,
                     PersonalizedCard(viewer, item.card, translation))

@@ -64,7 +64,7 @@ def _text(item: PersonalizedCard) -> tuple[str, str, list[dict[str, str]], str]:
     translated = item.translation.value
     for callout, label in zip(callouts, translated.stat_labels, strict=False):
         callout["label"] = label
-    return translated.title, translated.body, callouts, item.viewer.viewer.language
+    return translated.card_title, translated.body, callouts, item.viewer.viewer.language
 
 
 def _outcome_provenance(outcome: AgentOutcome[Any]) -> dict[str, object]:

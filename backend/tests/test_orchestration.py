@@ -40,7 +40,7 @@ REPLIES = {
                        "evidence": [], "theme": "control"},
     "Lead Commentator": {"line": "What a moment in this match!"},
     "Personalization Producer": {"title": "Big moment", "body": "This could decide it.", "stat_callouts": []},
-    "broadcast translator": {"title": "Gran momento", "body": "Esto puede decidirlo.", "stat_labels": []},
+    "broadcast translator": {"card_title": "Gran momento", "body": "Esto puede decidirlo.", "stat_labels": []},
     "Broadcast Standards Editor": {"approved": True, "issues": []},
 }
 

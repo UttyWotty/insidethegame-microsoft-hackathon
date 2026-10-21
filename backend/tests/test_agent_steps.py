@@ -86,20 +86,21 @@ def test_personalizer_prompt_carries_persona_specifics(goal_context: MomentConte
 def test_translation_that_changes_numbers_is_rejected() -> None:
     card = PersonaCard(title="Goal in minute 68", body="A 93 km/h strike.",
                        stat_callouts=[StatCallout(label="Shot speed", value="93")])
-    bad = json.dumps({"title": "Gol en el minuto 86", "body": "Un disparo a 93 km/h.", "stat_labels": ["Velocidad"]})
+    bad = json.dumps({"card_title": "Gol en el minuto 86", "body": "Un disparo a 93 km/h.", "stat_labels": ["Velocidad"]})
     client = ScriptedChatClient({TRANSLATOR_KEY: [bad, bad]})
     outcome = asyncio.run(translate(create_agent_suite(client), card, "es", POLICY))
-    assert outcome.source is OutputSource.FALLBACK and outcome.value.title == card.title
+    assert outcome.source is OutputSource.FALLBACK and outcome.value.card_title == card.title
 
 
 def test_translation_titled_with_the_schema_name_is_rejected_then_corrected() -> None:
     card = PersonaCard(title="Brekke makes it 2-1", body="Zane Brekke puts them 2-1 up.",
                        stat_callouts=[StatCallout(label="Score", value="2-1")])
-    placeholder = json.dumps({"title": "TranslatedCard", "body": "Zane Brekke anota el 2-1.", "stat_labels": ["Marcador"]})
-    fixed = json.dumps({"title": "Brekke pone el 2-1", "body": "Zane Brekke anota el 2-1.", "stat_labels": ["Marcador"]})
+    placeholder = json.dumps({"card_title": "TranslatedCard", "body": "Zane Brekke anota el 2-1.",
+                              "stat_labels": ["Marcador"]})
+    fixed = json.dumps({"card_title": "Brekke pone el 2-1", "body": "Zane Brekke anota el 2-1.", "stat_labels": ["Marcador"]})
     client = ScriptedChatClient({TRANSLATOR_KEY: [placeholder, fixed]})
     outcome = asyncio.run(translate(create_agent_suite(client), card, "es", POLICY))
-    assert outcome.source is not OutputSource.FALLBACK and outcome.value.title == "Brekke pone el 2-1"
+    assert outcome.source is not OutputSource.FALLBACK and outcome.value.card_title == "Brekke pone el 2-1"
     assert "translated into the target language" in client.requests[1][1][-1].text
 
 

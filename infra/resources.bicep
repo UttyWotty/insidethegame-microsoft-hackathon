@@ -88,6 +88,20 @@ resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-0
   }
 }
 
+// Holds the MCP bearer key for the Foundry hosted agent: Foundry refuses secrets in an MCP tool's headers.
+resource mcpConnection 'Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01' = if (!empty(mcpApiKey)) {
+  parent: foundryProject
+  name: 'inside-the-game-mcp'
+  properties: {
+    category: 'CustomKeys'
+    authType: 'CustomKeys'
+    target: 'https://${webAppName}.${containerEnv.properties.defaultDomain}/mcp/'
+    isSharedToAll: false
+    credentials: { keys: { Authorization: 'Bearer ${mcpApiKey}' } }
+    metadata: {}
+  }
+}
+
 resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
   parent: foundry
   name: modelName
@@ -241,4 +255,5 @@ output openAiEndpoint string = 'https://${foundry.properties.customSubDomainName
 output foundryProjectName string = foundryProject.name
 output projectEndpoint string = 'https://${foundry.properties.customSubDomainName}.services.ai.azure.com/api/projects/${foundryProject.name}'
 output modelDeploymentName string = modelDeployment.name
+output mcpConnectionId string = empty(mcpApiKey) ? '' : mcpConnection.id
 output webUri string = 'https://${web.properties.configuration.ingress.fqdn}'

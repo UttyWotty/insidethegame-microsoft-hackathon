@@ -306,7 +306,7 @@ def persona_card_template(context: MomentContext, explanation: Explanation, view
 
 def untranslated_card(card: PersonaCard) -> TranslatedCard:
     """Fallback translation that keeps the original English text."""
-    return TranslatedCard(title=card.title, body=card.body, stat_labels=[c.label for c in card.stat_callouts])
+    return TranslatedCard(card_title=card.title, body=card.body, stat_labels=[c.label for c in card.stat_callouts])
 
 
 KIND_LABELS: dict[str, str] = {

@@ -1,7 +1,7 @@
 """Command-line adapter that registers (or updates) the hosted agent in a Foundry project and optionally chats with it.
 
 Usage: python -m insidegame.foundry.register [--ask "Who is on top in the live match?"]
-Reads the project endpoint, model deployment, and MCP URL from the environment (set by azd after deployment).
+Reads the project endpoint, model deployment, MCP URL, and MCP key connection from the environment (set by azd).
 """
 
 import argparse
@@ -16,7 +16,7 @@ from insidegame.foundry.definition import AGENT_NAME, HostedAgentSettings, build
 AZURE_AI_PROJECT_ENDPOINT: str = os.getenv("AZURE_AI_PROJECT_ENDPOINT", "")
 AZURE_MODEL_DEPLOYMENT: str = os.getenv("AZURE_MODEL_DEPLOYMENT", "gpt-4.1-mini")
 SERVICE_WEB_URI: str = os.getenv("SERVICE_WEB_URI", "")
-MCP_API_KEY: str = os.getenv("MCP_API_KEY", "")
+AZURE_MCP_CONNECTION_ID: str = os.getenv("AZURE_MCP_CONNECTION_ID", "")
 AGENT_DESCRIPTION: str = "Answers questions about live synthetic football matches through the Inside the Game MCP server."
 AGENT_REFERENCE_TYPE: str = "agent_reference"
 
@@ -24,7 +24,7 @@ AGENT_REFERENCE_TYPE: str = "agent_reference"
 def _settings() -> HostedAgentSettings:
     if not AZURE_AI_PROJECT_ENDPOINT or not SERVICE_WEB_URI:
         raise ModelConfigError("AZURE_AI_PROJECT_ENDPOINT and SERVICE_WEB_URI must be set (run azd up first)")
-    return HostedAgentSettings(AZURE_MODEL_DEPLOYMENT, f"{SERVICE_WEB_URI.rstrip('/')}/mcp/", MCP_API_KEY)
+    return HostedAgentSettings(AZURE_MODEL_DEPLOYMENT, f"{SERVICE_WEB_URI.rstrip('/')}/mcp/", AZURE_MCP_CONNECTION_ID)
 
 
 def main() -> None:
