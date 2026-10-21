@@ -6,6 +6,12 @@ Numbers quoted here are reproducible from the repository's tests, code, and eval
 
 # Inside the Game: Submission
 
+## Links
+
+- **Live app (no sign-in):** https://ca-web-e57jcjawvpd5a.blackriver-4dd5512b.eastus2.azurecontainerapps.io/
+- **Demo video (1:25):** VIDEO_URL
+- **Repository:** https://github.com/UttyWotty/insidethegame-microsoft-hackathon
+
 ## Elevator pitch
 
 Inside the Game turns synthetic football events into explainable, personalized match intelligence in real time.
@@ -25,7 +31,7 @@ output, and a grounded fallback keeps the broadcast on air.
   13 of 13 metrics within band over 480 matches, including where shots are taken from and results by venue.
   Finishing is realistic rather than walk-in: forward dribbles stop 3 to 12 m from the goal line, and near goal
   the keeper stands between the shooter and the goal. A tracking model adds formation-aware positions for all 22
-  players after every event, capped at each player's pace-based top speed; the dataset generator exports events
+  players after every event, capped at each player's pace-based top speed and holding attackers onside; the dataset generator exports events
   (with expected threat added), players, moments, and tracking as JSON Lines with a dataset card.
 - **Interpret:** streaming analytics compute xG, an explainable 0-100 pass difficulty, expected threat (xT) from
   a grid fitted to the project's own synthetic league, line-breaking passes from tracked positions, team shape
@@ -63,18 +69,21 @@ output, and a grounded fallback keeps the broadcast on air.
   Producer, Broadcast Translator, Standards Editor, Match Editor, Match Companion) with structured outputs and
   function tools, orchestrated in a workflow with shared state, fan-out and fan-in, a fact-check revision loop,
   and OpenTelemetry instrumentation.
-- **Microsoft Foundry:** the target platform for the models: project and model deployment, accessed keylessly
-  with a managed identity, plus a hosted agent in Foundry Agent Service that uses this project's MCP server to
-  answer questions about live matches.
+- **Microsoft Foundry:** every agent runs on gpt-4.1-mini deployed in a Foundry project (GlobalStandard), reached
+  keylessly through the app's managed identity. A hosted agent in Foundry Agent Service
+  (`inside-the-game-companion`) uses this project's MCP server as its tool, authenticated through a Foundry project
+  connection, and answers questions about live and finished matches from the Foundry playground. An evaluation
+  report for the deployed model is in `docs/evaluations/`.
 - **Azure AI Speech:** neural voices read commentary aloud in each viewer's language, keyless through the app's
   managed identity on the same AI Services account; only lines the match produced can be voiced.
 - **Model Context Protocol:** the live match intelligence is an MCP server with ten tools (`list_clubs`,
   `start_match`, `list_matches`, `get_match_state`, `get_key_moments`, `get_player_stats`,
   `get_threat_leaderboard`, `get_team_shape`, `get_recaps`, `ask_match_companion`), usable from GitHub Copilot
   agent mode or Foundry agents.
-- **Azure Container Apps, Container Registry, Application Insights, Log Analytics:** one container, provisioned
-  with the Azure Developer CLI and Bicep.
-- **GitHub Actions:** CI on pull requests and OIDC-based deployment without stored secrets.
+- **Azure Container Apps, Container Registry, Application Insights, Log Analytics:** one container, live in East
+  US 2, provisioned and deployed with the Azure Developer CLI (`azd up`) and Bicep.
+- **GitHub Actions:** a CI workflow for pull requests and an OIDC deployment workflow without stored secrets,
+  ready for `azd pipeline config`.
 - **Microsoft Fabric ready:** the dataset generator outputs analytics-ready JSON Lines with a dataset card, a
   PySpark notebook loads them into lakehouse Delta tables, and a Direct Lake semantic model (TMDL) adds
   relationships and DAX measures for a Power BI report; all of it is schema-checked offline
@@ -98,9 +107,10 @@ in the viewer's language, while staying factually grounded enough for a live pro
   optional producer key.
 - Keyless model access, least-privilege roles, non-root container, optional MCP bearer token, per-client rate
   limits.
-- Agent evaluation harness reporting per-agent model, corrected, and fallback rates and latency.
-- 626 automated backend tests and 181 frontend tests, including simulator calibration and finishing-realism
-  checks; infrastructure as code.
+- Agent evaluation harness reporting per-agent model, corrected, and fallback rates and latency; on Foundry the
+  Match Analyst and Match Editor wrote 100% of their outputs (`docs/evaluations/2026-10-21-foundry-gpt-4.1-mini.json`).
+- 698 automated backend tests and 182 frontend tests, including simulator calibration, finishing-realism, and
+  offside checks; infrastructure as code.
 
 ## Testing instructions
 
@@ -109,8 +119,9 @@ in the viewer's language, while staying factually grounded enough for a live pro
 2. At 58' the Tactical Scout flags Kestrel Bay beating Ironvale's right flank; at 65' Zane Brekke's winner makes
    it 2-1, and the goal banner reads "Scout flagged 58'".
 3. With **Auto replays** on, the 65' goal replays its build-up and strike, then ends on the analysis card.
-4. Open **All personas** before 65' to see the winner through five audiences side by side; overlays show **AI** or
-   **Template** and **Fact-checked** or **Corrected by editor** chips.
+4. Open **All personas** before 65' to see the winner through five audiences side by side (at 30x the goal's
+   cards for all five arrive a few match minutes after the goal); overlays show **AI** or **Template** and
+   **Fact-checked** or **Corrected by editor** chips.
 5. Ask a question in **Ask the analyst**.
 6. Open the **Producer** console: hold and release AI overlays, select a moment for its agent trace, broadcast
    record, and any outcome problems.

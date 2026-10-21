@@ -9,6 +9,4 @@ frontend/dist
 .env.*
 .azure
 docs
-CLAUDE.md
-.claude
 HACKATHON_BRIEF.md
