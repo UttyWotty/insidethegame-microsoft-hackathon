@@ -6,6 +6,14 @@ Record raw takes of the demo match at 30x on the deployed app, then cut the beat
 
 # Demo Video Script (1:57)
 
+## Final cut (2026-10-21)
+
+The published video (1:25, silent with burned-in subtitles) follows this script with three changes: the MCP beat
+shows the Foundry hosted agent `inside-the-game-companion` answering in the Foundry playground instead of GitHub
+Copilot, the Danger leaderboard beat is dropped, and the agent-handoff beat shows the Producer console's agent trace
+for the 65' goal. At 30x the 65' persona cards arrive a few match minutes after the goal, so the cut takes them from
+the moment they land.
+
 ## Recording and subtitles
 
 There is no voice-over: each beat carries short burned-in subtitle cards (`/` in the table starts the next card;

@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Demo video (1:25, burned-in subtitles) and fresh README screenshots taken from the live Foundry build; the submission
+  text links the live app, video, and repository and describes the live Foundry deployment and hosted agent.
 - Foundry evaluation report for gpt-4.1-mini on the demo seed (`docs/evaluations/2026-10-21-foundry-gpt-4.1-mini.json`).
 - Browser tab icon (`frontend/public/favicon.svg`): an original pitch mark in the app palette (navy tile, green
   pitch, white halfway line and centre circle, sky-blue ball), linked from `frontend/index.html`.
@@ -201,6 +203,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `.gitignore` and `.dockerignore` no longer list local editor-assistant files; they are excluded locally instead.
 - Frontend test runner upgraded from vitest 3 to vitest 4 (`^4.1.12`), clearing the `npm audit` advisories in
   tinypool and `@vitest/mocker` (test-runner only, not the shipped bundle); `npm audit` now reports 0
   vulnerabilities. No configuration or test changes were needed: all 31 test files (181 tests) pass, and vite
