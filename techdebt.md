@@ -28,9 +28,10 @@ Live app: https://ca-web-e57jcjawvpd5a.blackriver-4dd5512b.eastus2.azurecontaine
    full-time highlights. Compare the card wording quoted in `docs/DEMO_SCRIPT.md` with the Foundry output and update
    the script where the model words it differently. Fix only what blocks the video.
 5. Retake README screenshots (`docs/images/broadcast.jpg`, `multiview.jpg`) from the live site with AI output.
-6. Record the demo video from `docs/DEMO_SCRIPT.md` on the live site: under 2 minutes, Voice on, no music, no real
-   club or league branding. Lead with the 14' Scout flag, the 28' goal, and the replay that links back to it.
-   Upload to YouTube as Public.
+6. Record the demo video as raw takes A to D from `docs/DEMO_SCRIPT.md` on the live site (no narration; OBS if
+   the in-app commentator should be heard, otherwise Cmd+Shift+5), then hand the files over for the cut: frames
+   every 0.5 s, beats timed to the screen, under 2 minutes, burned-in subtitles plus `demo.srt`. No music, no real
+   club or league branding. Upload to YouTube as Public with the `.srt` as English captions.
 7. Update `docs/SUBMISSION.md`: app URL, video link, and check every Azure line is in present tense and true.
 8. Cut release `v0.2.0` (Git Flow): `release/0.2.0` from develop, bump `version` in `backend/pyproject.toml` and
    `frontend/package.json` (both 0.1.0), move Unreleased in
