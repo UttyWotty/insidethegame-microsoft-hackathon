@@ -3,7 +3,7 @@
 # See docs/DEPLOYMENT.md for the full walkthrough.
 name: inside-the-game
 metadata:
-  template: inside-the-game@0.1.0
+  template: inside-the-game@0.2.0
 services:
   web:
     project: .

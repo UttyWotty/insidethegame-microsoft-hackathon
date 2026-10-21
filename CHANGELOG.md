@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-21
+
 ### Added
 
 - Demo video (1:25, burned-in subtitles) and fresh README screenshots taken from the live Foundry build; the submission
@@ -572,5 +574,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Template punctuation no longer doubles a trailing period from model headlines.
 - `httpx` pinned below 1.0 to avoid an incompatible pre-release.
 
-[Unreleased]: https://github.com/UttyWotty/insidethegame-microsoft-hackathon/compare/v0.1.0...develop
+[Unreleased]: https://github.com/UttyWotty/insidethegame-microsoft-hackathon/compare/v0.2.0...develop
+[0.2.0]: https://github.com/UttyWotty/insidethegame-microsoft-hackathon/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/UttyWotty/insidethegame-microsoft-hackathon/releases/tag/v0.1.0
