@@ -16,6 +16,11 @@ Live app: https://ca-web-e57jcjawvpd5a.blackriver-4dd5512b.eastus2.azurecontaine
 1. Pre-flight (5 min). `curl <app>/api/health` (the first call after idle can come back empty; retry), then
    `curl <app>/api/diagnostics` (expect `model_reachable: true`). In the portal, Cost Management shows spend so far;
    expect a few dollars a day. Never click Upgrade.
+<!-- Steps 1 to 4 done 2026-10-21: pre-flight ok; evaluation report `docs/evaluations/2026-10-21-foundry-gpt-4.1-mini.json`
+(analyst and editor 100% model, cards 82%, translation 67%, no 429s, no TranslatedCard titles); hosted agent
+`inside-the-game-companion` v1 registered and answering live through the `inside-the-game-mcp` connection;
+polishing check found and fixed 429 template fallbacks (#90), TranslatedCard titles (#90, #91), and a left/right
+flank mix-up (#90); every video beat verified on the live build. -->
 2. Foundry evaluation (15 min). `eval "$(azd env get-values)"`, then
    `MODEL_PROVIDER=foundry MODEL_NAME=gpt-4.1-mini AZURE_OPENAI_ENDPOINT=$AZURE_OPENAI_ENDPOINT
    .venv/bin/python -m insidegame.evaluation.run --max-moments 6`; commit the report to `docs/evaluations/` and
@@ -160,8 +165,8 @@ Live app: https://ca-web-e57jcjawvpd5a.blackriver-4dd5512b.eastus2.azurecontaine
      the local model cannot keep up with a live match at any useful speed; record the video on Foundry.
   Resolved 2026-10-16: the live UI check passed (PR #64); the evaluation rerun stays open below.
 -->
-- Rerun the evaluation once to read `fact_check_issues` and judge whether the 4 revisions in
-  `docs/evaluations/2026-10-13-mlx-qwen3.8-27b-6bit.json` were real catches (best on Foundry, see Azure go-live).
+- One translation in three still falls back to English in the Foundry evaluation (2026-10-21), now on the
+  same-numbers check rather than the title; read the rejected drafts and decide whether the check is too strict.
 
 ## Azure go-live (needs a personal Azure subscription)
 

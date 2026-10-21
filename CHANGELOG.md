@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Foundry evaluation report for gpt-4.1-mini on the demo seed (`docs/evaluations/2026-10-21-foundry-gpt-4.1-mini.json`).
 - Browser tab icon (`frontend/public/favicon.svg`): an original pitch mark in the app palette (navy tile, green
   pitch, white halfway line and centre circle, sky-blue ball), linked from `frontend/index.html`.
 - Microsoft Fabric lakehouse path (`docs/FABRIC.md`): a PySpark notebook (`fabric/notebooks/load_lakehouse.ipynb`)
@@ -340,6 +341,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `insidegame.foundry.register --ask` uses `agent_reference`, which Foundry now requires instead of `agent`.
 - Registering the Foundry hosted agent no longer fails with `invalid_payload`: the MCP bearer key lives in a Foundry
   project connection created by `azd provision`, and the agent references it instead of sending a header.
 - Spanish (and every translated) card titles no longer read "TranslatedCard": the translator schema describes its
